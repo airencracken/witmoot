@@ -70,7 +70,11 @@ func run() error {
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")
 	}
-	config := forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
+	config := forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), BaseURL: os.Getenv("WITMOOT_BASE_URL"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
+	config.TrustedProxies, err = forum.ParseTrustedProxies(os.Getenv("WITMOOT_TRUSTED_PROXIES"))
+	if err != nil {
+		return err
+	}
 	if config.ImvaultURL != "" {
 		config.ImageKey, err = forum.LoadImageKey(filepath.Join(dataDir, "imvault.key"))
 		if err != nil {

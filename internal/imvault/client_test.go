@@ -30,6 +30,25 @@ func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 
 var pngBytes = []byte("\x89PNG\r\n\x1a\nfixture")
 
+func TestVersionedRenditionLinks(t *testing.T) {
+	c, _ := New("https://vault.example/base")
+	for _, rendition := range []string{"thumb", "preview"} {
+		link := "https://vault.example/base/f/abc123/" + rendition + "?v=0123456789abcdef"
+		if id, err := c.ParseLink(link); err != nil || id != "abc123" {
+			t.Errorf("current imvault link rejected: %q %v", id, err)
+		}
+	}
+	for _, suffix := range []string{
+		"/thumb?v=", "/thumb?v=nope", "/thumb?v=0123456789abcdef&token=secret",
+		"/thumb?v=0123456789abcdef&v=0123456789abcdef", "/thumb?v=%ZZ", "/thumb?v=0123456789abcdef;ignored=1",
+		"/raw?v=0123456789abcdef", "?v=0123456789abcdef", "/thumb?v=0123456789abcdef#secret",
+	} {
+		if _, err := c.ParseLink("https://vault.example/base/f/abc123" + suffix); err == nil {
+			t.Errorf("accepted unsupported query: %s", suffix)
+		}
+	}
+}
+
 func TestLinksStayOnConfiguredServer(t *testing.T) {
 	c, _ := New("https://vault.example/base/")
 	for _, suffix := range []string{"", "/raw", "/preview", "/thumb"} {

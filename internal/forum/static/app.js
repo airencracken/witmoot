@@ -7,8 +7,6 @@ document.addEventListener('htmx:beforeSwap', function (event) {
 });
 
 function preparePage() {
-	const invitation = document.querySelector('[data-invitation]');
-	if (invitation) invitation.value = new URL(invitation.getAttribute('data-invitation'), window.location.origin).href;
 	const error = document.querySelector('[role="alert"]');
 	if (error) error.focus();
 }

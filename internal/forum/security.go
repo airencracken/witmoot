@@ -4,8 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"net"
-	"net/http"
 	"regexp"
 	"sync"
 	"time"
@@ -53,11 +51,7 @@ type limiter struct {
 	entries map[string]rateEntry
 }
 
-func (l *limiter) allow(r *http.Request) bool {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
+func (l *limiter) allow(host string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := time.Now()

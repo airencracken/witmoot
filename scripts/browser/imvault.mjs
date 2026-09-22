@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
+import { createServer as httpServer, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,9 @@ const data = await mkdtemp(join(tmpdir(), 'witmoot-imvault-browser-'));
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('IMVAULT_') && !key.startsWith('WITMOOT_')));
 const children = [];
 let browser;
+let gateway;
+let stallLibrary = false;
+let libraryRequests = 0;
 const password = 'a friendly integration test password';
 const problems = [];
 async function address() {
@@ -36,7 +40,24 @@ async function start(binary, env, url) {
 }
 try {
 	const vaultAddr = await address();
-	const vaultURL = `http://${vaultAddr}`;
+	const vaultBackendURL = `http://${vaultAddr}`;
+	// Keep the real API behind a controllable gateway to exercise a slow
+	// library without stopping the image server or relying on OS signals.
+	gateway = httpServer((req, res) => {
+		if (new URL(req.url, vaultBackendURL).pathname === '/api/v1/files') {
+			libraryRequests++;
+			if (stallLibrary) return;
+		}
+		const upstream = httpRequest(new URL(req.url, vaultBackendURL), { method: req.method, headers: req.headers }, response => {
+			res.writeHead(response.statusCode, response.headers);
+			response.pipe(res);
+		});
+		upstream.on('error', () => { res.writeHead(502); res.end(); });
+		res.on('close', () => upstream.destroy());
+		req.pipe(upstream);
+	});
+	await new Promise((done, reject) => { gateway.once('error', reject); gateway.listen(0, '127.0.0.1', done); });
+	const vaultURL = `http://127.0.0.1:${gateway.address().port}`;
 	const forumAddr = await address();
 	const origin = `http://${forumAddr}`;
 	const vaultEnv = { ...cleanEnv, IMVAULT_DATA_DIR: join(data, 'vault'), IMVAULT_ADDR: vaultAddr, IMVAULT_BASE_URL: vaultURL, IMVAULT_DEFAULT_VISIBILITY: 'public', IMVAULT_UPLOAD_BURST: '100' };
@@ -96,8 +117,17 @@ try {
 		await page.getByLabel('Search your library', { exact: true }).fill('Public-table');
 		await page.getByRole('button', { name: 'Find images' }).click();
 		await page.getByRole('link', { name: 'Public-table.png', exact: true }).waitFor();
+		const beforeCompose = libraryRequests;
 		await page.goto(origin + '/boards/1/new');
+		assert.equal(libraryRequests, beforeCompose, 'Opening the composer fetched the library');
+		const title = javaScriptEnabled ? 'Pictures with HTMX' : 'Pictures without JavaScript';
+		await page.getByLabel('Give it a title').fill(title);
+		await page.getByLabel('Your message', { exact: true }).fill('A place at the table for everyone.');
 		await page.getByText('Add images', { exact: true }).click();
+		await page.getByRole('button', { name: 'Load image library', exact: true }).click();
+		await page.locator('.image-choice input[type=checkbox]').first().waitFor();
+		assert.equal(await page.getByLabel('Give it a title').inputValue(), title, 'Loading images lost the title');
+		assert.equal(await page.getByLabel('Your message', { exact: true }).inputValue(), 'A place at the table for everyone.', 'Loading images lost the draft');
 		const firstID = await page.locator('.image-choice input[type=checkbox]').first().getAttribute('value');
 		await page.locator('.image-choice input[type=checkbox]').first().check();
 		if (javaScriptEnabled) {
@@ -109,13 +139,23 @@ try {
 			await page.locator(`input[name=image_ids][value="${firstID}"]`).uncheck();
 			await page.locator(`.image-choice input[value="${privateImage.id}"]`).check();
 		}
-		await page.getByLabel('Give it a title').fill(javaScriptEnabled ? 'Pictures with HTMX' : 'Pictures without JavaScript');
-		await page.getByLabel('Your message', { exact: true }).fill('A place at the table for everyone.');
 		await page.getByLabel('Upload images', { exact: true }).setInputFiles({ name: 'New-table.png', mimeType: 'image/png', buffer: png });
-		await page.getByLabel('Paste imvault image links', { exact: true }).fill(vaultURL + '/f/' + publicImage.id);
+		assert.match(publicImage.thumb_url, /\?v=[0-9a-f]{16}$/);
+		await page.getByLabel('Paste imvault image links', { exact: true }).fill(publicImage.thumb_url);
 		await page.getByRole('button', { name: 'Start conversation', exact: true }).click();
 		await page.waitForURL(/\/topics\/\d+$/);
 		const topicURL = page.url();
+		const beforeSlowLibrary = libraryRequests;
+		stallLibrary = true;
+		try {
+			for (const url of [topicURL, origin + '/boards/1/new']) {
+				const response = await context.request.get(url, { timeout: 5000 });
+				assert.equal(response.status(), 200, 'A stalled image library prevented reading or writing text');
+			}
+			assert.equal(libraryRequests, beforeSlowLibrary, 'Text pages requested the stalled library');
+		} finally {
+			stallLibrary = false;
+		}
 		await page.locator('.post-images img').first().waitFor();
 		assert.equal(await page.locator('.post-images img').count(), 3);
 		for (const img of await page.locator('.post-images img').all()) {
@@ -130,7 +170,10 @@ try {
 		assert.equal((await guest.request.get(origin + paths[0], { maxRedirects: 0 })).status(), 303);
 		await page.getByLabel('Your reply', { exact: true }).fill('Another look at the same memory.');
 		await page.getByText('Add images', { exact: true }).click();
-		await page.getByLabel('Paste imvault image links', { exact: true }).fill(vaultURL + '/f/' + privateImage.id + '/raw');
+		await page.getByRole('button', { name: 'Load image library', exact: true }).click();
+		await page.locator('.image-choice input[type=checkbox]').first().waitFor();
+		assert.equal(await page.getByLabel('Your reply', { exact: true }).inputValue(), 'Another look at the same memory.', 'Loading images lost the reply');
+		await page.getByLabel('Paste imvault image links', { exact: true }).fill(privateImage.thumb_url.replace('/thumb?', '/preview?'));
 		await page.getByRole('button', { name: 'Post reply', exact: true }).click();
 		await page.waitForURL(/#post-/);
 		assert.equal(await page.locator('.post-images img').count(), 4);
@@ -162,6 +205,10 @@ try {
 			child.kill('SIGTERM');
 			await exited;
 		}
+	}
+	if (gateway?.listening) {
+		gateway.closeAllConnections();
+		await new Promise(done => gateway.close(done));
 	}
 	await rm(data, { recursive: true, force: true });
 }

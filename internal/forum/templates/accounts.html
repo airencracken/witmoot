@@ -18,16 +18,16 @@
 	<p class="eyebrow">There is room for you here</p><h1>Make yourself at home.</h1>
 	<p class="muted">Choose a name your people will recognise.</p>
 	{{template "error" .}}
-	{{if or .Invitation (eq .Mode "open")}}
 	<form action="/join" method="post" hx-disabled-elt="find button[type='submit']">
-		{{template "csrf" .}}<input type="hidden" name="invite" value="{{.Invitation}}">
+		{{template "csrf" .}}
+		<label for="invite">Invitation code{{if eq .Mode "open"}} (optional){{end}}</label><input id="invite" name="invite" value="{{.Invitation}}" maxlength="64" autocomplete="off" {{if ne .Mode "open"}}required{{end}}>
+		{{if ne .Mode "open"}}<p class="field-help">Use the code or invitation link shared by an owner.</p>{{end}}
 		<label for="username">Username</label><input id="username" name="username" autocomplete="username" minlength="3" maxlength="24" pattern="[a-zA-Z0-9_-]{3,24}" value="{{.Username}}" aria-describedby="username-help" required>
 		<p class="field-help" id="username-help">3–24 letters, numbers, underscores, or dashes.</p>
 		<label for="password">Password</label><input id="password" name="password" type="password" autocomplete="new-password" minlength="12" aria-describedby="password-help" required>
 		<p class="field-help" id="password-help">At least 12 characters, at most 72 bytes. A few memorable words work well.</p>
 		<button class="full-width" type="submit">Join our board</button>
 	</form>
-	{{else}}<div class="account-note">This is a private board. Ask the owner to send you an invitation link.</div>{{end}}
 	<p class="account-note">Already have a place here? <a href="/login">Sign in</a>.</p>
 </section>
 {{end}}
@@ -38,15 +38,32 @@
 	<p class="eyebrow">Good company starts with an invitation</p><h1>Invite someone in.</h1>
 	<p>Make a link and share it with someone you would like around the table. They will be able to read and join public and members-only conversations. Owner-only conversations stay with the owners.</p>
 	{{if eq .Mode "open"}}<p class="muted">This board is Open, so people can also <a href="/join">join without an invitation</a>.</p>{{end}}
+	{{template "error" .}}
+	{{if .Saved}}<p class="save-notice" role="status">Invitation revoked. It can no longer be used to join.</p>{{end}}
 	{{if .InviteLink}}
 	<div class="invitation-result" role="status">
 		<h2>A place is ready.</h2><label for="invite-link">Your invitation link</label>
 		<input id="invite-link" type="text" readonly data-invitation="{{.InviteLink}}" value="{{.InviteLink}}">
 		<p><a href="{{.InviteLink}}">Invitation link</a> · Copy this link and send it yourself.</p>
-		<p class="field-help">This link works once and expires in seven days. Save it now; it is only shown here.</p>
+		<label for="invite-code">Or share this invitation code</label><input id="invite-code" type="text" readonly value="{{.InviteCode}}">
+		<p class="field-help">Copy the link or code now; it cannot be shown again.</p>
 	</div>
 	{{end}}
-	<form action="/invites" method="post" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<button type="submit">Create an invitation</button></form>
-	<p class="muted">One invitation, one person. Only owners can invite new members.</p>
+	<form action="/invites" method="post" hx-disabled-elt="find button[type='submit']">
+		{{template "csrf" .}}
+		<label for="invite-label">Label (optional)</label><input id="invite-label" name="label" maxlength="64" value="{{.InviteLabel}}" placeholder="For Sam, or the weekend crew">
+		<label for="invite-uses">Uses</label><input id="invite-uses" name="max_uses" type="number" min="0" max="10000" value="{{.InviteUses}}" required><p class="field-help">One use per new member. Set 0 for no limit.</p>
+		<label for="invite-days">Expires after (days)</label><input id="invite-days" name="expires_days" type="number" min="0" max="3650" value="{{.InviteDays}}" placeholder="Never"><p class="field-help">Leave blank or set 0 for no expiry.</p>
+		<button type="submit">Create an invitation</button>
+	</form>
+	<p class="muted">Only owners can manage invitations. New accounts are always members.</p>
+	<h2>Your invitations</h2>
+	{{range .Invitations}}<article class="invitation-record">
+		<h3>{{if .Label}}{{.Label}}{{else}}Invitation #{{.ID}}{{end}}</h3>
+		<p><strong>{{.Status}}</strong> · {{.UsesLabel}}</p>
+		<p class="muted">Issued by {{.Creator}}{{if .Prefix}} · Code starts with <code>{{.Prefix}}</code>{{end}}<br>{{if .ExpiresAt.Valid}}Expires <time datetime="{{iso .ExpiresAt.Int64}}">{{stamp .ExpiresAt.Int64}} UTC</time>{{else}}No expiry{{end}}</p>
+		{{if eq .Status "open"}}<form action="/invites/{{.ID}}/revoke" method="post" hx-disabled-elt="find button[type='submit']"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Revoke invitation</button></form>{{end}}
+	</article>{{else}}<p class="muted">No invitations yet.</p>{{end}}
+	{{template "pager" .}}
 </section>
 {{end}}

@@ -104,7 +104,7 @@ or pressure to keep checking in.
 ## Where to go next
 
 1. Local governance and ownership: visible house rules and responsible hosts,
-   account recovery, member removal, invitation revocation, editing one's own
+   account recovery, member removal, editing one's own
    posts, owner moderation, configurable rooms, and useful exports.
 2. Shared memories: richer image descriptions and album browsing, while keeping
    sharing deliberate and access rules understandable.

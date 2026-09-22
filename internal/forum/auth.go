@@ -35,7 +35,7 @@ func (a *App) authAllowed(w http.ResponseWriter, r *http.Request) bool {
 		a.redirect(w, r, "/")
 		return false
 	}
-	if !a.limiter.allow(r) {
+	if !a.limiter.allow(a.clientIP(r)) {
 		w.Header().Set("Retry-After", "900")
 		a.fail(w, r, 429, "Too many attempts. Take a little break and try again in 15 minutes.")
 		return false

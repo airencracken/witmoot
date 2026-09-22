@@ -88,7 +88,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -334,7 +334,7 @@ func (s *Store) DeleteSession(ctx context.Context, hash string) error {
 	return err
 }
 
-var errInvitation = errors.New("this invitation has expired or has already been used")
+var errInvitation = errors.New("this invitation is invalid, expired, revoked, or has no uses left")
 
 func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash string) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -350,7 +350,8 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 		return 0, errPersonal
 	}
 	if inviteHash != "" || mode != ModeOpen {
-		result, err := tx.ExecContext(ctx, "DELETE FROM invitations WHERE token_hash = ? AND expires_at > ?", inviteHash, time.Now().Unix())
+		result, err := tx.ExecContext(ctx, `UPDATE invitations SET uses = uses + 1 WHERE token_hash = ? AND revoked_at IS NULL
+			AND (expires_at IS NULL OR expires_at > ?) AND (max_uses = 0 OR uses < max_uses)`, inviteHash, time.Now().Unix())
 		if err != nil {
 			return 0, err
 		}
@@ -396,16 +397,7 @@ func (s *Store) CreateOwner(ctx context.Context, name, passwordHash string) erro
 }
 
 func (s *Store) Invite(ctx context.Context, ownerID int64, hash string) error {
-	result, err := s.db.ExecContext(ctx, `INSERT INTO invitations(token_hash, created_by, expires_at) SELECT ?, ?, ? FROM settings WHERE id = 1 AND mode != 'personal'`, hash, ownerID, time.Now().Add(7*24*time.Hour).Unix())
-	if err != nil {
-		return err
-	}
-	n, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n != 1 {
-		return errPersonal
-	}
-	return nil
+	expires := time.Now().Add(7 * 24 * time.Hour)
+	_, err := s.CreateInvitation(ctx, ownerID, hash, "", InvitationOptions{MaxUses: 1, ExpiresAt: &expires})
+	return err
 }
