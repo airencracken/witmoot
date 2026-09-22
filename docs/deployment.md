@@ -96,9 +96,9 @@ emerge --ask --autounmask www-apps/witmoot
 ```
 
 The example uses Bash brace expansion. Review Portage's keyword/license
-changes for the live package and its account packages. Witmoot currently has
-no project license, so the ebuild records `all-rights-reserved` alongside its
-dependency licenses. The optional `test` USE flag runs the Go and packaging
+changes for the live package and its account packages. Witmoot uses
+AGPL-3.0-or-later, recorded as `AGPL-3+` alongside the dependency licenses in
+the ebuild. The optional `test` USE flag runs the Go and packaging
 tests; browser tests remain a separate development check.
 
 Portage creates the account and private data directory, installs

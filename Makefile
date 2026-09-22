@@ -31,6 +31,8 @@ build:
 install: build
 	install -d "$(DESTDIR)$(PREFIX)/bin"
 	install -m 0755 bin/witmoot "$(DESTDIR)$(PREFIX)/bin/witmoot"
+	install -d "$(DESTDIR)$(PREFIX)/share/doc/witmoot"
+	install -m 0644 LICENSE README.md THIRD_PARTY.md "$(DESTDIR)$(PREFIX)/share/doc/witmoot/"
 
 install-openrc: install-logrotate
 	mkdir -p bin

@@ -6,6 +6,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/witmoot ./cmd/witmoot
 
 FROM alpine:3.23
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 RUN apk add --no-cache ca-certificates tzdata \
 	&& addgroup -S -g 10001 witmoot \
 	&& adduser -S -D -H -u 10001 -G witmoot -h /data witmoot \
@@ -13,6 +14,7 @@ RUN apk add --no-cache ca-certificates tzdata \
 	&& chown witmoot:witmoot /data \
 	&& chmod 0700 /data
 COPY --from=build /out/witmoot /usr/local/bin/witmoot
+COPY LICENSE README.md THIRD_PARTY.md /usr/share/doc/witmoot/
 ENV WITMOOT_DATA_DIR=/data WITMOOT_ADDR=:8080 TMPDIR=/tmp
 USER witmoot:witmoot
 VOLUME ["/data"]
