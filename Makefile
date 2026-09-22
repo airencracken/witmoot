@@ -1,4 +1,4 @@
-.PHONY: run test test-browser check build
+.PHONY: run test test-browser test-imvault check build
 
 run:
 	go run -buildvcs=false ./cmd/witmoot
@@ -8,6 +8,9 @@ test:
 
 test-browser: build
 	node scripts/browser/check.mjs
+
+test-imvault: build
+	node scripts/browser/imvault.mjs
 
 check:
 	go vet ./...

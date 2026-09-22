@@ -25,6 +25,7 @@
 				{{if ne .Mode "personal"}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
 				{{end}}
+				{{if .ImagesEnabled}}<a href="/account/imvault">Images</a>{{end}}
 				<span class="signed-in">{{.User.Username}}</span>
 				<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form>
 				{{else}}{{if eq .Mode "open"}}<a href="/join">Join our board</a>{{end}}<a href="/login" class="button small">Come on in</a>{{end}}
@@ -42,6 +43,8 @@
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}
 		{{else if eq .View "settings"}}{{template "settings" .}}
+		{{else if eq .View "image-account"}}{{template "image-account" .}}
+		{{else if eq .View "library"}}{{template "library" .}}
 		{{else}}<section class="paper narrow"><p class="eyebrow">A small detour</p><h1>{{.Title}}</h1>{{template "error" .}}<a href="/">Back to our board</a></section>{{end}}
 	</main>
 	<footer class="site-footer"><span>{{.Name}} · A little corner of the internet, together.</span><span>Take your time. Stay a while.</span></footer>

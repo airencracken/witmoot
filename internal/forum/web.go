@@ -11,11 +11,14 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"witmoot/internal/imvault"
 )
 
 //go:embed templates/*.html static/*
@@ -26,6 +29,8 @@ const pageSize = 20
 type Config struct {
 	Name          string
 	SecureCookies bool
+	ImvaultURL    string
+	ImageKey      []byte
 }
 
 type App struct {
@@ -35,6 +40,7 @@ type App struct {
 	handler   http.Handler
 	limiter   limiter
 	dummyHash string
+	vault     *imvault.Client
 }
 
 type requestState struct {
@@ -45,6 +51,13 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	ImagesEnabled, ImageConnected, LibraryMore              bool
+	ImageUsername, ImageServer, ImageLinks, ImageError      string
+	Library                                                 []imvault.File
+	LibraryOffset                                           int
+	SelectedImages                                          map[string]bool
+	CarriedImages                                           []string
+	LibraryPicking                                          bool
 	Name, Title, View, CSRF, Error                          string
 	User                                                    *User
 	Mode                                                    Mode
@@ -64,6 +77,7 @@ func New(store *Store, config Config) (*App, error) {
 		config.Name = "Witmoot"
 	}
 	tmpl, err := template.New("forum").Funcs(template.FuncMap{
+		"add":     func(a, b int) int { return a + b },
 		"date":    func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006") },
 		"stamp":   func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006 · 15:04 UTC") },
 		"iso":     func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -77,6 +91,15 @@ func New(store *Store, config Config) (*App, error) {
 		return nil, err
 	}
 	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: limiter{entries: make(map[string]rateEntry)}}
+	if config.ImvaultURL != "" {
+		if len(config.ImageKey) != 32 {
+			return nil, errors.New("imvault integration requires a 32-byte encryption key")
+		}
+		a.vault, err = imvault.New(config.ImvaultURL)
+		if err != nil {
+			return nil, err
+		}
+	}
 	static, err := fs.Sub(assets, "static")
 	if err != nil {
 		return nil, err
@@ -104,6 +127,12 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /invites", a.private(a.createInvite))
 	mux.HandleFunc("GET /settings", a.signedIn(a.settings))
 	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
+	mux.HandleFunc("GET /account/imvault", a.signedIn(a.imageAccount))
+	mux.HandleFunc("POST /account/imvault", a.private(a.connectImages))
+	mux.HandleFunc("POST /account/imvault/disconnect", a.signedIn(a.disconnectImages))
+	mux.HandleFunc("GET /imvault/library", a.private(a.library))
+	mux.HandleFunc("GET /imvault/library/{id}/image", a.private(a.libraryImage))
+	mux.HandleFunc("GET /images/{id}", a.readable(a.image))
 	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(mux))
 	return a, nil
 }
@@ -157,8 +186,23 @@ func (a *App) middleware(next http.Handler) http.Handler {
 		r = r.WithContext(context.WithValue(r.Context(), stateKey{}, state))
 		if r.Method == http.MethodPost {
 			// URL-encoded Unicode can use twelve bytes per character on the wire.
-			r.Body = http.MaxBytesReader(w, r.Body, 256<<10)
-			if err := r.ParseForm(); err != nil {
+			limit := int64(256 << 10)
+			contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			multipart := contentType == "multipart/form-data"
+			if multipart && state.canPost() && a.vault != nil {
+				limit = maxImages*imvault.MaxImageBytes + (1 << 20)
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+			var formErr error
+			if multipart {
+				formErr = r.ParseMultipartForm(8 << 20)
+				if r.MultipartForm != nil {
+					defer r.MultipartForm.RemoveAll()
+				}
+			} else {
+				formErr = r.ParseForm()
+			}
+			if formErr != nil {
 				a.fail(w, r, http.StatusBadRequest, "That form could not be read. Please try again.")
 				return
 			}
@@ -212,6 +256,7 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
 	p.Name, p.CSRF, p.User = a.config.Name, state(r).CSRF, state(r).User
 	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
+	a.decorateImages(r, &p)
 	var buffer bytes.Buffer
 	if err := a.templates.ExecuteTemplate(&buffer, "layout", p); err != nil {
 		slog.Error("render page", "error", err)
@@ -351,6 +396,10 @@ func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, mess
 		a.serverError(w, r, err)
 		return
 	}
+	if err := a.store.PostImages(r.Context(), posts); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	p := Page{View: "topic", Title: topic.Title, Topic: topic, Posts: posts, Error: message, BodyInput: body}
 	pagination(r, &p, page, more)
 	a.render(w, r, status, p)
@@ -391,8 +440,19 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 	if audience == "" {
 		audience = AudienceMembers
 	} // Forms from before this feature remain members-only.
-	id, err := a.store.CreateTopic(r.Context(), b.ID, state(r).User.ID, title, body, audience)
+	if audience != state(r).Mode.Audience() {
+		a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: errAudienceChanged.Error(), TitleInput: title, BodyInput: body})
+		return
+	}
+	images, cleanup, err := a.prepareImages(r)
 	if err != nil {
+		cleanup()
+		a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: err.Error(), TitleInput: title, BodyInput: body})
+		return
+	}
+	id, err := a.store.CreateTopic(r.Context(), b.ID, state(r).User.ID, title, body, audience, images...)
+	if err != nil {
+		cleanup()
 		if errors.Is(err, errAudienceChanged) || errors.Is(err, errPersonal) {
 			a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: err.Error(), TitleInput: title, BodyInput: body})
 			return
@@ -414,8 +474,15 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 		a.showTopic(w, r, 422, "Write a reply between 1 and 20,000 characters.", body)
 		return
 	}
-	id, count, err := a.store.Reply(r.Context(), topic.ID, state(r).User.ID, body)
+	images, cleanup, err := a.prepareImages(r)
 	if err != nil {
+		cleanup()
+		a.showTopic(w, r, 422, err.Error(), body)
+		return
+	}
+	id, count, err := a.store.Reply(r.Context(), topic.ID, state(r).User.ID, body, images...)
+	if err != nil {
+		cleanup()
 		if errors.Is(err, errPersonal) {
 			a.fail(w, r, 403, err.Error())
 			return

@@ -47,6 +47,7 @@ type Post struct {
 	Body, Author        string
 	CreatedAt, JoinedAt int64
 	Number              int
+	Images              []Attachment
 }
 
 type Stats struct{ Topics, Posts, Members int }
@@ -87,7 +88,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -206,7 +207,7 @@ func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, rea
 	return posts, more, rows.Err()
 }
 
-func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title, body string, audience Audience) (int64, error) {
+func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title, body string, audience Audience, images ...Attachment) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -228,13 +229,21 @@ func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title,
 	if err != nil {
 		return 0, err
 	}
-	if _, err := tx.ExecContext(ctx, "INSERT INTO posts(topic_id, author_id, body, created_at) VALUES (?, ?, ?, ?)", id, authorID, body, now); err != nil {
+	post, err := tx.ExecContext(ctx, "INSERT INTO posts(topic_id, author_id, body, created_at) VALUES (?, ?, ?, ?)", id, authorID, body, now)
+	if err != nil {
+		return 0, err
+	}
+	postID, err := post.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	if err := attachImages(ctx, tx, postID, images); err != nil {
 		return 0, err
 	}
 	return id, tx.Commit()
 }
 
-func (s *Store) Reply(ctx context.Context, topicID, authorID int64, body string) (int64, int, error) {
+func (s *Store) Reply(ctx context.Context, topicID, authorID int64, body string, images ...Attachment) (int64, int, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, 0, err
@@ -257,6 +266,9 @@ func (s *Store) Reply(ctx context.Context, topicID, authorID int64, body string)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
+		return 0, 0, err
+	}
+	if err := attachImages(ctx, tx, id, images); err != nil {
 		return 0, 0, err
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE topics SET updated_at = ? WHERE id = ?", now, topicID); err != nil {

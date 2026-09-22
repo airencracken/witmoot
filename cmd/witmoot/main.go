@@ -70,11 +70,18 @@ func run() error {
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")
 	}
-	app, err := forum.New(store, forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), SecureCookies: secure == "true"})
+	config := forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
+	if config.ImvaultURL != "" {
+		config.ImageKey, err = forum.LoadImageKey(filepath.Join(dataDir, "imvault.key"))
+		if err != nil {
+			return err
+		}
+	}
+	app, err := forum.New(store, config)
 	if err != nil {
 		return err
 	}
-	server := &http.Server{Addr: env("WITMOOT_ADDR", "127.0.0.1:8080"), Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
+	server := &http.Server{Addr: env("WITMOOT_ADDR", "127.0.0.1:8080"), Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 60 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	done := make(chan error, 1)

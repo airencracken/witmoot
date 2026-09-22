@@ -15,7 +15,7 @@ await new Promise((done, reject) => { socket.once('error', reject); socket.liste
 const port = socket.address().port;
 await new Promise(done => socket.close(done));
 const origin = `http://127.0.0.1:${port}`;
-const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_SECURE_COOKIES: 'false' };
+const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_SECURE_COOKIES: 'false', WITMOOT_IMVAULT_URL: '' };
 let server;
 let browser;
 const password = 'a friendly browser test password';
