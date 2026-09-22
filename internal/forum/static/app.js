@@ -1,6 +1,6 @@
 // Keep validation messages usable for enhanced forms and ordinary navigation.
 document.addEventListener('htmx:beforeSwap', function (event) {
-	if ([400, 403, 404, 422, 429, 500].includes(event.detail.xhr.status)) {
+	if ([400, 403, 404, 409, 422, 429, 500].includes(event.detail.xhr.status)) {
 		event.detail.shouldSwap = true;
 		event.detail.isError = false;
 	}

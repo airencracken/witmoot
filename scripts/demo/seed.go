@@ -58,7 +58,27 @@ func seed(ctx context.Context, store *forum.Store) error {
 			return fmt.Errorf("%s: %w", topic.title, err)
 		}
 	}
-	return store.SetMode(ctx, forum.ModeOpen)
+	if err := store.SetMode(ctx, forum.ModeOpen); err != nil {
+		return err
+	}
+	return seedPrivateBoard(ctx, store, users)
+}
+
+func seedPrivateBoard(ctx context.Context, store *forum.Store, users map[string]int64) error {
+	id, err := store.SaveBoard(ctx, users["demo"], forum.Board{Name: "The planning nook", Category: "A smaller table", Description: "A private board: freya can post, jules can read, and everyone else stays outside.", Restricted: true}, map[int64]string{users["freya"]: "write", users["jules"]: "read"})
+	if err != nil {
+		return err
+	}
+	topic, err := store.CreateTopic(ctx, id, users["demo"], "A little surprise for Sunday", "This board is only visible to its selected members. Owners choose No access, Read only, or Read and post under Manage boards.\n\nFreya can join in. Jules can read along. Sign out and the whole board disappears.", forum.AudienceMembers)
+	if err != nil {
+		return err
+	}
+	post, _, err := store.Reply(ctx, topic, users["freya"], "I will bring cake on Saturday.")
+	if err != nil {
+		return err
+	}
+	_, err = store.EditPost(ctx, post, users["freya"], "I will bring cake on Sunday.\n\nCorrected the day: use Edit on one of your messages to try it. The timestamp lets everyone know it changed.", 0)
+	return err
 }
 
 func seedUsers(ctx context.Context, store *forum.Store) (map[string]int64, error) {

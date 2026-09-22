@@ -6,7 +6,7 @@
 {{end}}
 
 {{define "home"}}
-<div class="page-heading"><div><p class="eyebrow">Make yourself at home</p><h1>{{if .User}}Good to see you, {{.User.Username}}.{{else}}Welcome to {{.Name}}.{{end}}</h1><p class="lede">{{if eq .Mode "personal"}}A little room for your thoughts, plans, and good finds.{{else}}Pick a corner. See what everyone has been up to.{{end}}</p></div><span class="private-label">{{.Mode.Label}} board</span></div>
+<div class="page-heading"><div><p class="eyebrow">Make yourself at home</p><h1>{{if .User}}Good to see you, {{.User.Username}}.{{else}}Welcome to {{.Name}}.{{end}}</h1><p class="lede">{{if eq .Mode "personal"}}A little room for your thoughts, plans, and good finds.{{else}}Pick a corner. See what everyone has been up to.{{end}}</p></div><p class="site-access"><strong>Site access: {{.Mode.Label}}</strong><span>{{if eq .Mode "open"}}Public browsing · Open registration{{else if eq .Mode "personal"}}Owners only · Registration closed{{else}}Sign-in required · Invitation-only registration{{end}}</span></p></div>
 <div class="home-grid">
 	<div class="board-list">
 		{{$category := ""}}
@@ -14,7 +14,7 @@
 		{{if ne .Category $category}}<h2 class="category-heading">{{.Category}}</h2>{{$category = .Category}}{{end}}
 		<article class="board-row">
 			<div class="board-symbol" aria-hidden="true">{{initial .Name}}</div>
-			<div class="board-description"><h3><a href="/boards/{{.ID}}">{{.Name}}</a></h3><p>{{.Description}}</p><span class="mobile-count">{{.Topics}} conversations · {{.Posts}} messages</span></div>
+			<div class="board-description"><h3><a href="/boards/{{.ID}}">{{.Name}}</a></h3><p>{{.Description}}</p>{{if .Restricted}}<span class="board-access">Private board{{if eq .Access "read"}} · Read only{{end}}</span>{{end}}<span class="mobile-count">{{.Topics}} conversations · {{.Posts}} messages</span></div>
 			<div class="board-count"><strong>{{.Topics}}</strong><span>conversations</span></div>
 			<div class="board-latest">{{if .LastTopicID}}<a href="/topics/{{.LastTopicID}}">{{.LastTitle}}</a><span>{{.LastAuthor}} · <time datetime="{{iso .LastAt}}">{{date .LastAt}}</time></span>{{else}}<span>Room for a first conversation.</span>{{end}}</div>
 		</article>

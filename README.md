@@ -56,6 +56,9 @@ Open <http://127.0.0.1:8082> for the default demo. Sign in as **demo** (owner),
 **freya**, or **jules** (members), all with password **demo-password**.
 There are sample conversations and replies in every room, including public,
 members-only, and owner-only conversations. Try Search, Settings, and Invites.
+The planning nook is a private board: **freya** can post and edit her messages,
+**jules** can read, and visitors cannot see it. Sign in as **demo** and choose
+**Manage boards** to try changing those permissions.
 
 The demo listens only on localhost, uses a fresh temporary directory, and ignores
 your `WITMOOT_*` configuration. Ctrl-C stops it and removes its data; the next run
@@ -96,6 +99,22 @@ Caddy, and Docker Compose. Native services default to `127.0.0.1:8082`, so the
 board and imvault can share a host without competing for the same port.
 
 ## Your place, your house rules
+
+Use **Manage boards** as an owner to create boards, rename them, and choose
+**Selected members only** for a private space. Grant each member **No access**,
+**Read only**, or **Read and post**. New members get no access to private boards;
+owners always have full access. Hidden boards and their conversations stay out
+of the home page, recent activity, search, and counts, and direct links to their
+conversations and attached images require access too. These restrictions still
+apply when the site is Open. Existing shared boards keep their current access.
+Witmoot's image URLs follow board access; linking a public image from imvault
+does not change the original image's visibility there.
+
+Authors can **Edit** their own messages while they have posting access. Changed
+messages show an edited timestamp and keep their attached images. Editing does
+not bump the conversation; stale edits warn you instead of overwriting a newer
+change. The **Site access** text on the home page describes the site-wide mode;
+it is a status label, not a button.
 
 Owners can change the mode at **Settings** (`/settings`). It takes effect for new
 requests immediately and is stored in SQLite, so it survives restarts.
@@ -219,8 +238,7 @@ community archive. Those are core work still to do. See the
 existing account exports.
 
 This is a first working foundation. Account recovery, member removal, post
-editing/deletion, moderation, email, and
-custom room management are not implemented yet. Do not use it as the sole copy
+deletion, moderation, and email are not implemented yet. Do not use it as the sole copy
 of irreplaceable family material. SQLite data is not encrypted at rest.
 
 ## Working on it

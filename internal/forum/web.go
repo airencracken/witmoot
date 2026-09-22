@@ -70,6 +70,9 @@ type Page struct {
 	CanRead, CanPost, Saved                                 bool
 	Boards                                                  []Board
 	Board                                                   Board
+	BoardMembers                                            []BoardMember
+	Post                                                    Post
+	ComposeAudience                                         Audience
 	Topics                                                  []Topic
 	Topic                                                   Topic
 	Posts                                                   []Post
@@ -132,6 +135,13 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /boards/{id}/new", a.private(a.createTopic))
 	mux.HandleFunc("GET /topics/{id}", a.readable(a.topic))
 	mux.HandleFunc("POST /topics/{id}/replies", a.private(a.reply))
+	mux.HandleFunc("GET /posts/{id}/edit", a.private(a.editPostForm))
+	mux.HandleFunc("POST /posts/{id}/edit", a.private(a.editPost))
+	mux.HandleFunc("GET /boards/manage", a.owner(a.manageBoards))
+	mux.HandleFunc("GET /boards/new", a.owner(a.boardSettings))
+	mux.HandleFunc("POST /boards/new", a.owner(a.saveBoardSettings))
+	mux.HandleFunc("GET /boards/{id}/settings", a.owner(a.boardSettings))
+	mux.HandleFunc("POST /boards/{id}/settings", a.owner(a.saveBoardSettings))
 	mux.HandleFunc("GET /recent", a.readable(a.recent))
 	mux.HandleFunc("GET /search", a.readable(a.search))
 	mux.HandleFunc("GET /invites", a.private(a.invites))
@@ -268,6 +278,16 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
 	p.Name, p.CSRF, p.User = a.config.Name, state(r).CSRF, state(r).User
 	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
+	if p.Board.ID != 0 {
+		p.CanPost = p.CanPost && p.Board.Access == "write"
+	}
+	if p.Topic.ID != 0 {
+		p.CanPost = p.CanPost && p.Topic.BoardAccess == "write"
+	}
+	p.ComposeAudience = p.Board.Audience(p.Mode)
+	for i := range p.Posts {
+		p.Posts[i].CanEdit = p.CanPost && p.Posts[i].AuthorID == p.User.ID
+	}
 	a.decorateImages(r, &p)
 	var buffer bytes.Buffer
 	if err := a.templates.ExecuteTemplate(&buffer, "layout", p); err != nil {
@@ -290,6 +310,10 @@ func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	a.fail(w, r, 500, "Something went wrong. Please try again in a moment.")
 }
 func (a *App) storeError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, errReadOnly) || errors.Is(err, errPersonal) || errors.Is(err, errOwner) {
+		a.fail(w, r, 403, err.Error())
+		return
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		a.fail(w, r, 404, "We could not find that conversation.")
 		return
@@ -348,7 +372,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) board(w http.ResponseWriter, r *http.Request) {
-	b, err := a.store.Board(r.Context(), pathID(r))
+	b, err := a.store.Board(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
 		return
@@ -418,9 +442,13 @@ func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, mess
 }
 
 func (a *App) newTopic(w http.ResponseWriter, r *http.Request) {
-	b, err := a.store.Board(r.Context(), pathID(r))
+	b, err := a.store.Board(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
+		return
+	}
+	if b.Access != "write" {
+		a.fail(w, r, 403, errReadOnly.Error())
 		return
 	}
 	a.render(w, r, 200, Page{View: "compose", Title: "Start a conversation", Board: b})
@@ -432,9 +460,13 @@ func validText(value string, min, max int) bool {
 }
 
 func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
-	b, err := a.store.Board(r.Context(), pathID(r))
+	b, err := a.store.Board(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
+		return
+	}
+	if b.Access != "write" {
+		a.fail(w, r, 403, errReadOnly.Error())
 		return
 	}
 	title, body := strings.TrimSpace(r.PostForm.Get("title")), strings.TrimSpace(r.PostForm.Get("body"))
@@ -456,7 +488,7 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 	if audience == "" {
 		audience = AudienceMembers
 	} // Forms from before this feature remain members-only.
-	if audience != state(r).Mode.Audience() {
+	if audience != b.Audience(state(r).Mode) {
 		a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: errAudienceChanged.Error(), TitleInput: title, BodyInput: body})
 		return
 	}
@@ -473,7 +505,7 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 			a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: err.Error(), TitleInput: title, BodyInput: body})
 			return
 		}
-		a.serverError(w, r, err)
+		a.storeError(w, r, err)
 		return
 	}
 	a.redirect(w, r, fmt.Sprintf("/topics/%d", id))
@@ -483,6 +515,10 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 	topic, err := a.store.Topic(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
+		return
+	}
+	if topic.BoardAccess != "write" {
+		a.fail(w, r, 403, errReadOnly.Error())
 		return
 	}
 	body := strings.TrimSpace(r.PostForm.Get("body"))

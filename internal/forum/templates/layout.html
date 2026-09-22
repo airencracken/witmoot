@@ -23,6 +23,7 @@
 				{{end}}
 				{{if .User}}
 				{{if eq .User.Role "owner"}}
+				<a href="/boards/manage">Manage boards</a>
 				{{if ne .Mode "personal"}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
 				{{end}}
@@ -51,6 +52,9 @@
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}
 		{{else if eq .View "settings"}}{{template "settings" .}}
+		{{else if eq .View "boards"}}{{template "boards" .}}
+		{{else if eq .View "board-settings"}}{{template "board-settings" .}}
+		{{else if eq .View "edit-post"}}{{template "edit-post" .}}
 		{{else if eq .View "image-account"}}{{template "image-account" .}}
 		{{else if eq .View "library"}}{{template "library" .}}
 		{{else}}<section class="paper narrow"><p class="eyebrow">A small detour</p><h1>{{.Title}}</h1>{{template "error" .}}<a href="/">Back to our board</a></section>{{end}}

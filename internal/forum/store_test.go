@@ -276,4 +276,17 @@ func TestUpgradePreservesPrivateContentAndSavedMode(t *testing.T) {
 	if err != nil || len(boards) != 5 || boards[0].Posts != 1 {
 		t.Fatalf("upgrade lost or reseeded data: %+v %v", boards, err)
 	}
+	if boards[0].Restricted || boards[0].Access != "write" {
+		t.Fatal("migration changed existing board access")
+	}
+	posts, _, err := store.Posts(ctx, 1, 20, 0, testReader)
+	if err != nil || len(posts) != 1 || posts[0].EditedAt != 0 || posts[0].Revision != 0 {
+		t.Fatalf("migration marked old post edited: %+v %v", posts, err)
+	}
+	if _, err := store.db.Exec("UPDATE boards SET restricted = 2 WHERE id = 1"); err == nil {
+		t.Fatal("invalid privacy setting accepted")
+	}
+	if _, err := store.db.Exec("INSERT INTO board_members(board_id, user_id, access) VALUES (1, 1, 'admin')"); err == nil {
+		t.Fatal("invalid permission accepted")
+	}
 }

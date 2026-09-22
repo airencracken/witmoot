@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkThemes } from './themes.mjs';
+import { checkBoards } from './boards.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -215,6 +216,8 @@ try {
 	await flow(false);
 	await modeFlow(true);
 	await modeFlow(false);
+	await checkBoards(browser, origin, password, true);
+	await checkBoards(browser, origin, password, false);
 	assert.deepEqual(problems, [], 'Browser script or CSP errors');
 } finally {
 	if (browser) await browser.close();
