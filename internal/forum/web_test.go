@@ -100,7 +100,7 @@ func requireStatus(t *testing.T, w *httptest.ResponseRecorder, code int) {
 func TestPrivateRoutesAndPublicLanding(t *testing.T) {
 	app, client := newTestApp(t, false)
 	user := testMember(t, app.store, "alex")
-	if _, err := app.store.CreateTopic(context.Background(), 1, user, "Secret family plans", "Secret address"); err != nil {
+	if _, err := app.store.CreateTopic(context.Background(), 1, user, "Secret family plans", "Secret address", AudienceMembers); err != nil {
 		t.Fatal(err)
 	}
 	w := client.request("GET", "/", nil, nil)
@@ -199,7 +199,7 @@ func TestPostingSearchEscapingAndHTMX(t *testing.T) {
 	}
 	requireStatus(t, client.post("/topics/1/replies", url.Values{"body": {" \n "}}), 422)
 	requireStatus(t, client.post("/topics/1/replies", url.Values{"body": {strings.Repeat("a", 20001)}}), 422)
-	stats, err := app.store.Stats(context.Background())
+	stats, err := app.store.Stats(context.Background(), testReader)
 	if err != nil || stats.Topics != 1 || stats.Posts != 2 {
 		t.Fatalf("invalid posts persisted: %+v %v", stats, err)
 	}
@@ -299,7 +299,7 @@ func TestLoginFailureAndRateLimiting(t *testing.T) {
 func TestReplyRedirectAtPageBoundary(t *testing.T) {
 	app, client := newTestApp(t, false)
 	user := signInTest(t, app, client, false)
-	id, err := app.store.CreateTopic(context.Background(), 1, user, "A long conversation", "First")
+	id, err := app.store.CreateTopic(context.Background(), 1, user, "A long conversation", "First", AudienceMembers)
 	if err != nil {
 		t.Fatal(err)
 	}

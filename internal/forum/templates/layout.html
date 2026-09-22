@@ -15,14 +15,19 @@
 		<div class="header-inner">
 			<a class="brand" href="/" aria-label="{{.Name}} home"><span class="brand-mark" aria-hidden="true">w</span><span>{{.Name}}<small>a place for your people</small></span></a>
 			<nav aria-label="Main navigation">
-				{{if .User}}
+				{{if .CanRead}}
 				<a href="/" {{if eq .View "home"}}aria-current="page"{{end}}>Our board</a>
 				<a href="/recent" {{if eq .View "recent"}}aria-current="page"{{end}}>Recent</a>
 				<a href="/search" {{if eq .View "search"}}aria-current="page"{{end}}>Search</a>
-				{{if eq .User.Role "owner"}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
+				{{end}}
+				{{if .User}}
+				{{if eq .User.Role "owner"}}
+				{{if ne .Mode "personal"}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
+				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
+				{{end}}
 				<span class="signed-in">{{.User.Username}}</span>
 				<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form>
-				{{else}}<a href="/login" class="button small">Come on in</a>{{end}}
+				{{else}}{{if eq .Mode "open"}}<a href="/join">Join our board</a>{{end}}<a href="/login" class="button small">Come on in</a>{{end}}
 			</nav>
 		</div>
 	</header>
@@ -36,6 +41,7 @@
 		{{else if eq .View "login"}}{{template "login" .}}
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}
+		{{else if eq .View "settings"}}{{template "settings" .}}
 		{{else}}<section class="paper narrow"><p class="eyebrow">A small detour</p><h1>{{.Title}}</h1>{{template "error" .}}<a href="/">Back to our board</a></section>{{end}}
 	</main>
 	<footer class="site-footer"><span>{{.Name}} · A little corner of the internet, together.</span><span>Take your time. Stay a while.</span></footer>

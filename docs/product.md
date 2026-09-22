@@ -7,9 +7,20 @@ makes them easy to find months later.
 
 ## The first shape
 
-One installation serves one private group. An owner sets up the board and
-invites people. Everyone inside can read and join every conversation. Rooms
-organize the conversation; topics and chronological replies keep it together.
+One installation serves one board. Owners choose Personal, Private, or Open
+in Settings. Personal is an owner-only notebook. Private is an invited group.
+Open offers public browsing and registration, with accounts required to post.
+Rooms organize conversations; topics and chronological replies keep them together.
+
+Modes set the audience for new conversations: owners, members, or the public.
+Each conversation keeps that audience through later mode changes, including all
+its replies. Opening registration does let new members see older members-only
+topics. The interface states this explicitly. Private and Personal modes also
+close public access to the whole board; Personal blocks member access as well.
+
+This carries over imvault's selectable-profile approach without treating the
+three uses as separate products. Personal is stricter here: invitations are
+disabled, and every owner has access. There is no anonymous posting.
 
 The default experience should be warm, readable, and unhurried. Useful empty
 states are better than fabricated activity. Counts describe the gathering;
@@ -37,7 +48,7 @@ or pressure to keep checking in.
 3. Gentle conveniences: bookmarks, unread markers, optional email digests, and
    good exports and backups.
 
-Public boards, separate groups inside one installation, complex permission
-matrices, and private messaging need explicit product decisions. The first
-version does not imply those features or promise compatibility with phpBB or
-vBulletin data.
+Separate groups inside one installation, per-conversation audience changes,
+complex permission matrices, and private messaging need explicit product
+decisions. This version does not imply those features or promise compatibility
+with phpBB or vBulletin data.

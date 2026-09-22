@@ -2,7 +2,7 @@
 
 A little corner of the internet for your people.
 
-Witmoot is a private bulletin board for families and groups of friends. It takes
+Witmoot is a bulletin board for personal use, families, and groups of friends. It takes
 its familiar rooms, topics, and conversations from phpBB and vBulletin, and its
 small, self-hosted clubhouse spirit from imvault. **Comfyware:** somewhere to
 keep the plans, little updates, good finds, and conversations worth coming back to.
@@ -28,18 +28,52 @@ unset witmoot_password
 ./bin/witmoot
 ```
 
-Open <http://127.0.0.1:8080>, sign in, and use **Invites** to make a link for
-someone you know. Each link works once and expires after seven days. Passwords
+Open <http://127.0.0.1:8080>, sign in, and choose **Settings** to select Personal,
+Private, or Open. New installations start in Private mode. Use **Invites** to
+make a link for someone you know. Each link works once and expires after seven days. Passwords
 need at least 12 characters and may contain up to 72 bytes.
 
-An owner is created locally. There is no public first-user takeover or open
-registration, even on an empty installation. Invited accounts are always members.
+An owner is created locally. Public registration never creates an owner, even on
+an empty installation. Invited and openly registered accounts are always members.
+
+## Your place, your house rules
+
+Owners can change the mode at **Settings** (`/settings`). It takes effect for new
+requests immediately and is stored in SQLite, so it survives restarts.
+
+| Mode | Who can browse and post | Joining | New conversations |
+| --- | --- | --- | --- |
+| **Personal** | Owners only | Disabled, including invitations | Owners only |
+| **Private** | Signed-in members and owners | Invitation required | Members only |
+| **Open** | Visitors can read public conversations; signed-in members can post | Anyone can register | Public |
+
+Each conversation keeps its audience when the mode changes, and replies inherit
+that audience. Conversations created before this feature remain members-only.
+Owners can read every audience; members can read public and members-only topics.
+Visitors can read public topics only, and only while the board is Open. Counts,
+latest-topic summaries, and search respect those same audiences.
+
+**Open signup lets anyone become a member, including access to existing
+members-only conversations.** Members-only means behind sign-in; it does not
+reserve conversations for the original invited group. Owner-only topics remain
+restricted to owners. Personal mode blocks existing member sessions without
+deleting their accounts or content. Unexpired invitations work again after
+leaving Personal mode.
+
+The composer shows the audience before posting. If a mode change affects that
+audience while a draft is open, the server preserves the draft and asks the
+author to review the new audience before resubmitting. There is no anonymous
+posting or per-conversation audience editor in this version.
+
+This follows imvault's idea of one application with selectable profiles and
+preserved content audiences. Personal mode here is strictly owner-only, and
+Open requires an account to post; it does not reproduce imvault's anonymous uploads.
 
 ## What is here
 
 - Five starter rooms for everyday conversation, plans, projects, recommendations,
   and the group itself.
-- Private topic lists, chronological messages, and pagination.
+- Audience-aware topic lists, chronological messages, and pagination.
 - New conversations and replies, with plain text and preserved line breaks.
 - Search across conversation titles and message text.
 - Owner invitations, member accounts, sign-in, and sign-out.
@@ -47,8 +81,8 @@ registration, even on an empty installation. Invited accounts are always members
 - Transactional schema initialization, topic creation, replies, and invitation
   redemption. Restarting keeps your conversations and sessions.
 
-One installation is one group. All members can read all rooms and conversations.
-There are no hidden subgroups or private messages in this first version.
+One installation is one board. There are no separate groups or private messages
+inside it. Owner-only conversations are shared among all owner accounts.
 
 ## Make it yours
 
@@ -78,7 +112,7 @@ tokens and use Go's cross-origin protection. User text is escaped; private pages
 send `Cache-Control: no-store` and disable HTMX history storage. Assets are served
 locally under a restrictive content security policy.
 
-Sign-in and invitation redemption share a limit of 20 attempts per 15 minutes
+Sign-in, open registration, and invitation redemption share a limit of 20 attempts per 15 minutes
 per direct client IP. The limiter is in memory and does not trust forwarded
 headers. Behind a proxy, users share that proxy's budget; use an edge limiter
 and account for this when configuring a deployment.
@@ -99,9 +133,10 @@ make check   # formatting, vet, and tests with the race detector
 make build   # standalone binary; no cgo required
 ```
 
-Tests cover private routes, invitation races and rollback, session expiry,
-CSRF, role checks, escaping, search literals, pagination, failed writes, and
-persistence across restarts.
+Tests cover all three modes, audience filtering, migration from the original
+private schema, persisted settings, stale forms and registration policy,
+invitation races and rollback, session expiry, CSRF, role checks, escaping,
+search literals, pagination, and failed writes.
 
 Browser checks use Node.js and Playwright only as development tools:
 
@@ -114,8 +149,9 @@ make test-browser
 ```
 
 These checks start an isolated temporary instance and exercise the full flow with
-HTMX enabled and JavaScript disabled, plus mobile layout and browser security
-policy checks. They fail if browser tooling is missing. Optional screenshots:
+HTMX enabled and JavaScript disabled, including changing modes in Settings,
+public browsing, open registration, Personal access restrictions, mobile layout,
+and browser security policy checks. They fail if browser tooling is missing. Optional screenshots:
 `WITMOOT_SCREENSHOT_DIR=/tmp/witmoot-screenshots make test-browser`.
 
 The product direction lives in [docs/product.md](docs/product.md).

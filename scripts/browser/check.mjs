@@ -108,6 +108,81 @@ async function flow(javaScriptEnabled) {
 	console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} sign-in, topics, replies, search, invitations, private access, sign-out`);
 }
 
+
+async function modeFlow(javaScriptEnabled) {
+	const context = await browser.newContext({ javaScriptEnabled, viewport: { width: 1280, height: 900 } });
+	const page = await context.newPage();
+	page.on('pageerror', error => problems.push(error.message));
+	page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|Refused to/.test(message.text())) problems.push(message.text()); });
+	await page.goto(origin + '/login');
+	await page.getByLabel('Username', { exact: true }).fill('alex');
+	await page.getByLabel('Password', { exact: true }).fill(password);
+	await page.getByRole('button', { name: 'Come on in' }).click();
+	await page.waitForURL(origin + '/');
+	const guestContext = await browser.newContext({ javaScriptEnabled });
+	const guest = await guestContext.newPage();
+	async function choose(mode) {
+		await page.goto(origin + '/settings');
+		await page.getByRole('radio', { name: new RegExp(`^${mode}`) }).check();
+		await page.getByRole('button', { name: 'Save settings' }).click();
+		await page.waitForURL(origin + '/settings?saved=1');
+		assert.equal(await page.getByRole('radio', { name: new RegExp(`^${mode}`) }).isChecked(), true);
+		assert.match(await page.getByRole('status').innerText(), /settings are saved/);
+	}
+	await choose('Open');
+	await guest.goto(origin);
+	assert.match(await guest.locator('h1').innerText(), /Welcome to Witmoot/);
+	assert.equal(await guest.getByRole('link', { name: 'Sunday lunch together', exact: true }).count(), 0);
+	await page.goto(origin + '/boards/1/new');
+	assert.match(await page.locator('.audience-note').innerText(), /Public/);
+	const title = javaScriptEnabled ? 'An open picnic' : 'A public garden day';
+	await page.getByLabel('Give it a title').fill(title);
+	await page.getByLabel('Your message').fill('Come along and bring a friend.');
+	await page.getByRole('button', { name: 'Start conversation', exact: true }).click();
+	await page.waitForURL(/\/topics\/\d+$/);
+	const publicURL = page.url();
+	await guest.goto(publicURL);
+	assert.equal(await guest.locator('h1').innerText(), title);
+	assert.equal(await guest.getByRole('button', { name: 'Post reply' }).count(), 0);
+	await guest.goto(origin + '/search?q=' + encodeURIComponent(title));
+	await guest.getByRole('link', { name: title, exact: true }).waitFor();
+	await guest.goto(origin + '/join');
+	await guest.getByLabel('Username', { exact: true }).fill(javaScriptEnabled ? 'robin' : 'taylor');
+	await guest.getByLabel('Password', { exact: true }).fill(password);
+	await guest.getByRole('button', { name: 'Join our board' }).click();
+	await guest.waitForURL(origin + '/');
+	assert.equal(await guest.getByRole('link', { name: 'Settings', exact: true }).count(), 0);
+	await guest.goto(publicURL);
+	await guest.getByLabel('Your reply').fill('Count me in.');
+	await guest.getByRole('button', { name: 'Post reply' }).click();
+	await guest.waitForURL(/#post-/);
+	assert.match(await guest.locator('.post-body').last().innerText(), /Count me in/);
+	await choose('Personal');
+	const response = await guest.goto(publicURL);
+	assert.equal(response.status(), 403);
+	assert.equal(await guest.locator('.post-body').count(), 0);
+	assert.equal(await page.getByRole('link', { name: 'Invites', exact: true }).count(), 0);
+	await page.goto(origin + '/boards/1/new');
+	assert.match(await page.locator('.audience-note').innerText(), /Owners only/);
+	if (javaScriptEnabled) {
+		await page.goto(origin + '/settings');
+		if (process.env.WITMOOT_SCREENSHOT_DIR) await page.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, 'settings-desktop.png'), fullPage: true });
+		await page.setViewportSize({ width: 390, height: 844 });
+		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Settings overflows on mobile');
+		if (process.env.WITMOOT_SCREENSHOT_DIR) await page.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, 'settings-mobile.png'), fullPage: true });
+	}
+	await choose('Private');
+	await guest.goto(publicURL);
+	assert.equal(await guest.locator('h1').innerText(), title); // Existing account access is restored.
+	await guest.getByRole('button', { name: 'Sign out' }).click();
+	await guest.waitForURL(origin + '/');
+	await guest.getByRole('heading', { name: /Good company/ }).waitFor();
+	await guest.goto(publicURL);
+	await guest.waitForURL(origin + '/login');
+	await guestContext.close();
+	await context.close();
+	console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} settings, all modes, audience labels, public browsing, open signup, and restored access`);
+}
 try {
 	execFileSync(binary, ['create-owner', '--username', 'alex', '--password-stdin'], { env, input: password + '\n' });
 	server = spawn(binary, [], { env, stdio: ['ignore', 'ignore', 'pipe'] });
@@ -116,6 +191,8 @@ try {
 	browser = await chromium.launch({ headless: true });
 	await flow(true);
 	await flow(false);
+	await modeFlow(true);
+	await modeFlow(false);
 	assert.deepEqual(problems, [], 'Browser script or CSP errors');
 } finally {
 	if (browser) await browser.close();

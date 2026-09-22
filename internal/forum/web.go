@@ -40,12 +40,15 @@ type App struct {
 type requestState struct {
 	User *User
 	CSRF string
+	Mode Mode
 }
 type stateKey struct{}
 
 type Page struct {
 	Name, Title, View, CSRF, Error                          string
 	User                                                    *User
+	Mode                                                    Mode
+	CanRead, CanPost, Saved                                 bool
 	Boards                                                  []Board
 	Board                                                   Board
 	Topics                                                  []Topic
@@ -89,16 +92,18 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /login", a.login)
 	mux.HandleFunc("GET /join", a.joinForm)
 	mux.HandleFunc("POST /join", a.join)
-	mux.HandleFunc("POST /logout", a.private(a.logout))
-	mux.HandleFunc("GET /boards/{id}", a.private(a.board))
+	mux.HandleFunc("POST /logout", a.signedIn(a.logout))
+	mux.HandleFunc("GET /boards/{id}", a.readable(a.board))
 	mux.HandleFunc("GET /boards/{id}/new", a.private(a.newTopic))
 	mux.HandleFunc("POST /boards/{id}/new", a.private(a.createTopic))
-	mux.HandleFunc("GET /topics/{id}", a.private(a.topic))
+	mux.HandleFunc("GET /topics/{id}", a.readable(a.topic))
 	mux.HandleFunc("POST /topics/{id}/replies", a.private(a.reply))
-	mux.HandleFunc("GET /recent", a.private(a.recent))
-	mux.HandleFunc("GET /search", a.private(a.search))
+	mux.HandleFunc("GET /recent", a.readable(a.recent))
+	mux.HandleFunc("GET /search", a.readable(a.search))
 	mux.HandleFunc("GET /invites", a.private(a.invites))
 	mux.HandleFunc("POST /invites", a.private(a.createInvite))
+	mux.HandleFunc("GET /settings", a.signedIn(a.settings))
+	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
 	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(mux))
 	return a, nil
 }
@@ -128,7 +133,12 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		state := requestState{}
+		mode, err := a.store.Mode(r.Context())
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		state := requestState{Mode: mode}
 		if c, err := r.Cookie(a.cookieName("csrf")); err == nil && validToken(c.Value) {
 			state.CSRF = c.Value
 		}
@@ -178,7 +188,7 @@ func state(r *http.Request) requestState {
 	return v
 }
 
-func (a *App) private(next http.HandlerFunc) http.HandlerFunc {
+func (a *App) signedIn(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if state(r).User == nil {
 			a.redirect(w, r, "/login")
@@ -187,6 +197,8 @@ func (a *App) private(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
+
+func (a *App) private(next http.HandlerFunc) http.HandlerFunc { return a.signedIn(a.readable(next)) }
 
 func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 	if r.Header.Get("HX-Request") == "true" {
@@ -199,6 +211,7 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
 	p.Name, p.CSRF, p.User = a.config.Name, state(r).CSRF, state(r).User
+	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
 	var buffer bytes.Buffer
 	if err := a.templates.ExecuteTemplate(&buffer, "layout", p); err != nil {
 		slog.Error("render page", "error", err)
@@ -256,16 +269,20 @@ func pagination(r *http.Request, p *Page, page int, more bool) {
 }
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {
-	if state(r).User == nil {
+	if !state(r).canRead() {
+		if state(r).User != nil {
+			a.fail(w, r, 403, errPersonal.Error())
+			return
+		}
 		a.render(w, r, 200, Page{View: "welcome", Title: "A place for your people"})
 		return
 	}
-	boards, err := a.store.Boards(r.Context())
+	boards, err := a.store.Boards(r.Context(), state(r).User)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	stats, err := a.store.Stats(r.Context())
+	stats, err := a.store.Stats(r.Context(), state(r).User)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -288,7 +305,7 @@ func (a *App) topicList(w http.ResponseWriter, r *http.Request, p Page, boardID 
 		a.fail(w, r, 400, "That page number is not valid.")
 		return
 	}
-	topics, more, err := a.store.Topics(r.Context(), boardID, query, pageSize, (page-1)*pageSize)
+	topics, more, err := a.store.Topics(r.Context(), boardID, query, pageSize, (page-1)*pageSize, state(r).User)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -319,7 +336,7 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 func (a *App) topic(w http.ResponseWriter, r *http.Request) { a.showTopic(w, r, 200, "", "") }
 
 func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, message, body string) {
-	topic, err := a.store.Topic(r.Context(), pathID(r))
+	topic, err := a.store.Topic(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
 		return
@@ -329,7 +346,7 @@ func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, mess
 		a.fail(w, r, 400, "That page number is not valid.")
 		return
 	}
-	posts, more, err := a.store.Posts(r.Context(), topic.ID, pageSize, (page-1)*pageSize)
+	posts, more, err := a.store.Posts(r.Context(), topic.ID, pageSize, (page-1)*pageSize, state(r).User)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -370,8 +387,16 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: message, TitleInput: title, BodyInput: body})
 		return
 	}
-	id, err := a.store.CreateTopic(r.Context(), b.ID, state(r).User.ID, title, body)
+	audience := Audience(r.PostForm.Get("audience"))
+	if audience == "" {
+		audience = AudienceMembers
+	} // Forms from before this feature remain members-only.
+	id, err := a.store.CreateTopic(r.Context(), b.ID, state(r).User.ID, title, body, audience)
 	if err != nil {
+		if errors.Is(err, errAudienceChanged) || errors.Is(err, errPersonal) {
+			a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: err.Error(), TitleInput: title, BodyInput: body})
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}
@@ -379,7 +404,7 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) reply(w http.ResponseWriter, r *http.Request) {
-	topic, err := a.store.Topic(r.Context(), pathID(r))
+	topic, err := a.store.Topic(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
 		return
@@ -391,7 +416,11 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 	}
 	id, count, err := a.store.Reply(r.Context(), topic.ID, state(r).User.ID, body)
 	if err != nil {
-		a.serverError(w, r, err)
+		if errors.Is(err, errPersonal) {
+			a.fail(w, r, 403, err.Error())
+			return
+		}
+		a.storeError(w, r, err)
 		return
 	}
 	a.redirect(w, r, fmt.Sprintf("/topics/%d?page=%d#post-%d", topic.ID, (count-1)/pageSize+1, id))
@@ -402,6 +431,10 @@ func (a *App) invites(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, 403, "Only the owner can invite new people.")
 		return
 	}
+	if state(r).Mode == ModePersonal {
+		a.fail(w, r, 403, "Invitations are disabled in Personal mode.")
+		return
+	}
 	a.render(w, r, 200, Page{View: "invites", Title: "Invite someone in"})
 }
 
@@ -410,8 +443,16 @@ func (a *App) createInvite(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, 403, "Only the owner can invite new people.")
 		return
 	}
+	if state(r).Mode == ModePersonal {
+		a.fail(w, r, 403, "Invitations are disabled in Personal mode.")
+		return
+	}
 	token := randomToken()
 	if err := a.store.Invite(r.Context(), state(r).User.ID, tokenHash(token)); err != nil {
+		if errors.Is(err, errPersonal) {
+			a.fail(w, r, 403, err.Error())
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}

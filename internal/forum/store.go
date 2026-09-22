@@ -39,6 +39,7 @@ type Topic struct {
 	Title, Author, BoardName string
 	CreatedAt, UpdatedAt     int64
 	Replies                  int
+	Audience                 Audience
 }
 
 type Post struct {
@@ -86,32 +87,34 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 1 {
+	files := []string{"001_initial.sql", "002_access_modes.sql"}
+	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
-	if version == 0 {
-		migration, err := migrations.ReadFile("migrations/001_initial.sql")
+	for version < len(files) {
+		migration, err := migrations.ReadFile("migrations/" + files[version])
 		if err != nil {
 			return err
 		}
 		if _, err := tx.Exec(string(migration)); err != nil {
 			return fmt.Errorf("migrate: %w", err)
 		}
-		if _, err := tx.Exec("PRAGMA user_version = 1"); err != nil {
+		version++
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
 			return err
 		}
 	}
 	return tx.Commit()
 }
 
-func (s *Store) Boards(ctx context.Context) ([]Board, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT b.id, b.category, b.name, b.description,
-		(SELECT count(*) FROM topics WHERE board_id = b.id),
-		(SELECT count(*) FROM posts p JOIN topics t ON t.id = p.topic_id WHERE t.board_id = b.id),
+func (s *Store) Boards(ctx context.Context, reader *User) ([]Board, error) {
+	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT b.id, b.category, b.name, b.description,
+		(SELECT count(*) FROM visible_topics WHERE board_id = b.id),
+		(SELECT count(*) FROM posts p JOIN visible_topics t ON t.id = p.topic_id WHERE t.board_id = b.id),
 		coalesce(t.id, 0), coalesce(t.title, ''), coalesce(t.updated_at, 0),
 		coalesce((SELECT u.username FROM posts p JOIN users u ON u.id = p.author_id WHERE p.topic_id = t.id ORDER BY p.id DESC LIMIT 1), '')
-		FROM boards b LEFT JOIN topics t ON t.id = (SELECT id FROM topics WHERE board_id = b.id ORDER BY updated_at DESC, id DESC LIMIT 1)
-		ORDER BY b.position`)
+		FROM boards b LEFT JOIN visible_topics t ON t.id = (SELECT id FROM visible_topics WHERE board_id = b.id ORDER BY updated_at DESC, id DESC LIMIT 1)
+		ORDER BY b.position`, readerArgs(reader)...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,18 +136,18 @@ func (s *Store) Board(ctx context.Context, id int64) (Board, error) {
 	return b, err
 }
 
-func (s *Store) Stats(ctx context.Context) (Stats, error) {
+func (s *Store) Stats(ctx context.Context, reader *User) (Stats, error) {
 	var v Stats
-	err := s.db.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM topics), (SELECT count(*) FROM posts), (SELECT count(*) FROM users)`).Scan(&v.Topics, &v.Posts, &v.Members)
+	err := s.db.QueryRowContext(ctx, visibleTopics+`SELECT (SELECT count(*) FROM visible_topics), (SELECT count(*) FROM posts WHERE topic_id IN (SELECT id FROM visible_topics)), (SELECT count(*) FROM users)`, readerArgs(reader)...).Scan(&v.Topics, &v.Posts, &v.Members)
 	return v, err
 }
 
-const topicSelect = `SELECT t.id, t.board_id, t.title, u.username, b.name, t.created_at, t.updated_at,
-	(SELECT count(*) - 1 FROM posts WHERE topic_id = t.id) FROM topics t JOIN users u ON u.id = t.author_id JOIN boards b ON b.id = t.board_id `
+const topicSelect = visibleTopics + `SELECT t.id, t.board_id, t.title, u.username, b.name, t.created_at, t.updated_at,
+	(SELECT count(*) - 1 FROM posts WHERE topic_id = t.id), t.audience FROM visible_topics t JOIN users u ON u.id = t.author_id JOIN boards b ON b.id = t.board_id `
 
-func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, offset int) ([]Topic, bool, error) {
+func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, offset int, reader *User) ([]Topic, bool, error) {
 	where := "WHERE 1=1"
-	var args []any
+	args := readerArgs(reader)
 	if boardID != 0 {
 		where += " AND t.board_id = ?"
 		args = append(args, boardID)
@@ -163,7 +166,7 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 	var topics []Topic
 	for rows.Next() {
 		var t Topic
-		if err := rows.Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies); err != nil {
+		if err := rows.Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies, &t.Audience); err != nil {
 			return nil, false, err
 		}
 		topics = append(topics, t)
@@ -175,14 +178,14 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 	return topics, more, rows.Err()
 }
 
-func (s *Store) Topic(ctx context.Context, id int64) (Topic, error) {
+func (s *Store) Topic(ctx context.Context, id int64, reader *User) (Topic, error) {
 	var t Topic
-	err := s.db.QueryRowContext(ctx, topicSelect+" WHERE t.id = ?", id).Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies)
+	err := s.db.QueryRowContext(ctx, topicSelect+" WHERE t.id = ?", append(readerArgs(reader), id)...).Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies, &t.Audience)
 	return t, err
 }
 
-func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int) ([]Post, bool, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT p.id, p.body, u.username, p.created_at, u.created_at FROM posts p JOIN users u ON u.id = p.author_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, topicID, limit+1, offset)
+func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, reader *User) ([]Post, bool, error) {
+	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, u.username, p.created_at, u.created_at FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -203,14 +206,21 @@ func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int) ([]
 	return posts, more, rows.Err()
 }
 
-func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title, body string) (int64, error) {
+func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title, body string, audience Audience) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
+	mode, err := canWrite(ctx, tx, authorID)
+	if err != nil {
+		return 0, err
+	}
+	if audience != mode.Audience() {
+		return 0, errAudienceChanged
+	}
 	now := time.Now().Unix()
-	result, err := tx.ExecContext(ctx, "INSERT INTO topics(board_id, author_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", boardID, authorID, title, now, now)
+	result, err := tx.ExecContext(ctx, "INSERT INTO topics(board_id, author_id, title, created_at, updated_at, audience) VALUES (?, ?, ?, ?, ?, ?)", boardID, authorID, title, now, now, audience)
 	if err != nil {
 		return 0, err
 	}
@@ -230,6 +240,16 @@ func (s *Store) Reply(ctx context.Context, topicID, authorID int64, body string)
 		return 0, 0, err
 	}
 	defer tx.Rollback()
+	if _, err := canWrite(ctx, tx, authorID); err != nil {
+		return 0, 0, err
+	}
+	var accessible bool
+	if err := tx.QueryRowContext(ctx, `SELECT t.audience != 'owners' OR u.role = 'owner' FROM topics t JOIN users u ON u.id = ? WHERE t.id = ?`, authorID, topicID).Scan(&accessible); err != nil {
+		return 0, 0, err
+	}
+	if !accessible {
+		return 0, 0, sql.ErrNoRows
+	}
 	now := time.Now().Unix()
 	result, err := tx.ExecContext(ctx, "INSERT INTO posts(topic_id, author_id, body, created_at) VALUES (?, ?, ?, ?)", topicID, authorID, body, now)
 	if err != nil {
@@ -310,22 +330,31 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 		return 0, err
 	}
 	defer tx.Rollback()
-	result, err := tx.ExecContext(ctx, "DELETE FROM invitations WHERE token_hash = ? AND expires_at > ?", inviteHash, time.Now().Unix())
+	mode, err := readMode(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	if mode == ModePersonal {
+		return 0, errPersonal
+	}
+	if inviteHash != "" || mode != ModeOpen {
+		result, err := tx.ExecContext(ctx, "DELETE FROM invitations WHERE token_hash = ? AND expires_at > ?", inviteHash, time.Now().Unix())
+		if err != nil {
+			return 0, err
+		}
+		n, err := result.RowsAffected()
+		if err != nil {
+			return 0, err
+		}
+		if n != 1 {
+			return 0, errInvitation
+		}
+	}
+	result, err := tx.ExecContext(ctx, `INSERT INTO users(username, password_hash, created_at) VALUES (?, ?, ?) ON CONFLICT(username) DO NOTHING`, name, passwordHash, time.Now().Unix())
 	if err != nil {
 		return 0, err
 	}
 	n, err := result.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-	if n != 1 {
-		return 0, errInvitation
-	}
-	result, err = tx.ExecContext(ctx, `INSERT INTO users(username, password_hash, created_at) VALUES (?, ?, ?) ON CONFLICT(username) DO NOTHING`, name, passwordHash, time.Now().Unix())
-	if err != nil {
-		return 0, err
-	}
-	n, err = result.RowsAffected()
 	if err != nil {
 		return 0, err
 	}
@@ -355,6 +384,16 @@ func (s *Store) CreateOwner(ctx context.Context, name, passwordHash string) erro
 }
 
 func (s *Store) Invite(ctx context.Context, ownerID int64, hash string) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO invitations(token_hash, created_by, expires_at) VALUES (?, ?, ?)`, hash, ownerID, time.Now().Add(7*24*time.Hour).Unix())
-	return err
+	result, err := s.db.ExecContext(ctx, `INSERT INTO invitations(token_hash, created_by, expires_at) SELECT ?, ?, ? FROM settings WHERE id = 1 AND mode != 'personal'`, hash, ownerID, time.Now().Add(7*24*time.Hour).Unix())
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return errPersonal
+	}
+	return nil
 }

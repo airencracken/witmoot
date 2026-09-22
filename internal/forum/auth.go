@@ -23,6 +23,10 @@ func (a *App) joinForm(w http.ResponseWriter, r *http.Request) {
 		a.redirect(w, r, "/")
 		return
 	}
+	if state(r).Mode == ModePersonal {
+		a.fail(w, r, 403, "This is a personal board. New accounts and invitations are disabled.")
+		return
+	}
 	a.render(w, r, 200, Page{View: "join", Title: "Make yourself at home", Invitation: r.URL.Query().Get("invite")})
 }
 
@@ -57,6 +61,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, 422, Page{View: "login", Title: "Welcome back", Username: name, Error: "That username and password did not match. Give it another try."})
 		return
 	}
+	if state(r).Mode == ModePersonal && user.Role != "owner" {
+		a.render(w, r, 403, Page{View: "login", Title: "Welcome back", Username: name, Error: errPersonal.Error()})
+		return
+	}
 	a.signIn(w, r, user.ID)
 }
 
@@ -64,10 +72,14 @@ func (a *App) join(w http.ResponseWriter, r *http.Request) {
 	if !a.authAllowed(w, r) {
 		return
 	}
+	if state(r).Mode == ModePersonal {
+		a.fail(w, r, 403, "This is a personal board. New accounts and invitations are disabled.")
+		return
+	}
 	name, password, invite := strings.TrimSpace(r.PostForm.Get("username")), r.PostForm.Get("password"), strings.TrimSpace(r.PostForm.Get("invite"))
 	p := Page{View: "join", Title: "Make yourself at home", Username: name, Invitation: invite}
 	p.Error = ValidateCredentials(name, password)
-	if !validToken(invite) {
+	if (invite != "" || state(r).Mode != ModeOpen) && !validToken(invite) {
 		p.Error = "You will need an invitation from the owner to join."
 	}
 	if p.Error != "" {
@@ -79,7 +91,15 @@ func (a *App) join(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	id, err := a.store.Register(r.Context(), name, hash, tokenHash(invite))
+	inviteHash := ""
+	if invite != "" {
+		inviteHash = tokenHash(invite)
+	}
+	id, err := a.store.Register(r.Context(), name, hash, inviteHash)
+	if errors.Is(err, errPersonal) {
+		a.fail(w, r, 403, err.Error())
+		return
+	}
 	if errors.Is(err, errUsernameTaken) || errors.Is(err, errInvitation) {
 		p.Error = err.Error()
 		a.render(w, r, 422, p)

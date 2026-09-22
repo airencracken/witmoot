@@ -1,0 +1,33 @@
+{{define "settings"}}
+{{template "crumb" .}}
+<div class="page-heading"><div><p class="eyebrow">Your place, your house rules</p><h1>Board settings</h1><p class="lede">A notebook, a gathering place, or an open door. Make it yours.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
+{{if .Saved}}<p class="save-notice" role="status">Your board settings are saved.</p>{{end}}
+{{template "error" .}}
+<form class="paper settings-form" action="/settings" method="post" hx-disabled-elt="find button[type='submit']">
+	{{template "csrf" .}}
+	<fieldset>
+		<legend>Who is this board for?</legend>
+		<div class="mode-choices">
+			<label class="mode-choice" for="mode-personal">
+				<input type="radio" name="mode" id="mode-personal" value="personal" {{if eq .Mode "personal"}}checked{{end}} required aria-describedby="personal-help">
+				<span><strong>Personal</strong><span id="personal-help">A quiet notebook for owners. Only owners can browse or post. Joining and invitations are disabled.</span><small>New conversations: owners only.</small></span>
+			</label>
+			<label class="mode-choice" for="mode-private">
+				<input type="radio" name="mode" id="mode-private" value="private" {{if eq .Mode "private"}}checked{{end}} required aria-describedby="private-help">
+				<span><strong>Private</strong><span id="private-help">A place for family and friends. Members sign in to browse and post. New people join by invitation.</span><small>New conversations: members only.</small></span>
+			</label>
+			<label class="mode-choice" for="mode-open">
+				<input type="radio" name="mode" id="mode-open" value="open" {{if eq .Mode "open"}}checked{{end}} required aria-describedby="open-help">
+				<span><strong>Open</strong><span id="open-help">An open door. Visitors can browse public conversations. Anyone can register; an account is required to post.</span><small>New conversations: public.</small></span>
+			</label>
+		</div>
+	</fieldset>
+	<div class="settings-note">
+		<h2>What happens to the conversations already here?</h2>
+		<p>Each conversation keeps its audience when you change modes. Owners-only conversations stay with owners. Members-only conversations stay behind sign-in. Replies use the conversation's audience.</p>
+		<p><strong>Open signup lets anyone become a member.</strong> Those new members can read existing members-only conversations too. This is not a separate group for your original members.</p>
+		<p>Private mode hides the whole board from visitors. Personal mode also blocks member access. Existing accounts, invitations, and conversations are kept; unexpired invitations work again when joining is enabled.</p>
+	</div>
+	<div class="form-footer"><span class="muted">Changes take effect for new requests and are kept after a restart.</span><button type="submit">Save settings</button></div>
+</form>
+{{end}}

@@ -2,6 +2,7 @@ package forum
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -41,7 +42,7 @@ func TestMigrationPersistenceAndConstraints(t *testing.T) {
 	}
 	ctx := context.Background()
 	user := testMember(t, s, "alex")
-	id, err := s.CreateTopic(ctx, 1, user, "Sunday dinner", "Bring something good.")
+	id, err := s.CreateTopic(ctx, 1, user, "Sunday dinner", "Bring something good.", AudienceMembers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,14 +54,14 @@ func TestMigrationPersistenceAndConstraints(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	boards, err := s.Boards(ctx)
+	boards, err := s.Boards(ctx, testReader)
 	if err != nil || len(boards) != 5 {
 		t.Fatalf("boards=%v, err=%v", boards, err)
 	}
 	if boards[0].Topics != 1 || boards[0].Posts != 1 || boards[0].LastTopicID != id {
 		t.Fatalf("incorrect board summary: %+v", boards[0])
 	}
-	if _, err := s.CreateTopic(ctx, 999, user, "Missing board", "hello"); err == nil {
+	if _, err := s.CreateTopic(ctx, 999, user, "Missing board", "hello", AudienceMembers); err == nil {
 		t.Fatal("missing board accepted")
 	}
 	if _, _, err := s.Reply(ctx, id, 999, "Unknown member"); err == nil {
@@ -75,10 +76,10 @@ func TestTopicCreationIsAtomic(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	user := testMember(t, s, "alex")
-	if _, err := s.CreateTopic(ctx, 1, user, "Must roll back", ""); err == nil {
+	if _, err := s.CreateTopic(ctx, 1, user, "Must roll back", "", AudienceMembers); err == nil {
 		t.Fatal("invalid first post accepted")
 	}
-	stats, err := s.Stats(ctx)
+	stats, err := s.Stats(ctx, testReader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +140,7 @@ func TestSearchTreatsWildcardsAndSQLAsText(t *testing.T) {
 	ctx := context.Background()
 	user := testMember(t, s, "alex")
 	for _, title := range []string{"A 100% good recipe", "An ordinary dinner", "Under_score", "Literal ' OR 1=1 --"} {
-		if _, err := s.CreateTopic(ctx, 1, user, title, "Soup and bread"); err != nil {
+		if _, err := s.CreateTopic(ctx, 1, user, title, "Soup and bread", AudienceMembers); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -148,7 +149,7 @@ func TestSearchTreatsWildcardsAndSQLAsText(t *testing.T) {
 		count int
 	}{{"%", 1}, {"_", 1}, {"' OR 1=1 --", 1}, {"Soup", 4}, {"no match", 0}, {`\`, 0}} {
 		t.Run(tc.query, func(t *testing.T) {
-			topics, _, err := s.Topics(ctx, 0, tc.query, 20, 0)
+			topics, _, err := s.Topics(ctx, 0, tc.query, 20, 0, testReader)
 			if err != nil || len(topics) != tc.count {
 				t.Fatalf("got %d topics, err=%v", len(topics), err)
 			}
@@ -160,7 +161,7 @@ func TestPaginationAndReplyOrder(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	user := testMember(t, s, "alex")
-	id, err := s.CreateTopic(ctx, 1, user, "Our weekend", "First post")
+	id, err := s.CreateTopic(ctx, 1, user, "Our weekend", "First post", AudienceMembers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,20 +171,20 @@ func TestPaginationAndReplyOrder(t *testing.T) {
 			t.Fatalf("count=%d err=%v", count, err)
 		}
 	}
-	first, more, err := s.Posts(ctx, id, 20, 0)
+	first, more, err := s.Posts(ctx, id, 20, 0, testReader)
 	if err != nil || !more || len(first) != 20 || first[0].Number != 1 {
 		t.Fatalf("first page: %v %v %v", len(first), more, err)
 	}
-	second, more, err := s.Posts(ctx, id, 20, 20)
+	second, more, err := s.Posts(ctx, id, 20, 20, testReader)
 	if err != nil || more || len(second) != 3 || second[0].Number != 21 || second[2].Body != "Reply 22" {
 		t.Fatalf("second page: %+v %v %v", second, more, err)
 	}
 	for i := 0; i < 22; i++ {
-		if _, err := s.CreateTopic(ctx, 1, user, fmt.Sprintf("Topic %d", i), "Hi"); err != nil {
+		if _, err := s.CreateTopic(ctx, 1, user, fmt.Sprintf("Topic %d", i), "Hi", AudienceMembers); err != nil {
 			t.Fatal(err)
 		}
 	}
-	topics, more, err := s.Topics(ctx, 1, "", 20, 0)
+	topics, more, err := s.Topics(ctx, 1, "", 20, 0, testReader)
 	if err != nil || !more || len(topics) != 20 {
 		t.Fatalf("topics pagination: %v %v %v", len(topics), more, err)
 	}
@@ -210,5 +211,69 @@ func TestSessionsExpireAndLogoutInvalidates(t *testing.T) {
 	}
 	if u, err := s.Session(ctx, "valid"); u != nil || err != nil {
 		t.Fatalf("deleted session: %v %v", u, err)
+	}
+}
+
+var testReader = &User{Role: "owner"}
+
+func TestUpgradePreservesPrivateContentAndSavedMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "upgrade.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := migrations.ReadFile("migrations/001_initial.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(string(initial)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO users(id, username, password_hash, role, created_at) VALUES (1, 'alex', 'hash', 'owner', 1);
+		INSERT INTO topics(id, board_id, author_id, title, created_at, updated_at) VALUES (1, 1, 1, 'Old family plans', 1, 1);
+		INSERT INTO posts(topic_id, author_id, body, created_at) VALUES (1, 1, 'Keep this private', 1);
+		PRAGMA user_version = 1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	mode, err := store.Mode(ctx)
+	if err != nil || mode != ModePrivate {
+		t.Fatalf("upgrade default: %s %v", mode, err)
+	}
+	topic, err := store.Topic(ctx, 1, testReader)
+	if err != nil || topic.Title != "Old family plans" || topic.Audience != AudienceMembers {
+		t.Fatalf("upgraded topic: %+v %v", topic, err)
+	}
+	if err := store.SetMode(ctx, ModeOpen); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Topic(ctx, 1, nil); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("upgrade exposed old private conversation: %v", err)
+	}
+	if _, err := store.db.Exec("UPDATE settings SET mode = 'unknown'"); err == nil {
+		t.Fatal("schema allowed an invalid mode")
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	mode, err = store.Mode(ctx)
+	if err != nil || mode != ModeOpen {
+		t.Fatalf("mode did not survive restart: %s %v", mode, err)
+	}
+	boards, err := store.Boards(ctx, testReader)
+	if err != nil || len(boards) != 5 || boards[0].Posts != 1 {
+		t.Fatalf("upgrade lost or reseeded data: %+v %v", boards, err)
 	}
 }
