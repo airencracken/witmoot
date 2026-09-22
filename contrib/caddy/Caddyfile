@@ -1,0 +1,5 @@
+# Replace this hostname and set the same WITMOOT_BASE_URL in the service config.
+board.example.org {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8082
+}

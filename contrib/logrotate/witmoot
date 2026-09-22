@@ -1,0 +1,12 @@
+"/var/log/witmoot.log" {
+	daily
+	maxsize 10M
+	rotate 14
+	missingok
+	notifempty
+	compress
+	delaycompress
+	nodateext
+	# OpenRC keeps stdout/stderr open; rotation does not restart the board.
+	copytruncate
+}

@@ -41,6 +41,10 @@ board.example.org {
 }
 ```
 
+The [deployment guide](deployment.md) covers the packaged services, owner
+provisioning, and Docker. For OpenRC, put the settings in `/etc/conf.d/witmoot`;
+for systemd, use `/etc/witmoot/witmoot.env`.
+
 Use imvault's public, canonical URL for `WITMOOT_IMVAULT_URL`: pasted links
 must match it, and Witmoot must be able to reach it. There is no shared sign-in;
 each person connects their own imvault API key. Keep both data directories in

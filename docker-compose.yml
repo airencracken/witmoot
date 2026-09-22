@@ -1,0 +1,33 @@
+services:
+  witmoot:
+    build: .
+    image: witmoot:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WITMOOT_PORT:-8082}:8080"
+    volumes:
+      - witmoot-data:/data
+    # Large image uploads spill to /tmp; keep those separate from the database.
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 20s
+    environment:
+      WITMOOT_NAME: "${WITMOOT_NAME:-Witmoot}"
+      WITMOOT_BASE_URL: "${WITMOOT_BASE_URL:-http://localhost:${WITMOOT_PORT:-8082}}"
+      WITMOOT_SECURE_COOKIES: "${WITMOOT_SECURE_COOKIES:-false}"
+      # Set to the actual proxy peer/network; container loopback is not the host.
+      WITMOOT_TRUSTED_PROXIES: "${WITMOOT_TRUSTED_PROXIES:-}"
+      WITMOOT_IMVAULT_URL: "${WITMOOT_IMVAULT_URL:-}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  witmoot-data:
