@@ -62,6 +62,11 @@ up to 72 bytes.
 An owner is created locally. Public registration never creates an owner, even on
 an empty installation. Invited and openly registered accounts are always members.
 
+For a permanent home, see the [deployment guide](docs/deployment.md): source
+install targets, a Gentoo ebuild, OpenRC and systemd services, log rotation,
+Caddy, and Docker Compose. Native services default to `127.0.0.1:8082`, so the
+board and imvault can share a host without competing for the same port.
+
 ## Your place, your house rules
 
 Owners can change the mode at **Settings** (`/settings`). It takes effect for new
@@ -203,6 +208,9 @@ invitation races and rollback, session expiry, CSRF, role checks, escaping,
 search literals, pagination, and failed writes.
 Image tests cover the API contract, encrypted connections, all three attachment
 paths, audience checks, input limits, upstream failures, and upload cleanup.
+Packaging tests exercise staged installs, preserved configuration, service
+settings, and log rotation. Install `logrotate` to run the rotation integration
+test; it reports a skip when the tool is unavailable.
 
 Browser checks use Node.js and Playwright only as development tools:
 

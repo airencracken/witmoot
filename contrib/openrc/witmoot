@@ -1,0 +1,49 @@
+#!/sbin/openrc-run
+
+description="A little bulletin board for your people"
+
+: "${WITMOOT_USER:=witmoot}"
+: "${WITMOOT_GROUP:=witmoot}"
+: "${WITMOOT_BIN:=/usr/local/bin/witmoot}"
+: "${WITMOOT_DATA_DIR:=/var/lib/witmoot}"
+: "${WITMOOT_ADDR:=127.0.0.1:8082}"
+: "${WITMOOT_LOG_FILE:=/var/log/witmoot.log}"
+
+# OpenRC sources conf.d before this script. Export the application's settings
+# explicitly so plain assignments in conf.d reach the daemon.
+export WITMOOT_DATA_DIR WITMOOT_ADDR WITMOOT_NAME WITMOOT_BASE_URL
+export WITMOOT_SECURE_COOKIES WITMOOT_TRUSTED_PROXIES WITMOOT_IMVAULT_URL
+
+command="${WITMOOT_BIN}"
+command_user="${WITMOOT_USER}:${WITMOOT_GROUP}"
+command_background="yes"
+start_stop_daemon_args="--wait 1000"
+umask="0077"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="${WITMOOT_LOG_FILE}"
+error_log="${WITMOOT_LOG_FILE}"
+# The server allows ten seconds to finish requests after SIGTERM.
+retry="TERM/15/KILL/5"
+
+depend() {
+	need net
+	after firewall
+	use dns logger
+}
+
+start_pre() {
+	for path in "$WITMOOT_DATA_DIR" "$WITMOOT_BIN" "$WITMOOT_LOG_FILE"; do
+		case "$path" in
+			/*) ;;
+			*) eerror "Witmoot paths must be absolute: $path"; return 1 ;;
+		esac
+	done
+	umask "$umask"
+	checkpath --directory --mode 0700 --owner "$command_user" "$WITMOOT_DATA_DIR" || return 1
+	local log_dir
+	log_dir=$(dirname "$WITMOOT_LOG_FILE") || return 1
+	if [ ! -d "$log_dir" ]; then
+		checkpath --directory --mode 0755 "$log_dir" || return 1
+	fi
+	checkpath --file --mode 0640 --owner "$command_user" "$WITMOOT_LOG_FILE" || return 1
+}
