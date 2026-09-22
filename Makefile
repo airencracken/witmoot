@@ -7,7 +7,7 @@ LOGROTATEDIR ?= $(SYSCONFDIR)/logrotate.d
 PORT ?= 8082
 
 .DEFAULT_GOAL := help
-.PHONY: help all demo run test test-browser test-imvault check fmt build clean install install-openrc install-systemd install-logrotate release-check release-snapshot
+.PHONY: help all demo run test test-js test-browser test-imvault check fmt build clean install install-openrc install-systemd install-logrotate release-check release-snapshot
 
 help: ## Show available commands
 	@printf '\nWitmoot\n\n'
@@ -26,13 +26,17 @@ run: ## Run your board using WITMOOT_* settings (default data: ./data)
 test: ## Run Go tests with the race detector
 	go test -race -count=1 ./...
 
+test-js: ## Run JavaScript behavior tests (needs Node)
+	node --check internal/forum/static/theme.js
+	node --test scripts/theme.test.cjs
+
 test-browser: build ## Run browser checks (needs Node and Playwright; see README)
 	node scripts/browser/check.mjs
 
 test-imvault: build ## Test image integration (set IMVAULT_BINARY; see README)
 	node scripts/browser/imvault.mjs
 
-check: ## Run vet, race tests, and formatting checks
+check: test-js ## Run JavaScript tests, vet, race tests, and formatting checks
 	go vet ./...
 	go test -race -count=1 ./...
 	@test -z "$$(gofmt -l cmd internal contrib scripts)" || { echo 'Run gofmt on Go sources'; exit 1; }

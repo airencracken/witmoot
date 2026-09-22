@@ -30,6 +30,10 @@ practical, personal approach to running your own shared corner of the web.
 One Go binary. One data directory. Server-rendered HTML, SQLite, and HTMX.
 No frontend build step or external service needed to run it.
 
+Sage and cream by day, dark greens by night. Choose **System**, **Light**, or
+**Dark** in the header. System follows your device; an explicit choice stays in
+this browser, including before you sign in.
+
 Meet the **Moot Knight**: a little keeper of the round table, with a book,
 a quill, and room for your people. The mascot appears on the welcome page and
 beside the board.
@@ -223,7 +227,7 @@ of irreplaceable family material. SQLite data is not encrypted at rest.
 
 ```bash
 make help    # available commands and installation options
-make check   # formatting, vet, and tests with the race detector
+make check   # formatting, JavaScript tests (Node required), vet, and race tests
 make build   # standalone binary; no cgo required
 ```
 
