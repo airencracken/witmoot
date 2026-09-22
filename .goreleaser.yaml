@@ -1,0 +1,79 @@
+version: 2
+project_name: witmoot
+before:
+  hooks:
+    - sh scripts/release/prepare.sh
+builds:
+  - id: witmoot
+    main: ./cmd/witmoot
+    binary: witmoot
+    env:
+      - CGO_ENABLED=0
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath, -buildvcs=false]
+    ldflags: [-s -w]
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    wrap_in_directory: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - docs/**/*
+      - contrib/**/*
+      - src: .release/THIRD_PARTY_NOTICES.txt
+        dst: .
+        strip_parent: true
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source"
+  prefix_template: "{{ .ProjectName }}_{{ .Version }}_source/"
+  format: tar.gz
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+nfpms:
+  - id: deb
+    package_name: witmoot
+    file_name_template: "{{ .ConventionalFileName }}"
+    homepage: https://github.com/airencracken/witmoot
+    maintainer: Marcus J. Hildum <airencracken@users.noreply.github.com>
+    description: A small bulletin board for friends and family
+    license: AGPL-3.0-or-later
+    formats: [deb]
+    bindir: /usr/bin
+    section: web
+    priority: optional
+    dependencies:
+      - adduser
+      - ca-certificates
+      - init-system-helpers
+    contents:
+      - src: .release/witmoot.service
+        dst: /usr/lib/systemd/system/witmoot.service
+      - src: .release/witmoot.env
+        dst: /etc/witmoot/witmoot.env
+        type: config
+        file_info:
+          mode: 0600
+      - src: .release/copyright
+        dst: /usr/share/doc/witmoot/copyright
+      - src: LICENSE
+        dst: /usr/share/doc/witmoot/LICENSE
+      - src: README.md
+        dst: /usr/share/doc/witmoot/README.md
+      - src: docs/
+        dst: /usr/share/doc/witmoot/docs
+        type: tree
+    scripts:
+      postinstall: contrib/debian/postinst
+      preremove: contrib/debian/prerm
+      postremove: contrib/debian/postrm
+    mtime: "{{ .CommitDate }}"
+changelog:
+  use: git
+release:
+  github:
+    owner: airencracken
+    name: witmoot
