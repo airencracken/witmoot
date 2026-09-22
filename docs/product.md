@@ -32,9 +32,11 @@ anything someone might find objectionable.
   growth, and reach are not measures of success. An Open instance can welcome
   newcomers while retaining a clear purpose and accountable hosts.
 - **Exit and ownership.** The community should not be held hostage by the
-  software or its vendor. Keep hosting understandable and backups practical;
-  build toward readable exports and straightforward migration. People should
-  be able to keep their material and move their community elsewhere.
+  software or its vendor. Being able to take your data is a core requirement.
+  Keep hosting understandable, backups practical, and exports usable outside
+  the application. Preserve the material and the relationships that give it
+  meaning, so people can keep their contributions or move their community.
+  imvault already provides account exports; Witmoot needs to meet that standard.
 - **Tools, not morality.** Provide moderation and governance mechanisms without
   dictating what every community must consider acceptable. Hosts and members
   establish their house rules; the software helps them administer their place.
@@ -42,6 +44,10 @@ anything someone might find objectionable.
 These are product constraints, including when considering future features.
 Personal, Private, and Open change who can participate; all three share the
 same respect for attention and local control.
+
+The [data portability requirements](data-portability.md) describe what this
+means for Witmoot and a proposed imageboard. They are a working design, including
+the distinction between existing backup support and exports still to implement.
 
 ## Inspirations
 

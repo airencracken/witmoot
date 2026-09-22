@@ -155,6 +155,12 @@ For a simple backup, **stop the server and copy the entire data directory**.
 Restore it with the server stopped, then start Witmoot against that directory.
 Do not copy only the live `.db` file while SQLite is using WAL journaling.
 
+**Taking your data is a core comfyware requirement.** Witmoot currently has the
+backup procedure above, but does not yet offer account exports or a portable
+community archive. Those are core work still to do. See the
+[data portability requirements](docs/data-portability.md), informed by imvault's
+existing account exports.
+
 This is a first working foundation. Account recovery, member removal, post
 editing/deletion, moderation, invitation revocation, email, and
 custom room management are not implemented yet. Do not use it as the sole copy
