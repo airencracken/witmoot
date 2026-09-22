@@ -1,0 +1,7 @@
+{
+	"name": "witmoot-browser-checks",
+	"private": true,
+	"type": "module",
+	"scripts": { "test": "node check.mjs" },
+	"devDependencies": { "playwright": "1.63.0" }
+}

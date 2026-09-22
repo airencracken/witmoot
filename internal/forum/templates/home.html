@@ -1,0 +1,28 @@
+{{define "welcome"}}
+<section class="welcome-grid">
+	<div class="welcome-copy"><p class="eyebrow">A small place. Your people.</p><h1>Good company.<br>Conversations<br>worth keeping.</h1><p class="lede">For the plans, the little updates, and the stories that deserve more than a passing message.</p><p>{{.Name}} is a private gathering place for family and friends. Pull up a chair.</p><a class="button" href="/login">Come on in <span aria-hidden="true">→</span></a><p class="muted invitation-note">New here? Ask the owner for an invitation.</p></div>
+	<aside class="welcome-note"><div class="note-tab" aria-hidden="true"></div><p class="eyebrow">Make yourself at home</p><h2>Our own<br>little corner.</h2><div class="note-rule"></div><p>A kitchen table for long conversations.</p><p>A noticeboard for the next get-together.</p><p>A place to leave something good for someone you know.</p><span class="note-signature">See you around.</span></aside>
+</section>
+{{end}}
+
+{{define "home"}}
+<div class="page-heading"><div><p class="eyebrow">Make yourself at home</p><h1>Good to see you, {{.User.Username}}.</h1><p class="lede">Pick a corner. See what everyone has been up to.</p></div><span class="private-label">Our private board</span></div>
+<div class="home-grid">
+	<div class="board-list">
+		{{$category := ""}}
+		{{range .Boards}}
+		{{if ne .Category $category}}<h2 class="category-heading">{{.Category}}</h2>{{$category = .Category}}{{end}}
+		<article class="board-row">
+			<div class="board-symbol" aria-hidden="true">{{initial .Name}}</div>
+			<div class="board-description"><h3><a href="/boards/{{.ID}}">{{.Name}}</a></h3><p>{{.Description}}</p><span class="mobile-count">{{.Topics}} conversations · {{.Posts}} messages</span></div>
+			<div class="board-count"><strong>{{.Topics}}</strong><span>conversations</span></div>
+			<div class="board-latest">{{if .LastTopicID}}<a href="/topics/{{.LastTopicID}}">{{.LastTitle}}</a><span>{{.LastAuthor}} · <time datetime="{{iso .LastAt}}">{{date .LastAt}}</time></span>{{else}}<span>Room for a first conversation.</span>{{end}}</div>
+		</article>
+		{{end}}
+	</div>
+	<aside class="sidebar">
+		<section class="paper side-note"><p class="eyebrow">Between us</p><h2>A little slower.<br>A little closer.</h2><p>Share the small things. Ask the long question. Come back when you have a moment.</p><p>Only invited members can read and join the conversations here.</p></section>
+		<section class="paper group-stats"><h2>Our little gathering</h2><dl><div><dt>People</dt><dd>{{.Stats.Members}}</dd></div><div><dt>Conversations</dt><dd>{{.Stats.Topics}}</dd></div><div><dt>Messages</dt><dd>{{.Stats.Posts}}</dd></div></dl>{{if eq .User.Role "owner"}}<a href="/invites">Invite someone in <span aria-hidden="true">→</span></a>{{end}}</section>
+	</aside>
+</div>
+{{end}}
