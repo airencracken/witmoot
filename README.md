@@ -8,12 +8,21 @@ small, self-hosted clubhouse spirit from imvault.
 
 **Comfyware** is software for your friends and family, run by and for the people
 using it. It brings the personal spirit of the IndieWeb together with
-self-hosting and a focus on small communities. Software you would feel
-comfortable letting your kids use is the standard we build toward.
+self-hosting and a focus on small communities. Trust comes from a bounded social
+context, governed by the people actually in it.
+
+"Software you'd let your kids use" means an instance operated by people you
+trust, under rules you understand. Each community establishes its own rules and
+culture. Comfyware does not promise that every instance is suitable for every
+family. It should provide the tools for local governance, protect the community's
+ownership of its data, and make leaving or moving practical.
 
 Low distraction. No recommendation algorithms, infinite scroll, streaks, or
 engagement targets. Just the plans, little updates, good finds, and conversations
 worth coming back to, whenever you choose.
+
+The [comfyware principles](docs/product.md#what-comfyware-means) guide the tools
+we build and the features we choose.
 
 [copyparty](https://github.com/9001/copyparty) is another inspiration for that
 practical, personal approach to running your own shared corner of the web.

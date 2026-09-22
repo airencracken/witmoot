@@ -9,21 +9,35 @@ and makes them easy to find months later.
 
 ## What comfyware means
 
-- **For your people.** Friends, families, and small communities are the starting
-  point. Growth and reach are not measures of success.
-- **Comfortable for a family.** Software you would let your kids use is the
-  design standard. Clear audiences, understandable controls, and community
-  stewardship matter as much as a friendly appearance. Member management and
-  moderation belong among the next essentials.
-- **Respect for attention.** Keep distraction low and avoid habit-forming
-  mechanics. No recommendation algorithms, ranked feeds, infinite scroll,
-  streaks, popularity scores, or pressure to return.
-- **A pace you choose.** Conversations stay chronological, pages have an end,
-  and catching up does not require staying online. Any future notifications
-  should be optional and under the recipient's control.
-- **Run by and for the people using it.** Keep hosting understandable, make
-  backups practical, and build toward useful exports. Community needs guide
-  features; engagement targets do not.
+Comfyware's basis for trust is a bounded social context, governed by the people
+actually in it. "Software you'd let your kids use" means an instance operated by
+people you trust, under rules you understand. It does not mean every instance
+must be suitable for your kids, or that trust depends on a universal ban on
+anything someone might find objectionable.
+
+- **Local sovereignty.** The host and community establish their own rules and
+  culture. The software should make those choices understandable and give the
+  people running the instance practical ways to uphold them.
+- **Human-scale governance.** An identifiable person or small group is
+  responsible for the place. Members should know who runs it and how to raise
+  a concern. Clear responsibilities, membership controls, and moderation tools
+  support that relationship.
+- **No engagement imperative.** The software has no economic interest in making
+  people angry, addicted, or perpetually present. Keep distraction low. No
+  recommendation algorithms, ranked feeds, infinite scroll, streaks, popularity
+  scores, or pressure to return. Conversations stay chronological, pages have an
+  end, and any future notifications should be optional and recipient-controlled.
+- **Bounded community.** The primary purpose is a place for a tribe: friends,
+  family, or another community with a shared context. Audience acquisition,
+  growth, and reach are not measures of success. An Open instance can welcome
+  newcomers while retaining a clear purpose and accountable hosts.
+- **Exit and ownership.** The community should not be held hostage by the
+  software or its vendor. Keep hosting understandable and backups practical;
+  build toward readable exports and straightforward migration. People should
+  be able to keep their material and move their community elsewhere.
+- **Tools, not morality.** Provide moderation and governance mechanisms without
+  dictating what every community must consider acceptable. Hosts and members
+  establish their house rules; the software helps them administer their place.
 
 These are product constraints, including when considering future features.
 Personal, Private, and Open change who can participate; all three share the
@@ -83,12 +97,13 @@ or pressure to keep checking in.
 
 ## Where to go next
 
-1. The basics of keeping a home: account recovery, member removal, invitation
-   revocation, editing one's own posts, owner moderation, and configurable rooms.
+1. Local governance and ownership: visible house rules and responsible hosts,
+   account recovery, member removal, invitation revocation, editing one's own
+   posts, owner moderation, configurable rooms, and useful exports.
 2. Shared memories: richer image descriptions and album browsing, while keeping
    sharing deliberate and access rules understandable.
 3. Gentle conveniences: bookmarks, unread markers, optional email digests, and
-   good exports and backups.
+   easier backups.
 
 Separate groups inside one installation, per-conversation audience changes,
 complex permission matrices, and private messaging need explicit product
