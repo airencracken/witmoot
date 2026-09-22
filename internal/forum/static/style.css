@@ -234,3 +234,4 @@ input::placeholder, textarea::placeholder { color: #798077; }
 .post-images figure { margin: 0; max-width: 100%; }
 .post-images img { display: block; max-width: 100%; max-height: 500px; border-radius: 6px; }
 .post-images figcaption { font-size: .8rem; overflow-wrap: anywhere; margin-top: .4rem; color: var(--muted); }
+.invitation-record { padding: 1rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }

@@ -373,6 +373,67 @@ func TestLibraryFragmentsPreserveSelection(t *testing.T) {
 	requireStatus(t, guest.request("GET", "/imvault/library", nil, nil), 303)
 }
 
+func TestConversationRenderingDoesNotContactImvault(t *testing.T) {
+	_, c, _, f := imageTestApp(t)
+	w := c.post("/boards/1/new", imageForm())
+	requireStatus(t, w, 303)
+	topic := w.Header().Get("Location")
+	f.unavailable = true
+	before := f.requests
+	for _, path := range []string{"/boards/1/new", topic} {
+		requireStatus(t, c.request("GET", path, nil, nil), 200)
+	}
+	form := imageForm()
+	form.Set("title", "x")
+	form.Set("image_ids", "own")
+	w = c.post("/boards/1/new", form)
+	requireStatus(t, w, 422)
+	if !strings.Contains(w.Body.String(), `value="own" checked`) || !strings.Contains(w.Body.String(), "A good day together") {
+		t.Fatal("validation lost selected image or text")
+	}
+	requireStatus(t, c.post(topic+"/replies", url.Values{"body": {"A text-only reply"}}), 303)
+	if f.requests != before {
+		t.Fatalf("text pages/submissions made %d upstream requests", f.requests-before)
+	}
+}
+
+func TestLibraryLoadPreservesDraftWithoutPosting(t *testing.T) {
+	a, c, _, f := imageTestApp(t)
+	form := imageForm()
+	form.Set("load_images", "1")
+	form.Set("image_ids", "upload1")
+	form.Set("image_links", "https://vault.example/f/public")
+	w := c.post("/boards/1/new", form)
+	requireStatus(t, w, 200)
+	for _, text := range []string{"Shared pictures", "A good day together", "Family photo.png", `value="upload1" checked`, "https://vault.example/f/public"} {
+		if !strings.Contains(w.Body.String(), text) {
+			t.Errorf("library load lost %q", text)
+		}
+	}
+	stats, err := a.store.Stats(context.Background(), testReader)
+	if err != nil || stats.Topics != 0 || f.uploads != 0 || len(attachmentIDs(t, a)) != 0 {
+		t.Fatal("loading library created content")
+	}
+	w = c.post("/boards/1/new", imageForm())
+	requireStatus(t, w, 303)
+	topic := w.Header().Get("Location")
+	w = c.post(topic+"/replies", url.Values{"body": {"Still writing this reply"}, "load_images": {"1"}})
+	requireStatus(t, w, 200)
+	if !strings.Contains(w.Body.String(), "Still writing this reply") || !strings.Contains(w.Body.String(), "Family photo.png") {
+		t.Fatal("reply library load lost draft or library")
+	}
+	stats, err = a.store.Stats(context.Background(), testReader)
+	if err != nil || stats.Posts != 1 {
+		t.Fatal("loading library submitted reply")
+	}
+	f.unavailable = true
+	w = c.post(topic+"/replies", url.Values{"body": {"Keep this draft"}, "load_images": {"1"}})
+	requireStatus(t, w, 200)
+	if !strings.Contains(w.Body.String(), "Keep this draft") || !strings.Contains(w.Body.String(), imvault.ErrUnavailable.Error()) {
+		t.Fatal("upstream failure lost draft or explanation")
+	}
+}
+
 func TestOwnerOnlyImagesAndReplyAtomicity(t *testing.T) {
 	a, c, _, _ := imageTestApp(t)
 	member := memberClient(t, a, "jules")

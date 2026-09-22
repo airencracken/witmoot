@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -27,10 +28,12 @@ var assets embed.FS
 const pageSize = 20
 
 type Config struct {
-	Name          string
-	SecureCookies bool
-	ImvaultURL    string
-	ImageKey      []byte
+	Name           string
+	BaseURL        string
+	SecureCookies  bool
+	ImvaultURL     string
+	ImageKey       []byte
+	TrustedProxies []netip.Prefix
 }
 
 type App struct {
@@ -51,6 +54,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	Invitations                                             []Invitation
+	InviteCode, InviteLabel, InviteUses, InviteDays         string
 	ImagesEnabled, ImageConnected, LibraryMore              bool
 	ImageUsername, ImageServer, ImageLinks, ImageError      string
 	Library                                                 []imvault.File
@@ -58,6 +63,7 @@ type Page struct {
 	SelectedImages                                          map[string]bool
 	CarriedImages                                           []string
 	LibraryPicking                                          bool
+	LibraryLoaded                                           bool
 	Name, Title, View, CSRF, Error                          string
 	User                                                    *User
 	Mode                                                    Mode
@@ -76,6 +82,11 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.TrimSpace(config.Name) == "" {
 		config.Name = "Witmoot"
 	}
+	baseURL, err := canonicalBaseURL(config.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+	config.BaseURL = baseURL
 	tmpl, err := template.New("forum").Funcs(template.FuncMap{
 		"add":     func(a, b int) int { return a + b },
 		"date":    func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006") },
@@ -125,6 +136,7 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /search", a.readable(a.search))
 	mux.HandleFunc("GET /invites", a.private(a.invites))
 	mux.HandleFunc("POST /invites", a.private(a.createInvite))
+	mux.HandleFunc("POST /invites/{id}/revoke", a.private(a.revokeInvite))
 	mux.HandleFunc("GET /settings", a.signedIn(a.settings))
 	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
 	mux.HandleFunc("GET /account/imvault", a.signedIn(a.imageAccount))
@@ -426,6 +438,10 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	title, body := strings.TrimSpace(r.PostForm.Get("title")), strings.TrimSpace(r.PostForm.Get("body"))
+	if r.PostForm.Get("load_images") == "1" {
+		a.render(w, r, 200, Page{View: "compose", Title: "Start a conversation", Board: b, TitleInput: title, BodyInput: body})
+		return
+	}
 	message := ""
 	if !validText(title, 3, 160) {
 		message = "Give your conversation a title between 3 and 160 characters."
@@ -470,6 +486,10 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := strings.TrimSpace(r.PostForm.Get("body"))
+	if r.PostForm.Get("load_images") == "1" {
+		a.showTopic(w, r, 200, "", body)
+		return
+	}
 	if !validText(body, 1, 20000) {
 		a.showTopic(w, r, 422, "Write a reply between 1 and 20,000 characters.", body)
 		return
@@ -491,37 +511,4 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.redirect(w, r, fmt.Sprintf("/topics/%d?page=%d#post-%d", topic.ID, (count-1)/pageSize+1, id))
-}
-
-func (a *App) invites(w http.ResponseWriter, r *http.Request) {
-	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only the owner can invite new people.")
-		return
-	}
-	if state(r).Mode == ModePersonal {
-		a.fail(w, r, 403, "Invitations are disabled in Personal mode.")
-		return
-	}
-	a.render(w, r, 200, Page{View: "invites", Title: "Invite someone in"})
-}
-
-func (a *App) createInvite(w http.ResponseWriter, r *http.Request) {
-	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only the owner can invite new people.")
-		return
-	}
-	if state(r).Mode == ModePersonal {
-		a.fail(w, r, 403, "Invitations are disabled in Personal mode.")
-		return
-	}
-	token := randomToken()
-	if err := a.store.Invite(r.Context(), state(r).User.ID, tokenHash(token)); err != nil {
-		if errors.Is(err, errPersonal) {
-			a.fail(w, r, 403, err.Error())
-			return
-		}
-		a.serverError(w, r, err)
-		return
-	}
-	a.render(w, r, 200, Page{View: "invites", Title: "Invite someone in", InviteLink: "/join?invite=" + token})
 }

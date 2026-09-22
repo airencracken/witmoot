@@ -54,8 +54,10 @@ unset witmoot_password
 
 Open <http://127.0.0.1:8080>, sign in, and choose **Settings** to select Personal,
 Private, or Open. New installations start in Private mode. Use **Invites** to
-make a link for someone you know. Each link works once and expires after seven days. Passwords
-need at least 12 characters and may contain up to 72 bytes.
+make a link for someone you know. Invitations default to one use and seven days;
+owners choose labels, use limits, and expiry when creating them, and can revoke
+them from the saved list. Passwords need at least 12 characters and may contain
+up to 72 bytes.
 
 An owner is created locally. Public registration never creates an owner, even on
 an empty installation. Invited and openly registered accounts are always members.
@@ -115,9 +117,11 @@ inside it. Owner-only conversations are shared among all owner accounts.
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `WITMOOT_NAME` | `Witmoot` | Name in the header and page titles |
+| `WITMOOT_BASE_URL` | request origin | Public HTTP(S) origin for shareable invitation links |
 | `WITMOOT_DATA_DIR` | `./data` | Database, journal files, and optional imvault encryption key |
 | `WITMOOT_ADDR` | `127.0.0.1:8080` | HTTP listen address |
 | `WITMOOT_SECURE_COOKIES` | `false` | Set `true` behind HTTPS |
+| `WITMOOT_TRUSTED_PROXIES` | unset | Comma-separated proxy IPs/CIDRs allowed to supply client addresses |
 | `WITMOOT_IMVAULT_URL` | unset | Optional imvault server URL, such as `https://photos.example.org` |
 
 ```bash
@@ -127,6 +131,25 @@ WITMOOT_NAME='Our little corner' WITMOOT_ADDR=127.0.0.1:9000 make run
 The starter rooms are seeded once by the initial migration. Their names are
 currently fixed; room management is future work. The default data directory is
 created with owner-only access. An existing directory keeps its permissions.
+
+## Invitations for your people
+
+Owners manage invitations under **Invites**. Add an optional label, choose the
+number of accounts it may admit (`0` for unlimited), and set an expiry in days
+(blank or `0` for never). New accounts are always members.
+
+Copy the full link or code when it is created; only a digest and identifying
+prefix are stored. The saved list shows usage, expiry, and status, with a
+**Revoke invitation** button for open invitations. Revocation prevents new
+registrations without changing accounts that already joined. Failed
+registrations do not consume a use. Existing invitations retain their original
+single-use limit and expiry after upgrading.
+
+Links are complete URLs even without JavaScript. Set `WITMOOT_BASE_URL` to the
+public origin, such as `https://board.example.org`, behind a reverse proxy.
+Without it, links use the request host and HTTPS when secure cookies are enabled
+or the request itself uses TLS. Personal mode continues to disable invitations
+and registration; unexpired, unrevoked invitations work again after leaving it.
 
 ## Images with imvault
 
@@ -147,9 +170,10 @@ send `Cache-Control: no-store` and disable HTMX history storage. Assets are serv
 locally under a restrictive content security policy.
 
 Sign-in, open registration, and invitation redemption share a limit of 20 attempts per 15 minutes
-per direct client IP. The limiter is in memory and does not trust forwarded
-headers. Behind a proxy, users share that proxy's budget; use an edge limiter
-and account for this when configuring a deployment.
+per client IP. The limiter is in memory and does not trust forwarded
+headers unless the peer is in `WITMOOT_TRUSTED_PROXIES`. Configure this behind
+Caddy so visitors have separate budgets; otherwise they share the proxy's
+budget. See [running beside imvault](docs/imvault.md#running-beside-imvault).
 
 For a simple backup, **stop the server and copy the entire data directory**.
 Restore it with the server stopped, then start Witmoot against that directory.
@@ -162,7 +186,7 @@ community archive. Those are core work still to do. See the
 existing account exports.
 
 This is a first working foundation. Account recovery, member removal, post
-editing/deletion, moderation, invitation revocation, email, and
+editing/deletion, moderation, email, and
 custom room management are not implemented yet. Do not use it as the sole copy
 of irreplaceable family material. SQLite data is not encrypted at rest.
 

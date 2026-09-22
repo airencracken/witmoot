@@ -20,6 +20,7 @@ import (
 const MaxImageBytes = 8 << 20
 
 var IDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+var renditionVersionPattern = regexp.MustCompile(`^[0-9a-f]{16}$`)
 var ErrUnavailable = errors.New("imvault could not complete that request; check your connection and try again")
 
 type Client struct {
@@ -136,7 +137,7 @@ func (c *Client) File(ctx context.Context, token, id string) (File, error) {
 func (c *Client) ParseLink(link string) (string, error) {
 	u, err := url.Parse(link)
 	base, _ := url.Parse(c.Base)
-	if err != nil || u.Scheme != base.Scheme || u.Host != base.Host || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.RawPath != "" {
+	if err != nil || u.Scheme != base.Scheme || u.Host != base.Host || u.User != nil || u.Fragment != "" || u.RawPath != "" {
 		return "", errors.New("use an image link from the configured imvault server")
 	}
 	prefix := base.Path + "/f/"
@@ -147,6 +148,14 @@ func (c *Client) ParseLink(link string) (string, error) {
 	if len(parts) > 2 || !IDPattern.MatchString(parts[0]) || len(parts) == 2 && parts[1] != "raw" && parts[1] != "preview" && parts[1] != "thumb" {
 		return "", errors.New("invalid imvault image link")
 	}
+	if u.RawQuery != "" {
+		query, err := url.ParseQuery(u.RawQuery)
+		if err != nil || len(parts) != 2 || parts[1] == "raw" || len(query) != 1 || len(query["v"]) != 1 || !renditionVersionPattern.MatchString(query.Get("v")) {
+			return "", errors.New("invalid imvault image version")
+		}
+	}
+	// The version only controls browser caching. Resolve the ID against imvault
+	// and fetch its current rendition; never forward supplied query parameters.
 	return parts[0], nil
 }
 

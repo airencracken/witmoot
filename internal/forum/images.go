@@ -100,15 +100,26 @@ func (a *App) decorateImages(r *http.Request, p *Page) {
 		return
 	}
 	p.LibraryPicking = true
+	carryImageSelection(p, r.PostForm["image_ids"])
+	if r.PostForm.Get("load_images") != "1" {
+		return
+	}
 	token, err := a.imageToken(r.Context(), state(r).User.ID)
 	if err != nil {
 		p.ImageError = "Reconnect your imvault account to use your images."
 		return
 	}
-	p.Library, p.LibraryMore, err = a.vault.List(r.Context(), token, "", 0)
+	p.Query = strings.TrimSpace(r.PostForm.Get("q"))
+	if len(p.Query) > 400 {
+		p.ImageError = "Keep your image search to 100 characters or fewer."
+		return
+	}
+	p.LibraryLoaded = true
+	p.Library, p.LibraryMore, err = a.vault.List(r.Context(), token, p.Query, 0)
 	if err != nil {
 		p.ImageError = imvault.ErrUnavailable.Error()
 	}
+	p.CarriedImages = nil
 	carryImageSelection(p, r.PostForm["image_ids"])
 }
 
@@ -149,7 +160,7 @@ func (a *App) library(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	files, more, err := a.vault.List(r.Context(), token, query, offset)
-	p := Page{View: "library", Title: "Your imvault library", Library: files, LibraryMore: more, LibraryOffset: offset, Query: query, ImageServer: a.vault.Base}
+	p := Page{View: "library", Title: "Your imvault library", Library: files, LibraryMore: more, LibraryLoaded: true, LibraryOffset: offset, Query: query, ImageServer: a.vault.Base}
 	if err != nil {
 		p.ImageError = imvault.ErrUnavailable.Error()
 	}

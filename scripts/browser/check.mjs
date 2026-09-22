@@ -15,7 +15,7 @@ await new Promise((done, reject) => { socket.once('error', reject); socket.liste
 const port = socket.address().port;
 await new Promise(done => socket.close(done));
 const origin = `http://127.0.0.1:${port}`;
-const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_SECURE_COOKIES: 'false', WITMOOT_IMVAULT_URL: '' };
+const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_BASE_URL: origin, WITMOOT_TRUSTED_PROXIES: '', WITMOOT_SECURE_COOKIES: 'false', WITMOOT_IMVAULT_URL: '' };
 let server;
 let browser;
 const password = 'a friendly browser test password';
@@ -71,22 +71,39 @@ async function flow(javaScriptEnabled) {
 	await page.getByRole('button', { name: 'Search', exact: true }).click();
 	await page.getByRole('link', { name: title, exact: true }).waitFor();
 	await page.getByRole('link', { name: 'Invites', exact: true }).click();
+	const inviteLabel = javaScriptEnabled ? 'Sunday guests' : 'Garden guests';
+	await page.getByLabel('Label (optional)', { exact: true }).fill(inviteLabel);
+	await page.getByLabel('Uses', { exact: true }).fill('2');
+	await page.getByLabel('Expires after (days)', { exact: true }).fill('14');
 	await page.getByRole('button', { name: 'Create an invitation' }).click();
 	const invite = await page.getByRole('link', { name: 'Invitation link', exact: true }).getAttribute('href');
-	assert.match(invite, /^\/join\?invite=[a-f0-9]{64}$/);
-	if (javaScriptEnabled) {
-		await page.waitForFunction(() => document.querySelector('[data-invitation]')?.value.startsWith(window.location.origin));
-		assert.match(await page.getByLabel('Your invitation link').inputValue(), /^http:\/\/127\.0\.0\.1:/);
-	}
+	assert.equal(new URL(invite).origin, origin);
+	assert.match(new URL(invite).search, /^\?invite=[a-f0-9]{64}$/);
+	assert.equal(await page.getByLabel('Your invitation link').inputValue(), invite);
 	const guest = await browser.newContext({ javaScriptEnabled });
 	const guestPage = await guest.newPage();
-	await guestPage.goto(origin + invite);
+	await guestPage.goto(invite);
 	await guestPage.getByLabel('Username', { exact: true }).fill(javaScriptEnabled ? 'jules' : 'sam');
 	await guestPage.getByLabel('Password', { exact: true }).fill(password);
 	await guestPage.getByRole('button', { name: 'Join our board' }).click();
 	await guestPage.waitForURL(origin + '/');
 	assert.equal(await guestPage.getByRole('link', { name: 'Invites', exact: true }).count(), 0);
 	await guest.close();
+	await page.goto(origin + '/invites');
+	const invitation = page.locator('.invitation-record').filter({ has: page.getByRole('heading', { name: inviteLabel, exact: true }) });
+	assert.match(await invitation.innerText(), /1 of 2 used/);
+	await invitation.getByRole('button', { name: 'Revoke invitation', exact: true }).click();
+	await page.waitForURL(origin + '/invites?saved=1');
+	assert.match(await invitation.innerText(), /revoked/);
+	const lateGuest = await browser.newContext({ javaScriptEnabled });
+	const latePage = await lateGuest.newPage();
+	await latePage.goto(invite);
+	await latePage.getByLabel('Username', { exact: true }).fill(javaScriptEnabled ? 'latejules' : 'latesam');
+	await latePage.getByLabel('Password', { exact: true }).fill(password);
+	await latePage.getByRole('button', { name: 'Join our board' }).click();
+	await latePage.getByRole('alert').waitFor();
+	assert.match(await latePage.getByRole('alert').innerText(), /revoked/);
+	await lateGuest.close();
 	await page.getByRole('link', { name: 'Our board', exact: true }).first().click();
 	await page.getByRole('heading', { name: 'Good to see you, alex.', exact: true }).waitFor();
 	if (javaScriptEnabled) {

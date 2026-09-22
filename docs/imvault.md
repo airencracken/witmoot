@@ -17,19 +17,64 @@ use an ordinary account unless administrative access is intended. The owner
 configures one server for the board. Members cannot send keys to arbitrary URLs.
 API responses cannot redirect Witmoot to another server.
 
+## Running beside imvault
+
+Use separate data directories, service accounts, and loopback ports. For a
+native installation with imvault on `127.0.0.1:8080`, Witmoot can use:
+
+```sh
+WITMOOT_ADDR=127.0.0.1:8082
+WITMOOT_BASE_URL=https://board.example.org
+WITMOOT_DATA_DIR=/var/lib/witmoot
+WITMOOT_SECURE_COOKIES=true
+WITMOOT_TRUSTED_PROXIES=127.0.0.1/32,::1/128
+WITMOOT_IMVAULT_URL=https://img.internetrelay.chat
+```
+
+Set these in the environment of the Witmoot service and restart it. Add a
+separate site block to the existing Caddyfile, using your board's hostname:
+
+```caddyfile
+board.example.org {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8082
+}
+```
+
+Use imvault's public, canonical URL for `WITMOOT_IMVAULT_URL`: pasted links
+must match it, and Witmoot must be able to reach it. There is no shared sign-in;
+each person connects their own imvault API key. Keep both data directories in
+your backups, including Witmoot's `imvault.key`.
+
+`WITMOOT_TRUSTED_PROXIES` defaults to empty. Only list proxies you operate,
+never all internet addresses. Witmoot checks the direct peer before considering
+`X-Forwarded-For`, then walks the chain from right to left until the first
+untrusted address. Missing or malformed trusted hops fall back to the peer's
+rate-limit bucket. Invalid configuration stops startup.
+
+Caddy normally replaces untrusted forwarded headers; see its
+[forwarded-header defaults](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#defaults).
+If another proxy sits in front of Caddy, configure the trusted chain in Caddy
+and Witmoot. Keep the application port private. These settings affect client
+addresses for rate limiting; `WITMOOT_SECURE_COOKIES=true` remains necessary for
+HTTPS deployments.
+
 ## Three ways to share
 
 Open **Add images** when starting a conversation or replying:
 
 - **Upload images** sends new files to your connected imvault account with
   `visibility=private` and `metadata=hidden`, regardless of imvault's defaults.
-- **Choose from your library** shows your existing images, with search and
-  pagination. Selections survive moving between picker pages. Without
-  JavaScript, the first page can still be selected; use **Open your full library**
-  to search further and copy a link into your draft.
+- **Load image library** fetches your existing images when you ask for them,
+  with search and pagination. Selections survive moving between picker pages.
+  Without JavaScript, loading or refreshing the library keeps your text draft
+  and selections without posting; choose upload files afterward. The first page
+  of search results can be selected, or use **Open your full library** to browse
+  further and copy a link into your draft.
 - **Paste imvault image links** accepts image pages and raw, preview, or thumbnail
   links from the configured server. Public thumbnails need no connection.
   Other images must be accessible through your connected account's files API.
+  Thumbnail and preview links with imvault's `?v=…` version parameter work too.
 
 A message may contain four images, each up to 8 MiB. Supported uploads are JPEG,
 PNG, WebP, and GIF. Messages still require text. If validation or an image upload fails, text and
@@ -75,7 +120,8 @@ cannot use an old reference unless imvault grants that account access to the fil
 Changing `WITMOOT_IMVAULT_URL` disables references to the old server.
 
 If imvault is unavailable, conversations remain readable and images may be
-unavailable. Posting with an unavailable attachment fails with an explanation;
+unavailable. Reading a conversation or opening its composer does not request
+the image library. Posting with an unavailable attachment fails with an explanation;
 text-only posting remains possible. Library requests and media responses are
 bounded in size and time.
 
