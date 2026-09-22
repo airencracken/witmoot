@@ -1,5 +1,7 @@
 /data/
 /bin/
+/dist/
+/.release/
 *.db
 *.db-shm
 *.db-wal

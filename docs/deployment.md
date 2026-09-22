@@ -1,5 +1,9 @@
 # A home for your board
 
+[GitHub Releases](https://github.com/airencracken/witmoot/releases) provide
+Linux amd64/arm64 binary archives and Debian packages. See [binary releases](releases.md)
+for installation without Go, checksums, and package upgrade behavior.
+
 Witmoot runs as one unprivileged process. Native service packages listen on
 `127.0.0.1:8082`, leaving imvault's usual port free, and keep the database and
 optional imvault encryption key in `/var/lib/witmoot`. The standalone binary

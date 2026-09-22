@@ -1,10 +1,11 @@
 PREFIX ?= /usr/local
+GORELEASER ?= goreleaser
 DESTDIR ?=
 SYSCONFDIR ?= /etc
 UNITDIR ?= $(SYSCONFDIR)/systemd/system
 LOGROTATEDIR ?= $(SYSCONFDIR)/logrotate.d
 
-.PHONY: run test test-browser test-imvault check build install install-openrc install-systemd install-logrotate
+.PHONY: run test test-browser test-imvault check build install install-openrc install-systemd install-logrotate release-check release-snapshot
 
 run:
 	go run -buildvcs=false ./cmd/witmoot
@@ -26,6 +27,12 @@ check:
 build:
 	mkdir -p bin
 	CGO_ENABLED=0 go build -buildvcs=false -trimpath -o bin/witmoot ./cmd/witmoot
+
+release-check:
+	"$(GORELEASER)" check
+
+release-snapshot: release-check
+	"$(GORELEASER)" release --snapshot --clean --skip=publish
 
 # Service targets install configuration only. Combine with "install" for the binary.
 install: build
