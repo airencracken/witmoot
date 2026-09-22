@@ -239,3 +239,13 @@ enabled and JavaScript disabled. It creates disposable accounts and API keys;
 it does not use your running imvault installation.
 
 The product direction lives in [docs/product.md](docs/product.md).
+
+## License
+
+Copyright (C) 2026 Marcus J. Hildum.
+
+Witmoot is licensed under the GNU Affero General Public License, version 3 or
+later (`AGPL-3.0-or-later`), like imvault. See [LICENSE](LICENSE).
+This program comes without any warranty.
+
+Third-party components retain their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).

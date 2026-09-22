@@ -1,4 +1,5 @@
 # Copyright 2026 Marcus J. Hildum
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Live ebuild for the master branch; see docs/deployment.md for overlay setup.
 
 EAPI=8
@@ -10,14 +11,15 @@ HOMEPAGE="https://github.com/airencracken/witmoot"
 EGIT_REPO_URI="https://github.com/airencracken/witmoot.git"
 EGIT_BRANCH="master"
 
-# Witmoot has no project license yet. The remaining entries cover the linked
+# Witmoot uses AGPL-3.0-or-later. The remaining entries cover the linked
 # Go dependencies, their bundled code, and the embedded HTMX asset.
-LICENSE="all-rights-reserved 0BSD BSD BSD-2 MIT public-domain"
+LICENSE="AGPL-3+ 0BSD BSD BSD-2 MIT public-domain"
 SLOT="0"
 KEYWORDS=""
 PROPERTIES="live"
 IUSE="test"
 RESTRICT="!test? ( test )"
+DOCS=( LICENSE README.md THIRD_PARTY.md )
 
 RDEPEND="
 	acct-group/witmoot

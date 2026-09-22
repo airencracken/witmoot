@@ -1,4 +1,5 @@
 # Copyright 2026 Marcus J. Hildum
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 EAPI=8
 

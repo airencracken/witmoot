@@ -95,6 +95,16 @@ func TestCustomConfigurationDirectories(t *testing.T) {
 func TestInstalledBinaryProvisionsOwner(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "stage with spaces")
 	runMake(t, "install", "DESTDIR="+dest, "PREFIX=/usr")
+	for _, name := range []string{"LICENSE", "README.md", "THIRD_PARTY.md"} {
+		want, err := os.ReadFile(filepath.Join("..", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(filepath.Join(dest, "usr/share/doc/witmoot", name))
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("installed %s differs from the source: %v", name, err)
+		}
+	}
 	dataDir := filepath.Join(t.TempDir(), "board data")
 	cmd := exec.Command(filepath.Join(dest, "usr/bin/witmoot"), "create-owner", "--username", "owner", "--password-stdin")
 	cmd.Env = append(os.Environ(), "WITMOOT_DATA_DIR="+dataDir)
