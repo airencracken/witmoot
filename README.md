@@ -40,6 +40,26 @@ beside the board.
 
 ## Come on in
 
+Want to look around first? With Go 1.26 or later installed:
+
+```sh
+make demo
+# Choose another local port if needed:
+make demo PORT=9000
+```
+
+Open <http://127.0.0.1:8082> for the default demo. Sign in as **demo** (owner),
+**freya**, or **jules** (members), all with password **demo-password**.
+There are sample conversations and replies in every room, including public,
+members-only, and owner-only conversations. Try Search, Settings, and Invites.
+
+The demo listens only on localhost, uses a fresh temporary directory, and ignores
+your `WITMOOT_*` configuration. Ctrl-C stops it and removes its data; the next run
+starts fresh. It does not need an imvault server. Run `make` or `make help` to see
+all available commands.
+
+For your own board:
+
 For a prebuilt Linux binary or Debian package, head to
 [GitHub Releases](https://github.com/airencracken/witmoot/releases) and the
 [binary installation guide](docs/releases.md).
@@ -202,6 +222,7 @@ of irreplaceable family material. SQLite data is not encrypted at rest.
 ## Working on it
 
 ```bash
+make help    # available commands and installation options
 make check   # formatting, vet, and tests with the race detector
 make build   # standalone binary; no cgo required
 ```
