@@ -4,44 +4,63 @@ DESTDIR ?=
 SYSCONFDIR ?= /etc
 UNITDIR ?= $(SYSCONFDIR)/systemd/system
 LOGROTATEDIR ?= $(SYSCONFDIR)/logrotate.d
+PORT ?= 8082
 
-.PHONY: run test test-browser test-imvault check build install install-openrc install-systemd install-logrotate release-check release-snapshot
+.DEFAULT_GOAL := help
+.PHONY: help all demo run test test-browser test-imvault check fmt build clean install install-openrc install-systemd install-logrotate release-check release-snapshot
 
-run:
+help: ## Show available commands
+	@printf '\nWitmoot\n\n'
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@printf '\nTry it: make demo (or make demo PORT=9000)\n'
+	@printf 'Install paths: PREFIX=%s SYSCONFDIR=%s; DESTDIR supports staging.\n\n' "$(PREFIX)" "$(SYSCONFDIR)"
+
+all: check build ## Run checks and build the server
+
+demo: ## Start a disposable board with sample conversations and logins
+	go run -buildvcs=false ./scripts/demo -port "$(PORT)"
+
+run: ## Run your board using WITMOOT_* settings (default data: ./data)
 	go run -buildvcs=false ./cmd/witmoot
 
-test:
+test: ## Run Go tests with the race detector
 	go test -race -count=1 ./...
 
-test-browser: build
+test-browser: build ## Run browser checks (needs Node and Playwright; see README)
 	node scripts/browser/check.mjs
 
-test-imvault: build
+test-imvault: build ## Test image integration (set IMVAULT_BINARY; see README)
 	node scripts/browser/imvault.mjs
 
-check:
+check: ## Run vet, race tests, and formatting checks
 	go vet ./...
 	go test -race -count=1 ./...
 	@test -z "$$(gofmt -l cmd internal contrib scripts)" || { echo 'Run gofmt on Go sources'; exit 1; }
 
-build:
+fmt: ## Format Go sources
+	gofmt -w cmd internal contrib scripts
+
+build: ## Build the server into bin/witmoot
 	mkdir -p bin
 	CGO_ENABLED=0 go build -buildvcs=false -trimpath -o bin/witmoot ./cmd/witmoot
 
-release-check:
+clean: ## Remove generated binaries
+	rm -rf bin
+
+release-check: ## Validate the GoReleaser configuration
 	"$(GORELEASER)" check
 
-release-snapshot: release-check
+release-snapshot: release-check ## Build local archives and Debian packages without publishing
 	"$(GORELEASER)" release --snapshot --clean --skip=publish
 
 # Service targets install configuration only. Combine with "install" for the binary.
-install: build
+install: build ## Install the binary and documentation
 	install -d "$(DESTDIR)$(PREFIX)/bin"
 	install -m 0755 bin/witmoot "$(DESTDIR)$(PREFIX)/bin/witmoot"
 	install -d "$(DESTDIR)$(PREFIX)/share/doc/witmoot"
 	install -m 0644 LICENSE README.md THIRD_PARTY.md "$(DESTDIR)$(PREFIX)/share/doc/witmoot/"
 
-install-openrc: install-logrotate
+install-openrc: install-logrotate ## Install OpenRC configuration and log rotation
 	mkdir -p bin
 	@bindir=$$(printf '%s\n' "$(PREFIX)/bin" | sed 's/[\&|]/\\&/g') || exit 1; \
 		sed "s|/usr/local/bin|$$bindir|g" contrib/openrc/witmoot > bin/witmoot.openrc
@@ -49,7 +68,7 @@ install-openrc: install-logrotate
 	install -m 0755 bin/witmoot.openrc "$(DESTDIR)$(SYSCONFDIR)/init.d/witmoot"
 	@sh scripts/install-config.sh contrib/openrc/witmoot.confd "$(DESTDIR)$(SYSCONFDIR)/conf.d/witmoot" 0600
 
-install-systemd:
+install-systemd: ## Install systemd configuration
 	mkdir -p bin
 	@bindir=$$(printf '%s\n' "$(PREFIX)/bin" | sed 's/[\&|]/\\&/g') || exit 1; \
 		confdir=$$(printf '%s\n' "$(SYSCONFDIR)" | sed 's/[\&|]/\\&/g') || exit 1; \
@@ -59,7 +78,7 @@ install-systemd:
 	install -m 0644 bin/witmoot.service "$(DESTDIR)$(UNITDIR)/witmoot.service"
 	@sh scripts/install-config.sh contrib/systemd/witmoot.env "$(DESTDIR)$(SYSCONFDIR)/witmoot/witmoot.env" 0600
 
-install-logrotate:
+install-logrotate: ## Install log rotation while preserving local settings
 	install -d "$(DESTDIR)$(LOGROTATEDIR)"
 	@sh scripts/install-config.sh contrib/logrotate/witmoot "$(DESTDIR)$(LOGROTATEDIR)/witmoot" 0644
 	@if [ -z "$(DESTDIR)" ] && ! command -v logrotate >/dev/null 2>&1; then \
