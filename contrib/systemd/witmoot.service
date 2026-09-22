@@ -11,7 +11,8 @@ Group=witmoot
 UMask=0077
 Environment=WITMOOT_DATA_DIR=/var/lib/witmoot
 Environment=WITMOOT_ADDR=127.0.0.1:8082
-EnvironmentFile="-/etc/witmoot/witmoot.env"
+# EnvironmentFile takes a literal path, including any spaces, without shell quotes.
+EnvironmentFile=-/etc/witmoot/witmoot.env
 StateDirectory=witmoot
 StateDirectoryMode=0700
 ExecStart="/usr/local/bin/witmoot"

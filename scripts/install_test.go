@@ -84,7 +84,7 @@ func TestCustomConfigurationDirectories(t *testing.T) {
 		}
 	}
 	unit, err := os.ReadFile(filepath.Join(dest, "custom units/witmoot.service"))
-	if err != nil || !strings.Contains(string(unit), `EnvironmentFile="-/custom config/witmoot/witmoot.env"`) {
+	if err != nil || !strings.Contains(string(unit), "EnvironmentFile=-/custom config/witmoot/witmoot.env\n") {
 		t.Fatalf("systemd config path: %s (%v)", unit, err)
 	}
 	if _, err := os.Stat(filepath.Join(dest, "etc")); !os.IsNotExist(err) {
