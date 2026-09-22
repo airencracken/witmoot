@@ -241,3 +241,20 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .post-images img { display: block; max-width: 100%; max-height: 500px; border-radius: 6px; }
 .post-images figcaption { font-size: .8rem; overflow-wrap: anywhere; margin-top: .4rem; color: var(--muted); }
 .invitation-record { padding: 1rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+
+/* Board membership and edits. */
+.site-access { margin: 0; color: var(--muted); font-size: 12px; }
+.site-access strong, .site-access span { display: block; }
+.site-access strong { color: var(--ink); }
+.board-access { display: block; color: var(--rust); font-size: 12px; margin-top: 5px; }
+.edited { display: block; margin-top: 3px; }
+.post-content header { gap: 16px; align-items: flex-start; }
+.post-content header > div { flex: 1; }
+.settings-form .board-visibility, .settings-form .board-members { margin-top: 30px; }
+.access-choice { display: flex; align-items: flex-start; gap: 12px; }
+.access-choice input { width: auto; margin-top: 5px; accent-color: var(--green); }
+.access-choice small { display: block; color: var(--muted); font-weight: 400; }
+.member-permission { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px 0; border-top: 1px solid var(--line); }
+.member-permission label { margin: 0; overflow-wrap: anywhere; }
+.member-permission select { width: auto; flex-shrink: 0; }
+.board-description h2, .board-description h3 { overflow-wrap: anywhere; }

@@ -1,0 +1,32 @@
+{{define "boards"}}
+<div class="page-heading"><div><p class="eyebrow">Rooms for your people</p><h1>Manage boards</h1><p class="lede">Make a shared space or keep a conversation among selected people.</p></div><a class="button" href="/boards/new">Create a board</a></div>
+{{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Category}} · {{if .Restricted}}Selected members{{else}}Site access rules{{end}}</p></div><a class="button secondary small" href="/boards/{{.ID}}/settings" aria-label="Manage {{.Name}}">Manage</a></article>{{end}}
+{{end}}
+
+{{define "board-settings"}}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><span>{{.Title}}</span></nav>
+<div class="page-heading"><div><p class="eyebrow">A place at the table</p><h1>{{.Title}}</h1><p class="lede">Choose who can see this board and who can join in.</p></div>{{if .Board.ID}}<a href="/boards/{{.Board.ID}}">View {{.Board.Name}}</a>{{end}}</div>
+{{if .Saved}}<p class="save-notice" role="status">Your board settings are saved.</p>{{end}}
+{{template "error" .}}
+<form class="paper settings-form" action="{{if .Board.ID}}/boards/{{.Board.ID}}/settings{{else}}/boards/new{{end}}" method="post" hx-disabled-elt="find button[type='submit']">
+	{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Board.Revision}}">
+	<label for="board-name">Board name</label><input id="board-name" name="name" maxlength="80" required value="{{.Board.Name}}">
+	<label for="board-category">Category</label><input id="board-category" name="category" maxlength="80" required value="{{.Board.Category}}">
+	<label for="board-description">Description</label><textarea id="board-description" name="description" maxlength="500" rows="3">{{.Board.Description}}</textarea>
+	<fieldset class="board-visibility"><legend>Who can access this board?</legend>
+		<label class="access-choice"><input type="radio" name="visibility" value="site" {{if not .Board.Restricted}}checked{{end}} required><span>Use site access rules<small>Available to everyone who can browse the site. Signed-in members can post.</small></span></label>
+		<label class="access-choice"><input type="radio" name="visibility" value="selected" {{if .Board.Restricted}}checked{{end}} required><span>Selected members only<small>A private board. People without access cannot see the board or its conversations.</small></span></label>
+	</fieldset>
+	<div class="settings-note"><p>These rules apply to existing conversations and attached images too. A conversation's own audience still applies. Owners always have full access.</p></div>
+	<fieldset class="board-members"><legend>Member permissions</legend><p class="muted">These permissions apply when you choose Selected members only. New members start with no access.</p>
+		{{range .BoardMembers}}<div class="member-permission"><label for="access-{{.ID}}">{{.Username}}</label><select id="access-{{.ID}}" name="access_{{.ID}}"><option value="none" {{if eq .Access "none"}}selected{{end}}>No access</option><option value="read" {{if eq .Access "read"}}selected{{end}}>Read only</option><option value="write" {{if eq .Access "write"}}selected{{end}}>Read and post</option></select></div>{{else}}<p class="muted">No member accounts yet. Owners can use this board now; you can grant access as people join.</p>{{end}}
+	</fieldset>
+	<div class="form-footer"><a href="/boards/manage">Back to boards</a><button type="submit">{{if .Board.ID}}Save board{{else}}Create board{{end}}</button></div>
+</form>
+{{end}}
+
+{{define "edit-post"}}
+{{template "crumb" .}}
+<section class="paper compose"><h1>Edit your message</h1><p class="muted">In {{.Topic.Title}}. Changes will show an edited timestamp. Attached images stay with the message.</p>{{template "error" .}}
+<form method="post" action="/posts/{{.Post.ID}}/edit" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Post.Revision}}"><label for="body">Your message</label><textarea id="body" name="body" rows="10" maxlength="20000" required>{{.BodyInput}}</textarea><div class="form-footer"><a href="{{.Post.URL}}">Back to the conversation</a><button type="submit">Save changes</button></div></form></section>
+{{end}}

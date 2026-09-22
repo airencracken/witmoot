@@ -104,6 +104,80 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 	return a, c, id, fixture
 }
 
+func TestPrivateBoardImageAccessAndRevocation(t *testing.T) {
+	a, _, ownerID, upstream := imageTestApp(t)
+	ctx := context.Background()
+	reader := &User{ID: testMember(t, a.store, "reader"), Role: "member"}
+	outsider := &User{ID: testMember(t, a.store, "outside"), Role: "member"}
+	boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private photos", Category: "Friends", Restricted: true}, map[int64]string{reader.ID: "read"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = a.store.CreateTopic(ctx, boardID, ownerID, "Family photos", "Just for this room", AudienceMembers, Attachment{Server: a.vault.Base, RemoteID: "own", CredentialUserID: sql.NullInt64{Int64: ownerID, Valid: true}, Name: "Family photo.png", Rendition: "thumb"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.store.SetMode(ctx, ModeOpen); err != nil {
+		t.Fatal(err)
+	}
+	allowed := sessionClient(t, a, reader)
+	requireStatus(t, allowed.request("GET", "/images/1", nil, nil), 200)
+	for _, user := range []*User{outsider, nil} {
+		c := sessionClient(t, a, user)
+		before := upstream.requests
+		requireStatus(t, c.request("GET", "/images/1", nil, nil), 404)
+		if upstream.requests != before {
+			t.Fatal("hidden image reached imvault")
+		}
+	}
+	b, err := a.store.Board(ctx, boardID, &User{ID: ownerID, Role: "owner"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.store.SaveBoard(ctx, ownerID, b, nil); err != nil {
+		t.Fatal(err)
+	}
+	before := upstream.requests
+	requireStatus(t, allowed.request("GET", "/images/1", nil, nil), 404)
+	if upstream.requests != before {
+		t.Fatal("revoked image access reached imvault")
+	}
+}
+
+func TestBoardRevocationDuringUploadRollsBackReplyAndCleansImage(t *testing.T) {
+	a, _, ownerID, upstream := imageTestApp(t)
+	ctx := context.Background()
+	writer := &User{ID: testMember(t, a.store, "writer"), Role: "member"}
+	c := sessionClient(t, a, writer)
+	requireStatus(t, c.post("/account/imvault", url.Values{"api_key": {"test-key"}}), 303)
+	boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private uploads", Category: "Friends", Restricted: true}, map[int64]string{writer.ID: "write"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	topicID, err := a.store.CreateTopic(ctx, boardID, ownerID, "Family photos", "Just for this room", AudienceMembers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	board, err := a.store.Board(ctx, boardID, &User{ID: ownerID, Role: "owner"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	upstream.beforeUpload = func() {
+		if _, err := a.store.SaveBoard(ctx, ownerID, board, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w := multipartPost(t, c, fmt.Sprintf("/topics/%d/replies", topicID), url.Values{"body": {"Permission revoked during upload"}}, [][]byte{testPNG}, true)
+	requireStatus(t, w, 404)
+	if upstream.uploads != 1 || len(upstream.deleted) != 1 || upstream.deleted[0] != "upload1" {
+		t.Fatalf("unattached upload was not cleaned: %+v", upstream)
+	}
+	stats, err := a.store.Stats(ctx, &User{ID: ownerID, Role: "owner"})
+	if err != nil || stats.Posts != 1 {
+		t.Fatalf("revoked reply persisted: %+v %v", stats, err)
+	}
+}
+
 func multipartPost(t *testing.T, c *testClient, path string, form url.Values, files [][]byte, csrf bool) *httptest.ResponseRecorder {
 	t.Helper()
 	var body bytes.Buffer

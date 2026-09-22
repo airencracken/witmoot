@@ -107,6 +107,19 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 				getPage(t, client, base+"/settings", status)
 			}
 			recent := getPage(t, client, base+"/recent", 200)
+			if strings.Contains(recent, "A little surprise for Sunday") != (tc.name != "") {
+				t.Fatal("private demo board has the wrong audience")
+			}
+			home := getPage(t, client, base+"/", 200)
+			if strings.Contains(home, "The planning nook") != (tc.name != "") || !strings.Contains(home, "Public browsing") {
+				t.Fatal("private demo board or site status is not shown correctly")
+			}
+			if tc.name != "" {
+				private := getPage(t, client, base+"/topics/8", 200)
+				if !strings.Contains(private, "class=\"edited\"") || strings.Contains(private, "Post reply</button>") != (tc.name != "jules") {
+					t.Fatal("demo edit marker or read-only permissions missing")
+				}
+			}
 			for _, title := range []string{"Pull up a chair", "Sunday soup and board games", "A birdhouse with a slightly wonky roof", "Good books for a rainy afternoon", "How we use this little corner"} {
 				if !strings.Contains(recent, title) {
 					t.Errorf("missing sample conversation %q", title)

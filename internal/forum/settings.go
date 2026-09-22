@@ -56,20 +56,20 @@ func (s *Store) SetMode(ctx context.Context, mode Mode) error {
 
 func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only owners can change board settings.")
+		a.fail(w, r, 403, "Only owners can change site settings.")
 		return
 	}
-	a.render(w, r, 200, Page{View: "settings", Title: "Board settings", Saved: r.URL.Query().Get("saved") == "1"})
+	a.render(w, r, 200, Page{View: "settings", Title: "Site settings", Saved: r.URL.Query().Get("saved") == "1"})
 }
 
 func (a *App) saveSettings(w http.ResponseWriter, r *http.Request) {
 	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only owners can change board settings.")
+		a.fail(w, r, 403, "Only owners can change site settings.")
 		return
 	}
 	mode := Mode(r.PostForm.Get("mode"))
 	if !mode.Valid() {
-		a.render(w, r, 422, Page{View: "settings", Title: "Board settings", Error: errMode.Error()})
+		a.render(w, r, 422, Page{View: "settings", Title: "Site settings", Error: errMode.Error()})
 		return
 	}
 	if err := a.store.SetMode(r.Context(), mode); err != nil {

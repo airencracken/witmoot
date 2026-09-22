@@ -43,15 +43,28 @@ func (s requestState) canRead() bool {
 func (s requestState) canPost() bool { return s.User != nil && s.canRead() }
 
 // All aggregate and detail reads start with this same audience filter.
-const visibleTopics = `WITH visible_topics AS (
-	SELECT * FROM topics WHERE audience = 'public' OR (? AND audience = 'members') OR ?
+const visibleTopics = `WITH reader AS (SELECT ? AS id, ? AS owner), visible_boards AS (
+	SELECT b.*, CASE WHEN r.owner OR (b.restricted = 0 AND r.id != 0) THEN 'write'
+		WHEN b.restricted = 0 THEN 'read' ELSE bm.access END AS access
+	FROM boards b CROSS JOIN reader r LEFT JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = r.id
+	WHERE b.restricted = 0 OR r.owner OR bm.access IS NOT NULL
+), visible_topics AS (
+	SELECT t.* FROM topics t JOIN visible_boards b ON b.id = t.board_id CROSS JOIN reader r
+	WHERE t.audience = 'public' OR (r.id != 0 AND t.audience = 'members') OR r.owner
 ) `
 
-func readerArgs(user *User) []any { return []any{user != nil, user != nil && user.Role == "owner"} }
+func readerArgs(user *User) []any {
+	if user == nil {
+		return []any{int64(0), false}
+	}
+	return []any{user.ID, user.Role == "owner"}
+}
 
 var (
 	errPersonal        = errors.New("this board is in Personal mode; only owners can use it")
 	errAudienceChanged = errors.New("the board's audience has changed; review who can read this conversation and submit again")
+	errReadOnly        = errors.New("you have read-only access to this board")
+	errEditConflict    = errors.New("this message has changed since you opened it; reload it before editing again")
 )
 
 func canWrite(ctx context.Context, q rowQuerier, authorID int64) (Mode, error) {
@@ -67,6 +80,36 @@ func canWrite(ctx context.Context, q rowQuerier, authorID int64) (Mode, error) {
 		return "", errPersonal
 	}
 	return mode, nil
+}
+
+func boardForWriter(ctx context.Context, q rowQuerier, boardID, authorID int64) (Board, Mode, error) {
+	mode, err := canWrite(ctx, q, authorID)
+	if err != nil {
+		return Board{}, mode, err
+	}
+	user := User{ID: authorID}
+	if err := q.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", authorID).Scan(&user.Role); err != nil {
+		return Board{}, mode, err
+	}
+	b, err := readBoard(ctx, q, boardID, &user)
+	if err == nil && b.Access != "write" {
+		err = errReadOnly
+	}
+	return b, mode, err
+}
+
+func (b Board) Audience(mode Mode) Audience {
+	if b.Restricted && mode != ModePersonal {
+		return AudienceMembers
+	}
+	return mode.Audience()
+}
+
+func (t Topic) AudienceLabel() string {
+	if t.BoardRestricted && t.Audience != AudienceOwners {
+		return "Selected board members"
+	}
+	return t.Audience.Label()
 }
 
 func (a *App) readable(next http.HandlerFunc) http.HandlerFunc {

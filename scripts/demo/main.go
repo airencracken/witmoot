@@ -59,7 +59,7 @@ func run(ctx context.Context, port int, out io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "\nOpen %s\nOwner: demo\nMembers: freya, jules\nPassword for all three: %s\n\nBrowse public conversations or sign in to post and explore the different audiences.\nThe owner can change the board mode under Settings.\nDemo data: %s\nPress Ctrl-C to stop and remove this demo. Each run starts fresh.\n\n", base, demoPassword, dataDir); err != nil {
+	if _, err := fmt.Fprintf(out, "\nOpen %s\nOwner: demo\nMembers: freya, jules\nPassword for all three: %s\n\nBrowse public conversations or sign in to post and explore the different audiences.\nThe owner can change site access under Settings and permissions under Manage boards.\nIn The planning nook: freya can post; jules has read-only access.\nDemo data: %s\nPress Ctrl-C to stop and remove this demo. Each run starts fresh.\n\n", base, demoPassword, dataDir); err != nil {
 		return err
 	}
 	return serve(ctx, listener, app)
