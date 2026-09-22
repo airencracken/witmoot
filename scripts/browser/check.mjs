@@ -5,6 +5,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkThemes } from './themes.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -31,7 +32,7 @@ async function ready() {
 }
 
 async function flow(javaScriptEnabled) {
-	const context = await browser.newContext({ javaScriptEnabled, viewport: { width: 1280, height: 900 } });
+	const context = await browser.newContext({ javaScriptEnabled, colorScheme: javaScriptEnabled ? 'dark' : 'light', viewport: { width: 1280, height: 900 } });
 	const page = await context.newPage();
 	page.on('pageerror', error => problems.push(error.message));
 	page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|Refused to/.test(message.text())) problems.push(message.text()); });
@@ -111,6 +112,9 @@ async function flow(javaScriptEnabled) {
 		if (screenshotDir) {
 			await mkdir(screenshotDir, { recursive: true });
 			await page.screenshot({ path: join(screenshotDir, 'board-desktop.png'), fullPage: true });
+			await page.getByRole('combobox', { name: 'Color theme' }).selectOption('light');
+			await page.screenshot({ path: join(screenshotDir, 'board-light.png'), fullPage: true });
+			await page.getByRole('combobox', { name: 'Color theme' }).selectOption('dark');
 		}
 		await page.setViewportSize({ width: 390, height: 844 });
 		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Mobile page overflows');
@@ -127,7 +131,7 @@ async function flow(javaScriptEnabled) {
 
 
 async function modeFlow(javaScriptEnabled) {
-	const context = await browser.newContext({ javaScriptEnabled, viewport: { width: 1280, height: 900 } });
+	const context = await browser.newContext({ javaScriptEnabled, colorScheme: javaScriptEnabled ? 'dark' : 'light', viewport: { width: 1280, height: 900 } });
 	const page = await context.newPage();
 	page.on('pageerror', error => problems.push(error.message));
 	page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|Refused to/.test(message.text())) problems.push(message.text()); });
@@ -206,6 +210,7 @@ try {
 	server.stderr.on('data', chunk => process.stderr.write(chunk));
 	await ready();
 	browser = await chromium.launch({ headless: true });
+	await checkThemes(browser, origin);
 	await flow(true);
 	await flow(false);
 	await modeFlow(true);
