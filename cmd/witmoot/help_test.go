@@ -40,13 +40,36 @@ func TestCLIHelpAndProxyConfigDoNotTouchData(t *testing.T) {
 			t.Fatalf("wrong proxy config: %s", &output)
 		}
 	}
-	for _, args := range [][]string{{"wat"}, {"help", "wat"}, {"serve", "extra"}, {"--help", "extra"}, {"create-owner"}} {
+	for _, args := range [][]string{{"wat"}, {"help", "wat"}, {"serve", "extra"}, {"--help", "extra"}, {"create-owner"}, {"create-owner", "--username", "alex", "--password-prompt", "--password-stdin"}} {
 		if err := runCommand(args, strings.NewReader(""), &bytes.Buffer{}); err == nil {
 			t.Fatalf("invalid arguments succeeded: %v", args)
 		}
 	}
 	if _, err := os.Stat(data); !os.IsNotExist(err) {
 		t.Fatalf("help/config generation touched data: %v", err)
+	}
+}
+
+func TestCreateOwnerPromptRequiresTerminalBeforeOpeningData(t *testing.T) {
+	data := filepath.Join(t.TempDir(), "not-created")
+	t.Setenv("WITMOOT_DATA_DIR", data)
+	oldStdin := os.Stdin
+	stdin, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin = stdin
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		stdin.Close()
+		writer.Close()
+	})
+	err = runCommand([]string{"create-owner", "--username", "alex", "--password-prompt"}, strings.NewReader("unused"), &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "use --password-stdin") {
+		t.Fatalf("non-terminal prompt error = %v", err)
+	}
+	if _, err := os.Stat(data); !os.IsNotExist(err) {
+		t.Fatalf("non-terminal prompt touched data: %v", err)
 	}
 }
 
@@ -101,7 +124,7 @@ func TestHelpExplainsDeployment(t *testing.T) {
 	if err := runCommand([]string{"--help"}, strings.NewReader(""), &output); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"WITMOOT_ADDR", "WITMOOT_DATA_DIR", "WITMOOT_BASE_URL", "WITMOOT_SECURE_COOKIES", "/etc/conf.d/witmoot", "logrotate", "journald", "proxy-config", "password-stdin"} {
+	for _, want := range []string{"WITMOOT_ADDR", "WITMOOT_DATA_DIR", "WITMOOT_BASE_URL", "WITMOOT_SECURE_COOKIES", "/etc/conf.d/witmoot", "logrotate", "journald", "proxy-config", "password-prompt", "password-stdin"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("help omits %s", want)
 		}

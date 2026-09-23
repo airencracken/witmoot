@@ -93,12 +93,12 @@ its license are included locally. The first build downloads Go dependencies.
 
 ```bash
 make build
-read -r -s -p 'Choose an owner password: ' witmoot_password
-printf '\n'
-printf '%s\n' "$witmoot_password" | ./bin/witmoot create-owner --username alex --password-stdin
-unset witmoot_password
+./bin/witmoot create-owner --username alex --password-prompt
 ./bin/witmoot
 ```
+
+For scripts, pass one password line on standard input with
+`./bin/witmoot create-owner --username alex --password-stdin`.
 
 Open <http://127.0.0.1:8080>, sign in, and choose **Settings** to select Personal,
 Private, or Open. New installations start in Private mode. Use **Invites** to
