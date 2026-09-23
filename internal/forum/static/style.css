@@ -155,10 +155,9 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .welcome-copy > p:not(.lede):not(.eyebrow) { max-width: 395px; font-size: 14px; }
 .welcome-copy .button { margin-top: 7px; }
 .invitation-note { font-size: 12px !important; margin-top: 20px; }
-.welcome-note { position: relative; background: light-dark(#e6ebd9, #303d2b); border: 1px solid light-dark(#d5ddc3, #4c5d40); border-radius: 3px 3px 38px 3px; padding: 49px 43px; box-shadow: 8px 10px 0 light-dark(#eae8dc, #111911); transform: rotate(1deg); }
+.welcome-note { background: light-dark(#e6ebd9, #303d2b); border: 1px solid light-dark(#d5ddc3, #4c5d40); border-radius: 3px 3px 38px 3px; padding: 49px 43px; box-shadow: 8px 10px 0 light-dark(#eae8dc, #111911); transform: rotate(1deg); }
 .welcome-note h2 { font-size: 45px; }
 .welcome-note p:not(.eyebrow) { font-size: 16px; color: light-dark(#526047, #c0cdb2); margin-bottom: 22px; }
-.note-tab { width: 80px; height: 23px; background: light-dark(#d9c793b3, #a89458b3); position: absolute; top: -12px; left: calc(50% - 40px); transform: rotate(-5deg); }
 .note-rule { height: 1px; background: light-dark(#c4cfb4, #58694a); margin: 26px 0; }
 .note-signature { font-family: Georgia, serif; font-style: italic; font-size: 21px; color: var(--rust); }
 .site-footer { border-top: 1px solid var(--line); max-width: 1176px; margin: auto; padding: 24px 0 30px; display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 11px; }
