@@ -1,12 +1,14 @@
 {{define "boards"}}
 <div class="page-heading"><div><p class="eyebrow">Rooms for your people</p><h1>Manage boards</h1><p class="lede">Make a shared space or keep a conversation among selected people.</p></div><a class="button" href="/boards/new">Create a board</a></div>
-{{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Category}} · {{if .Restricted}}Selected members{{else}}Site access rules{{end}}</p></div><a class="button secondary small" href="/boards/{{.ID}}/settings" aria-label="Manage {{.Name}}">Manage</a></article>{{end}}
+{{if .Deleted}}<p class="save-notice" role="status">The board and its conversations have been permanently deleted.</p>{{end}}
+{{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Category}} · {{if .Restricted}}Selected members{{else}}Site access rules{{end}}{{if .Archived}} · Archived{{end}}</p></div><a class="button secondary small" href="/boards/{{.ID}}/settings" aria-label="Manage {{.Name}}">Manage</a></article>{{else}}<p class="paper">No boards yet. Create a board to give your people a place to talk.</p>{{end}}
 {{end}}
 
 {{define "board-settings"}}
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><span>{{.Title}}</span></nav>
 <div class="page-heading"><div><p class="eyebrow">A place at the table</p><h1>{{.Title}}</h1><p class="lede">Choose who can see this board and who can join in.</p></div>{{if .Board.ID}}<a href="/boards/{{.Board.ID}}">View {{.Board.Name}}</a>{{end}}</div>
 {{if .Saved}}<p class="save-notice" role="status">Your board settings are saved.</p>{{end}}
+{{if .Board.Archived}}{{template "archive-notice" .}}{{end}}
 {{template "error" .}}
 <form class="paper settings-form" action="{{if .Board.ID}}/boards/{{.Board.ID}}/settings{{else}}/boards/new{{end}}" method="post" hx-disabled-elt="find button[type='submit']">
 	{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Board.Revision}}">
@@ -17,12 +19,35 @@
 		<label class="access-choice"><input type="radio" name="visibility" value="site" {{if not .Board.Restricted}}checked{{end}} required><span>Use site access rules<small>Available to everyone who can browse the site. Signed-in members can post.</small></span></label>
 		<label class="access-choice"><input type="radio" name="visibility" value="selected" {{if .Board.Restricted}}checked{{end}} required><span>Selected members only<small>A private board. People without access cannot see the board or its conversations.</small></span></label>
 	</fieldset>
-	<div class="settings-note"><p>These rules apply to existing conversations and attached images too. A conversation's own audience still applies. Owners always have full access.</p></div>
+	<div class="settings-note"><p>These rules apply to existing conversations and attached images too. A conversation's own audience still applies. Owners can manage every board. Archived boards are read only for everyone.</p></div>
 	<fieldset class="board-members"><legend>Member permissions</legend><p class="muted">These permissions apply when you choose Selected members only. New members start with no access.</p>
 		{{range .BoardMembers}}<div class="member-permission"><label for="access-{{.ID}}">{{.Username}}</label><select id="access-{{.ID}}" name="access_{{.ID}}"><option value="none" {{if eq .Access "none"}}selected{{end}}>No access</option><option value="read" {{if eq .Access "read"}}selected{{end}}>Read only</option><option value="write" {{if eq .Access "write"}}selected{{end}}>Read and post</option></select></div>{{else}}<p class="muted">No member accounts yet. Owners can use this board now; you can grant access as people join.</p>{{end}}
 	</fieldset>
 	<div class="form-footer"><a href="/boards/manage">Back to boards</a><button type="submit">{{if .Board.ID}}Save board{{else}}Create board{{end}}</button></div>
 </form>
+{{if .Board.ID}}<section class="paper board-lifecycle" aria-labelledby="board-lifecycle-heading"><h2 id="board-lifecycle-heading">Keep it for later, or say goodbye</h2>
+<p>{{if .Board.Archived}}This board is archived. Restore it to let conversations continue with the same member permissions.{{else}}Archive this board to keep its conversations readable while pausing new posts and edits. You can restore it later.{{end}}</p>
+<div class="lifecycle-actions">{{if .Board.Archived}}<a class="button secondary" href="/boards/{{.Board.ID}}/restore">Restore board</a>{{else}}<a class="button secondary" href="/boards/{{.Board.ID}}/archive">Archive board</a>{{end}}<a class="button danger" href="/boards/{{.Board.ID}}/delete">Delete board permanently</a></div>
+<p class="muted">Deletion removes the board and every conversation in it. You will be asked to confirm.</p></section>{{end}}
+{{end}}
+
+{{define "archive"}}
+{{template "crumb" .}}<div class="page-heading"><div><p class="eyebrow">Conversations worth keeping</p><h1>Archived boards</h1><p class="lede">A quieter shelf for past conversations. The same access rules apply, and everything here is read only.</p></div></div>
+{{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Description}}</p><p>{{.Topics}} conversations · {{.Posts}} messages{{if .Restricted}} · Private board{{end}}</p></div></article>{{else}}<p class="paper">No archived boards to show.</p>{{end}}
+{{end}}
+
+{{define "archive-notice"}}<p class="paper archive-notice"><strong>Archived board.</strong> You can read its conversations, but posting and editing are paused until an owner restores it.</p>{{end}}
+
+{{define "board-action"}}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><a href="/boards/{{.Board.ID}}/settings">{{.Board.Name}}</a></nav>
+<section class="paper narrow board-confirmation"><p class="eyebrow">{{.Board.Name}}</p><h1>{{.Title}}</h1>
+{{if eq .BoardAction "delete"}}<p>This permanently removes <strong>{{.Board.Name}}</strong>, including all {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}}, {{.BoardContents.Posts}} message{{if ne .BoardContents.Posts 1}}s{{end}}, and {{.BoardContents.Images}} attachment link{{if ne .BoardContents.Images 1}}s{{end}}. This cannot be undone.</p><p>Original images in imvault stay there. Archive the board instead if you want to keep its conversations.</p>
+{{else if eq .BoardAction "archive"}}<p>Move <strong>{{.Board.Name}}</strong> to the Archive. Its {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}} and {{.BoardContents.Posts}} message{{if ne .BoardContents.Posts 1}}s{{end}} stay readable by the same people. Posting and editing will stop for everyone, including owners.</p><p>You can restore the board whenever you like.</p>
+{{else}}<p>Bring <strong>{{.Board.Name}}</strong> back to the board list and Recent. Posting and editing will resume with the same member permissions.</p>{{end}}
+{{template "error" .}}
+<form method="post" action="/boards/{{.Board.ID}}/{{.BoardAction}}" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Board.Revision}}">
+{{if eq .BoardAction "delete"}}<label for="confirmation">Type the board name to confirm</label><p class="field-help" id="confirmation-help">Enter exactly: <strong>{{.Board.Name}}</strong></p><input id="confirmation" name="confirmation" required maxlength="160" autocomplete="off" spellcheck="false" aria-describedby="confirmation-help">{{end}}
+<div class="form-footer"><a href="/boards/{{.Board.ID}}/settings">Cancel</a><button type="submit" {{if eq .BoardAction "delete"}}class="danger"{{end}}>{{.Title}}</button></div></form></section>
 {{end}}
 
 {{define "edit-post"}}

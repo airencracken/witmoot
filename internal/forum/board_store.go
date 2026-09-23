@@ -46,12 +46,8 @@ func (s *Store) SaveBoard(ctx context.Context, ownerID int64, board Board, acces
 		return 0, err
 	}
 	defer tx.Rollback()
-	var role string
-	if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", ownerID).Scan(&role); err != nil {
+	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return 0, err
-	}
-	if role != "owner" {
-		return 0, errOwner
 	}
 	id, err := saveBoardDetails(ctx, tx, board)
 	if err != nil {
@@ -87,8 +83,8 @@ func replaceBoardMembers(ctx context.Context, tx *sql.Tx, id int64, access map[i
 
 func saveBoardDetails(ctx context.Context, tx *sql.Tx, board Board) (int64, error) {
 	if board.ID == 0 {
-		result, err := tx.ExecContext(ctx, `INSERT INTO boards(category, name, description, restricted, position)
-			VALUES (?, ?, ?, ?, (SELECT coalesce(max(position), 0) + 1 FROM boards))`, board.Category, board.Name, board.Description, board.Restricted)
+		result, err := tx.ExecContext(ctx, `INSERT INTO boards(id, category, name, description, restricted, position)
+			VALUES ((SELECT last_id + 1 FROM object_sequences WHERE kind = 'boards'), ?, ?, ?, ?, (SELECT coalesce(max(position), 0) + 1 FROM boards))`, board.Category, board.Name, board.Description, board.Restricted)
 		if err != nil {
 			return 0, err
 		}

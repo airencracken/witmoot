@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
+import { checkLifecycle } from './lifecycle.mjs';
 
 export async function checkBoards(browser, origin, password, javaScriptEnabled) {
 	const contexts = [];
@@ -97,6 +98,7 @@ export async function checkBoards(browser, origin, password, javaScriptEnabled) 
 		await owner.setViewportSize({ width: 390, height: 844 });
 		assert.equal(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Board access form overflows');
 		if (process.env.WITMOOT_SCREENSHOT_DIR) await owner.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, `board-access-${javaScriptEnabled ? 'dark' : 'nojs'}.png`), fullPage: true });
+		await checkLifecycle({ owner, reader, outsider, guest, origin, boardURL, topicURL, name, javaScriptEnabled });
 		assert.deepEqual(errors, []);
 		console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'No JavaScript'} board management, read-only/hidden access, edited timestamps, conflicts, and revocation`);
 	} finally {

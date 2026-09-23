@@ -59,6 +59,8 @@ members-only, and owner-only conversations. Try Search, Settings, and Invites.
 The planning nook is a private board: **freya** can post and edit her messages,
 **jules** can read, and visitors cannot see it. Sign in as **demo** and choose
 **Manage boards** to try changing those permissions.
+Visit **Archive** for Last summer, a board of past conversations. Owners can
+restore it or try the archive and deletion confirmations in its board settings.
 
 The demo listens only on localhost, uses a fresh temporary directory, and ignores
 your `WITMOOT_*` configuration. Ctrl-C stops it and removes its data; the next run
@@ -103,12 +105,25 @@ board and imvault can share a host without competing for the same port.
 Use **Manage boards** as an owner to create boards, rename them, and choose
 **Selected members only** for a private space. Grant each member **No access**,
 **Read only**, or **Read and post**. New members get no access to private boards;
-owners always have full access. Hidden boards and their conversations stay out
+owners can manage every board. Hidden boards and their conversations stay out
 of the home page, recent activity, search, and counts, and direct links to their
 conversations and attached images require access too. These restrictions still
 apply when the site is Open. Existing shared boards keep their current access.
 Witmoot's image URLs follow board access; linking a public image from imvault
 does not change the original image's visibility there.
+
+Board settings also offer **Archive board**, **Restore board**, and **Delete
+board permanently**. Archiving moves a board off the home page and Recent into
+the **Archive**. Its conversations and images remain readable by the same
+people and searchable, with an Archived label. Nobody can post or edit until
+an owner restores it; member permissions are preserved. Site totals include
+archived conversations you can access.
+
+Permanent deletion has a separate confirmation page showing how many
+conversations, messages, and attachment links will be removed. You must type
+the board's exact name to proceed. This cannot be undone. Original images in
+imvault remain there, including images shared in other conversations. Choose
+Archive when you want to keep the memories.
 
 Authors can **Edit** their own messages while they have posting access. Changed
 messages show an edited timestamp and keep their attached images. Editing does

@@ -33,6 +33,7 @@ type Board struct {
 	LastTitle, LastAuthor       string
 	LastTopicID, LastAt         int64
 	Restricted                  bool
+	Archived                    bool
 	Access                      string
 	Revision                    int64
 }
@@ -44,6 +45,7 @@ type Topic struct {
 	Replies                  int
 	Audience                 Audience
 	BoardRestricted          bool
+	BoardArchived            bool
 	BoardAccess              string
 }
 
@@ -95,7 +97,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -116,7 +118,7 @@ func (s *Store) migrate() error {
 }
 
 func (s *Store) Boards(ctx context.Context, reader *User) ([]Board, error) {
-	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT b.id, b.category, b.name, b.description, b.restricted, b.access,
+	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT b.id, b.category, b.name, b.description, b.restricted, b.access, b.archived,
 		(SELECT count(*) FROM visible_topics WHERE board_id = b.id),
 		(SELECT count(*) FROM posts p JOIN visible_topics t ON t.id = p.topic_id WHERE t.board_id = b.id),
 		coalesce(t.id, 0), coalesce(t.title, ''), coalesce(t.updated_at, 0),
@@ -130,7 +132,7 @@ func (s *Store) Boards(ctx context.Context, reader *User) ([]Board, error) {
 	var boards []Board
 	for rows.Next() {
 		var b Board
-		if err := rows.Scan(&b.ID, &b.Category, &b.Name, &b.Description, &b.Restricted, &b.Access, &b.Topics, &b.Posts, &b.LastTopicID, &b.LastTitle, &b.LastAt, &b.LastAuthor); err != nil {
+		if err := rows.Scan(&b.ID, &b.Category, &b.Name, &b.Description, &b.Restricted, &b.Access, &b.Archived, &b.Topics, &b.Posts, &b.LastTopicID, &b.LastTitle, &b.LastAt, &b.LastAuthor); err != nil {
 			return nil, err
 		}
 		boards = append(boards, b)
@@ -144,7 +146,7 @@ func (s *Store) Board(ctx context.Context, id int64, reader *User) (Board, error
 
 func readBoard(ctx context.Context, q rowQuerier, id int64, reader *User) (Board, error) {
 	var b Board
-	err := q.QueryRowContext(ctx, visibleTopics+"SELECT id, category, name, description, restricted, access, revision FROM visible_boards WHERE id = ?", append(readerArgs(reader), id)...).Scan(&b.ID, &b.Category, &b.Name, &b.Description, &b.Restricted, &b.Access, &b.Revision)
+	err := q.QueryRowContext(ctx, visibleTopics+"SELECT id, category, name, description, restricted, access, revision, archived FROM visible_boards WHERE id = ?", append(readerArgs(reader), id)...).Scan(&b.ID, &b.Category, &b.Name, &b.Description, &b.Restricted, &b.Access, &b.Revision, &b.Archived)
 	return b, err
 }
 
@@ -155,7 +157,7 @@ func (s *Store) Stats(ctx context.Context, reader *User) (Stats, error) {
 }
 
 const topicSelect = visibleTopics + `SELECT t.id, t.board_id, t.title, u.username, b.name, t.created_at, t.updated_at,
-	(SELECT count(*) - 1 FROM posts WHERE topic_id = t.id), t.audience, b.restricted, b.access FROM visible_topics t JOIN users u ON u.id = t.author_id JOIN visible_boards b ON b.id = t.board_id `
+	(SELECT count(*) - 1 FROM posts WHERE topic_id = t.id), t.audience, b.restricted, b.access, b.archived FROM visible_topics t JOIN users u ON u.id = t.author_id JOIN visible_boards b ON b.id = t.board_id `
 
 func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, offset int, reader *User) ([]Topic, bool, error) {
 	where := "WHERE 1=1"
@@ -163,6 +165,8 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 	if boardID != 0 {
 		where += " AND t.board_id = ?"
 		args = append(args, boardID)
+	} else if query == "" {
+		where += " AND b.archived = 0"
 	}
 	if query != "" {
 		pattern := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(query) + "%"
@@ -178,7 +182,7 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 	var topics []Topic
 	for rows.Next() {
 		var t Topic
-		if err := rows.Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies, &t.Audience, &t.BoardRestricted, &t.BoardAccess); err != nil {
+		if err := rows.Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies, &t.Audience, &t.BoardRestricted, &t.BoardAccess, &t.BoardArchived); err != nil {
 			return nil, false, err
 		}
 		topics = append(topics, t)
@@ -192,7 +196,7 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 
 func (s *Store) Topic(ctx context.Context, id int64, reader *User) (Topic, error) {
 	var t Topic
-	err := s.db.QueryRowContext(ctx, topicSelect+" WHERE t.id = ?", append(readerArgs(reader), id)...).Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies, &t.Audience, &t.BoardRestricted, &t.BoardAccess)
+	err := s.db.QueryRowContext(ctx, topicSelect+" WHERE t.id = ?", append(readerArgs(reader), id)...).Scan(&t.ID, &t.BoardID, &t.Title, &t.Author, &t.BoardName, &t.CreatedAt, &t.UpdatedAt, &t.Replies, &t.Audience, &t.BoardRestricted, &t.BoardAccess, &t.BoardArchived)
 	return t, err
 }
 
@@ -232,7 +236,7 @@ func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title,
 		return 0, errAudienceChanged
 	}
 	now := time.Now().Unix()
-	result, err := tx.ExecContext(ctx, "INSERT INTO topics(board_id, author_id, title, created_at, updated_at, audience) VALUES (?, ?, ?, ?, ?, ?)", boardID, authorID, title, now, now, audience)
+	result, err := tx.ExecContext(ctx, "INSERT INTO topics(id, board_id, author_id, title, created_at, updated_at, audience) VALUES ((SELECT last_id + 1 FROM object_sequences WHERE kind = 'topics'), ?, ?, ?, ?, ?, ?)", boardID, authorID, title, now, now, audience)
 	if err != nil {
 		return 0, err
 	}
@@ -240,7 +244,7 @@ func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title,
 	if err != nil {
 		return 0, err
 	}
-	post, err := tx.ExecContext(ctx, "INSERT INTO posts(topic_id, author_id, body, created_at) VALUES (?, ?, ?, ?)", id, authorID, body, now)
+	post, err := tx.ExecContext(ctx, "INSERT INTO posts(id, topic_id, author_id, body, created_at) VALUES ((SELECT last_id + 1 FROM object_sequences WHERE kind = 'posts'), ?, ?, ?, ?)", id, authorID, body, now)
 	if err != nil {
 		return 0, err
 	}
@@ -278,7 +282,7 @@ func (s *Store) Reply(ctx context.Context, topicID, authorID int64, body string,
 		return 0, 0, err
 	}
 	now := time.Now().Unix()
-	result, err := tx.ExecContext(ctx, "INSERT INTO posts(topic_id, author_id, body, created_at) VALUES (?, ?, ?, ?)", topicID, authorID, body, now)
+	result, err := tx.ExecContext(ctx, "INSERT INTO posts(id, topic_id, author_id, body, created_at) VALUES ((SELECT last_id + 1 FROM object_sequences WHERE kind = 'posts'), ?, ?, ?, ?)", topicID, authorID, body, now)
 	if err != nil {
 		return 0, 0, err
 	}

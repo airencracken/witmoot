@@ -111,6 +111,17 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 				t.Fatal("private demo board has the wrong audience")
 			}
 			home := getPage(t, client, base+"/", 200)
+			if strings.Contains(home, "Last summer") || strings.Contains(recent, "jam exchange") {
+				t.Fatal("archived demo board appears in active listings")
+			}
+			archive := getPage(t, client, base+"/archive", 200)
+			if !strings.Contains(archive, "Last summer") {
+				t.Fatal("missing demo archive")
+			}
+			archived := getPage(t, client, base+"/topics/9", 200)
+			if !strings.Contains(archived, "Archived board.") || strings.Contains(archived, "Post reply</button>") || strings.Contains(archived, "Edit message") {
+				t.Fatal("archived demo conversation is not read only")
+			}
 			if strings.Contains(home, "The planning nook") != (tc.name != "") || !strings.Contains(home, "Public browsing") {
 				t.Fatal("private demo board or site status is not shown correctly")
 			}

@@ -29,6 +29,12 @@ button:disabled { cursor: wait; opacity: .65; }
 .button.secondary { background: transparent; color: var(--green); border-color: light-dark(#aebaaa, #61745b); }
 .button.secondary:hover { background: var(--soft); }
 .button.small { padding: 8px 16px; }
+.danger, .button.danger { background: transparent; color: var(--rust); border-color: var(--rust); }
+.danger:hover, .button.danger:hover { background: var(--soft); color: var(--rust); }
+.board-lifecycle { margin-top: 30px; }
+.lifecycle-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+.board-confirmation, .board-lifecycle { overflow-wrap: anywhere; }
+.paper.archive-notice { border-left: 4px solid var(--rust); }
 :focus-visible { outline: 3px solid light-dark(#a76a35, #d6ab75); outline-offset: 4px; }
 .skip-link { position: absolute; left: 12px; top: -80px; padding: 10px; background: var(--paper); z-index: 5; }
 .skip-link:focus { top: 8px; }

@@ -61,7 +61,21 @@ func seed(ctx context.Context, store *forum.Store) error {
 	if err := store.SetMode(ctx, forum.ModeOpen); err != nil {
 		return err
 	}
-	return seedPrivateBoard(ctx, store, users)
+	if err := seedPrivateBoard(ctx, store, users); err != nil {
+		return err
+	}
+	return seedArchivedBoard(ctx, store, users)
+}
+
+func seedArchivedBoard(ctx context.Context, store *forum.Store, users map[string]int64) error {
+	id, err := store.SaveBoard(ctx, users["demo"], forum.Board{Name: "Last summer", Category: "The keepsake shelf", Description: "Old plans, good memories, and a suspicious amount of leftover jam."}, nil)
+	if err != nil {
+		return err
+	}
+	if _, err := store.CreateTopic(ctx, id, users["demo"], "The picnic that became a jam exchange", "We came home with seven jars and no spoons. A very successful afternoon.\n\nThis board is archived: everyone with access can read along, but posting and editing are paused. Owners can restore it under Manage boards.", forum.AudiencePublic); err != nil {
+		return err
+	}
+	return store.ChangeBoard(ctx, users["demo"], id, 0, "archive", "")
 }
 
 func seedPrivateBoard(ctx context.Context, store *forum.Store, users map[string]int64) error {

@@ -24,7 +24,7 @@ func (a *App) manageBoards(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.render(w, r, 200, Page{View: "boards", Title: "Manage boards", Boards: boards})
+	a.render(w, r, 200, Page{View: "boards", Title: "Manage boards", Boards: boards, Deleted: r.URL.Query().Get("deleted") == "1"})
 }
 
 func (a *App) boardSettings(w http.ResponseWriter, r *http.Request) {
@@ -61,10 +61,12 @@ func (a *App) showBoardSettings(w http.ResponseWriter, r *http.Request, status i
 func (a *App) saveBoardSettings(w http.ResponseWriter, r *http.Request) {
 	b := Board{ID: pathID(r), Name: strings.TrimSpace(r.PostForm.Get("name")), Category: strings.TrimSpace(r.PostForm.Get("category")), Description: strings.TrimSpace(r.PostForm.Get("description")), Restricted: r.PostForm.Get("visibility") == "selected"}
 	if r.PathValue("id") != "" {
-		if _, err := a.store.Board(r.Context(), b.ID, state(r).User); err != nil {
+		current, err := a.store.Board(r.Context(), b.ID, state(r).User)
+		if err != nil {
 			a.storeError(w, r, err)
 			return
 		}
+		b.Archived = current.Archived
 	}
 	revision, err := strconv.ParseInt(r.PostForm.Get("revision"), 10, 64)
 	if err != nil || revision < 0 {
