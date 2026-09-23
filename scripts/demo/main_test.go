@@ -105,6 +105,16 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 					status = http.StatusOK
 				}
 				getPage(t, client, base+"/settings", status)
+				groups := getPage(t, client, base+"/groups", status)
+				if tc.settings {
+					if !strings.Contains(groups, "Sunday regulars") {
+						t.Fatal("missing demo group")
+					}
+					report := getPage(t, client, base+"/groups/1", 200)
+					if !strings.Contains(report, "Individual override") || !strings.Contains(report, "Effective board access") {
+						t.Fatal("missing demo group access report")
+					}
+				}
 			}
 			recent := getPage(t, client, base+"/recent", 200)
 			if strings.Contains(recent, "A little surprise for Sunday") != (tc.name != "") {

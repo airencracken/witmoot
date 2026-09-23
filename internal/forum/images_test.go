@@ -109,7 +109,7 @@ func TestPrivateBoardImageAccessAndRevocation(t *testing.T) {
 	ctx := context.Background()
 	reader := &User{ID: testMember(t, a.store, "reader"), Role: "member"}
 	outsider := &User{ID: testMember(t, a.store, "outside"), Role: "member"}
-	boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private photos", Category: "Friends", Restricted: true}, map[int64]string{reader.ID: "read"})
+	boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private photos", Category: "Friends", Restricted: true}, map[int64]string{reader.ID: "read"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestPrivateBoardImageAccessAndRevocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.store.SaveBoard(ctx, ownerID, b, nil); err != nil {
+	if _, err := a.store.SaveBoard(ctx, ownerID, b, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	before := upstream.requests
@@ -150,7 +150,7 @@ func TestBoardRevocationDuringUploadRollsBackReplyAndCleansImage(t *testing.T) {
 	writer := &User{ID: testMember(t, a.store, "writer"), Role: "member"}
 	c := sessionClient(t, a, writer)
 	requireStatus(t, c.post("/account/imvault", url.Values{"api_key": {"test-key"}}), 303)
-	boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private uploads", Category: "Friends", Restricted: true}, map[int64]string{writer.ID: "write"})
+	boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private uploads", Category: "Friends", Restricted: true}, map[int64]string{writer.ID: "write"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestBoardRevocationDuringUploadRollsBackReplyAndCleansImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	upstream.beforeUpload = func() {
-		if _, err := a.store.SaveBoard(ctx, ownerID, board, nil); err != nil {
+		if _, err := a.store.SaveBoard(ctx, ownerID, board, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -175,6 +175,60 @@ func TestBoardRevocationDuringUploadRollsBackReplyAndCleansImage(t *testing.T) {
 	stats, err := a.store.Stats(ctx, &User{ID: ownerID, Role: "owner"})
 	if err != nil || stats.Posts != 1 {
 		t.Fatalf("revoked reply persisted: %+v %v", stats, err)
+	}
+}
+
+func TestGroupRevocationDuringUploadRollsBackAndProtectsImages(t *testing.T) {
+	for _, compose := range []string{"topic", "reply"} {
+		t.Run(compose, func(t *testing.T) {
+			a, _, ownerID, upstream := imageTestApp(t)
+			ctx := context.Background()
+			writer := &User{ID: testMember(t, a.store, "writer"), Role: "member"}
+			reader := &User{ID: testMember(t, a.store, "reader"), Role: "member"}
+			c := sessionClient(t, a, writer)
+			requireStatus(t, c.post("/account/imvault", url.Values{"api_key": {"test-key"}}), 303)
+			groupID, err := a.store.SaveGroup(ctx, ownerID, Group{Name: "Photo club"}, []int64{writer.ID, reader.ID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			boardID, err := a.store.SaveBoard(ctx, ownerID, Board{Name: "Private photos", Category: "Friends", Restricted: true}, nil, map[int64]string{groupID: "write"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			topicID, err := a.store.CreateTopic(ctx, boardID, ownerID, "Family photos", "Keep the original", AudienceMembers, Attachment{Server: a.vault.Base, RemoteID: "own", CredentialUserID: sql.NullInt64{Int64: ownerID, Valid: true}, Name: "Family photo.png", Rendition: "thumb"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			requireStatus(t, c.request("GET", "/images/1", nil, nil), 200)
+			g, err := a.store.Group(ctx, groupID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			upstream.beforeUpload = func() {
+				if _, err := a.store.SaveGroup(ctx, ownerID, g, []int64{reader.ID}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			path := fmt.Sprintf("/boards/%d/new", boardID)
+			if compose == "reply" {
+				path = fmt.Sprintf("/topics/%d/replies", topicID)
+			}
+			requireStatus(t, multipartPost(t, c, path, imageForm(), [][]byte{testPNG}, true), 404)
+			if upstream.uploads != 1 || len(upstream.deleted) != 1 || upstream.deleted[0] != "upload1" {
+				t.Fatalf("unfinished upload was not cleaned: %+v", upstream)
+			}
+			before := upstream.requests
+			requireStatus(t, c.request("GET", "/images/1", nil, nil), 404)
+			if upstream.requests != before {
+				t.Fatal("revoked group member reached imvault")
+			}
+			allowed := sessionClient(t, a, reader)
+			requireStatus(t, allowed.request("GET", "/images/1", nil, nil), 200)
+			stats, err := a.store.Stats(ctx, reader)
+			if err != nil || stats.Topics != 1 || stats.Posts != 1 {
+				t.Fatalf("stale group permission left content: %+v %v", stats, err)
+			}
+		})
 	}
 }
 

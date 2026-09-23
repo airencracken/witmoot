@@ -46,16 +46,24 @@ func (a *App) showBoardSettings(w http.ResponseWriter, r *http.Request, status i
 		a.serverError(w, r, err)
 		return
 	}
+	groups, err := a.store.BoardGroups(r.Context(), b.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	if r.Method == http.MethodPost {
 		for i := range members {
 			members[i].Access = r.PostForm.Get(fmt.Sprintf("access_%d", members[i].ID))
+		}
+		for i := range groups {
+			groups[i].Access = r.PostForm.Get(fmt.Sprintf("group_%d", groups[i].ID))
 		}
 	}
 	title := "Board settings"
 	if b.ID == 0 {
 		title = "Create a board"
 	}
-	a.render(w, r, status, Page{View: "board-settings", Title: title, Board: b, BoardMembers: members, Error: message, Saved: r.URL.Query().Get("saved") == "1"})
+	a.render(w, r, status, Page{View: "board-settings", Title: title, Board: b, BoardMembers: members, BoardGroups: groups, Error: message, Saved: r.URL.Query().Get("saved") == "1"})
 }
 
 func (a *App) saveBoardSettings(w http.ResponseWriter, r *http.Request) {
@@ -78,12 +86,12 @@ func (a *App) saveBoardSettings(w http.ResponseWriter, r *http.Request) {
 		a.showBoardSettings(w, r, 422, b, "Choose who can access this board.")
 		return
 	}
-	access, err := boardAccessForm(r)
+	access, groups, err := boardAccessForm(r)
 	if err != nil {
 		a.showBoardSettings(w, r, 422, b, err.Error())
 		return
 	}
-	id, err := a.store.SaveBoard(r.Context(), state(r).User.ID, b, access)
+	id, err := a.store.SaveBoard(r.Context(), state(r).User.ID, b, access, groups)
 	if err != nil {
 		if !errors.Is(err, errBoardConflict) && !errors.Is(err, errBoardAccess) && !errors.Is(err, errBoardDetails) {
 			a.storeError(w, r, err)
@@ -99,18 +107,27 @@ func (a *App) saveBoardSettings(w http.ResponseWriter, r *http.Request) {
 	a.redirect(w, r, fmt.Sprintf("/boards/%d/settings?saved=1", id))
 }
 
-func boardAccessForm(r *http.Request) (map[int64]string, error) {
+func boardAccessForm(r *http.Request) (map[int64]string, map[int64]string, error) {
+	members, err := permissionForm(r, "access_", true)
+	if err != nil {
+		return nil, nil, err
+	}
+	groups, err := permissionForm(r, "group_", false)
+	return members, groups, err
+}
+
+func permissionForm(r *http.Request, prefix string, inherit bool) (map[int64]string, error) {
 	access := make(map[int64]string)
 	for key, values := range r.PostForm {
-		if !strings.HasPrefix(key, "access_") {
+		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
-		id, err := strconv.ParseInt(strings.TrimPrefix(key, "access_"), 10, 64)
+		id, err := strconv.ParseInt(strings.TrimPrefix(key, prefix), 10, 64)
 		if err != nil || id <= 0 || len(values) != 1 {
 			return nil, errBoardAccess
 		}
 		level := values[0]
-		if level != "none" && level != "read" && level != "write" {
+		if !validAccess(level, inherit) {
 			return nil, errBoardAccess
 		}
 		access[id] = level

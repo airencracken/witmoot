@@ -59,6 +59,9 @@ members-only, and owner-only conversations. Try Search, Settings, and Invites.
 The planning nook is a private board: **freya** can post and edit her messages,
 **jules** can read, and visitors cannot see it. Sign in as **demo** and choose
 **Manage boards** to try changing those permissions.
+The **Sunday regulars** group grants posting access to both members, with an
+individual Read only override for jules. **Manage groups** shows that override
+alongside each person's effective board access.
 Visit **Archive** for Last summer, a board of past conversations. Owners can
 restore it or try the archive and deletion confirmations in its board settings.
 
@@ -103,9 +106,24 @@ board and imvault can share a host without competing for the same port.
 ## Your place, your house rules
 
 Use **Manage boards** as an owner to create boards, rename them, and choose
-**Selected members only** for a private space. Grant each member **No access**,
-**Read only**, or **Read and post**. New members get no access to private boards;
-owners can manage every board. Hidden boards and their conversations stay out
+**Selected members only** for a private space. **Manage groups** lets owners
+create named groups, edit their memberships, and rename or delete them. In board
+settings, give a group **Read only** or **Read and post** access. Membership
+changes take effect immediately across its boards, conversations, and images.
+
+Individual permissions override every group grant: **No access** hides the board,
+**Read only** prevents posting, and **Read and post** allows it. **Use groups**
+inherits group grants; if groups overlap, Read and post wins. Without an individual
+or group grant, a private board stays hidden. Existing individual grants become
+overrides when upgrading; new members start with Use groups and no memberships.
+
+Each group's management page shows its board grants, highlights individual
+overrides, and lists effective access for each member. This includes site access
+rules and archive status; each conversation's audience still applies. Deleting a
+group requires its exact name as confirmation and removes only its memberships
+and grants. Accounts, conversations, other groups, and individual overrides remain.
+
+Owners can manage every board. Hidden boards and their conversations stay out
 of the home page, recent activity, search, and counts, and direct links to their
 conversations and attached images require access too. These restrictions still
 apply when the site is Open. Existing shared boards keep their current access.
@@ -176,8 +194,9 @@ Open requires an account to post; it does not reproduce imvault's anonymous uplo
 - Transactional schema initialization, topic creation, replies, and invitation
   redemption. Restarting keeps your conversations and sessions.
 
-One installation is one board. There are no separate groups or private messages
-inside it. Owner-only conversations are shared among all owner accounts.
+One installation is one community, with shared and private boards and reusable
+user groups. Private messages are not implemented. Owner-only conversations are
+shared among all owner accounts.
 
 ## Make it yours
 
