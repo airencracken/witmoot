@@ -20,6 +20,10 @@ for arch in amd64 arm64; do
 	test -s "$work/$arch/THIRD_PARTY_NOTICES.txt" || fail 'Dependency notices are missing.'
 	test -s "$work/$arch/contrib/openrc/witmoot" || fail 'OpenRC example is missing.'
 	test -s "$work/$arch/docs/releases.md" || fail 'Archive installation guide is missing.'
+	test -s "$work/$arch/docs/reverse-proxies.md" || fail 'Archive proxy guide is missing.'
+	for proxy in caddy/Caddyfile nginx/witmoot.conf apache/witmoot.conf; do
+		test -s "$work/$arch/contrib/$proxy" || fail "Archive proxy example is missing: $proxy"
+	done
 	readelf -l "$work/$arch/witmoot" > "$work/elf" || exit 1
 	if grep -q INTERP "$work/elf"; then fail 'Release binary needs a dynamic loader.'; fi
 	set -- dist/witmoot_*_"$arch".deb
@@ -33,6 +37,9 @@ for arch in amd64 arm64; do
 		sh -n "$work/control-$arch/$script" || exit 1
 	done
 	dpkg-deb -x "$1" "$work/deb-$arch" || exit 1
+	for proxy in caddy/Caddyfile nginx/witmoot.conf apache/witmoot.conf; do
+		cmp "$work/$arch/contrib/$proxy" "$work/deb-$arch/usr/share/doc/witmoot/contrib/$proxy" || fail "Debian proxy example is missing or differs: $proxy"
+	done
 	cmp "$work/$arch/witmoot" "$work/deb-$arch/usr/bin/witmoot" || fail 'Archive and Debian binaries differ.'
 done
 set -- dist/witmoot_*_source.tar.gz

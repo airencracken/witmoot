@@ -112,6 +112,10 @@ Portage's configuration-update tools when it offers changes to `/etc` files.
 
 ## Caddy and imvault
 
+**Caddy is the recommended reverse proxy.** nginx and Apache 2.4 are also
+supported; see [HTTPS reverse proxies](reverse-proxies.md) for their complete
+examples, certificate setup, upload limits, and validation commands.
+
 Point your board's DNS hostname at the host and add a separate Caddy site:
 
 ```caddyfile
