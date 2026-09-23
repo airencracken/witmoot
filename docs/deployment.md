@@ -59,21 +59,19 @@ Witmoot handles SIGTERM and has ten seconds to finish active requests.
 
 The CLI reads environment variables; it does not read the service's config
 file. Set the **same data directory as the service** and run it as the service
-account so the board can read and update its files. In a root Bash shell:
+account so the board can read and update its files. The hidden prompt asks for
+the password twice and needs a terminal:
 
 ```bash
-read -r -s -p 'Choose an owner password: ' witmoot_password
-printf '\n'
-printf '%s\n' "$witmoot_password" | runuser -u witmoot -- \
-	env WITMOOT_DATA_DIR=/var/lib/witmoot \
-	/usr/local/bin/witmoot create-owner --username alex --password-stdin
-unset witmoot_password
+runuser -u witmoot -- env WITMOOT_DATA_DIR=/var/lib/witmoot \
+	/usr/local/bin/witmoot create-owner --username alex --password-prompt
 ```
 
 For the Gentoo package or `PREFIX=/usr`, use `/usr/bin/witmoot`. If you changed
 the service data directory or account, change those here too. Passwords need
 at least 12 characters and at most 72 bytes. New boards start in Private mode;
-public registration never provisions an owner.
+public registration never provisions an owner. For scripts, pass one password
+line on stdin with `--password-stdin`.
 
 ## Gentoo ebuild
 
@@ -178,11 +176,8 @@ you want images.
 
 ```bash
 docker compose build
-read -r -s -p 'Choose an owner password: ' witmoot_password
-printf '\n'
-printf '%s\n' "$witmoot_password" | docker compose run --rm -T --no-deps witmoot \
-	create-owner --username alex --password-stdin
-unset witmoot_password
+docker compose run --rm --no-deps witmoot \
+	create-owner --username alex --password-prompt
 docker compose up -d
 docker compose logs -f witmoot
 ```
