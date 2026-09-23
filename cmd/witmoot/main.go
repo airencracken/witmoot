@@ -3,15 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -26,6 +22,10 @@ func main() {
 }
 
 func run() error {
+	return runCommand(os.Args[1:], os.Stdin, os.Stdout)
+}
+
+func runServer() error {
 	dataDir := env("WITMOOT_DATA_DIR", "./data")
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return err
@@ -35,37 +35,6 @@ func run() error {
 		return err
 	}
 	defer store.Close()
-	if len(os.Args) > 1 {
-		if os.Args[1] != "create-owner" {
-			return errors.New("usage: witmoot [create-owner --username NAME --password-stdin]")
-		}
-		flags := flag.NewFlagSet("create-owner", flag.ContinueOnError)
-		username := flags.String("username", "", "owner username")
-		stdin := flags.Bool("password-stdin", false, "read password from standard input")
-		if err := flags.Parse(os.Args[2:]); err != nil {
-			return err
-		}
-		if !*stdin || flags.NArg() != 0 {
-			return errors.New("use create-owner --username NAME --password-stdin")
-		}
-		password, err := io.ReadAll(io.LimitReader(os.Stdin, 1024))
-		if err != nil {
-			return err
-		}
-		value := strings.TrimSuffix(strings.TrimSuffix(string(password), "\n"), "\r")
-		if message := forum.ValidateCredentials(*username, value); message != "" {
-			return errors.New(message)
-		}
-		hash, err := forum.HashPassword(value)
-		if err != nil {
-			return err
-		}
-		if err := store.CreateOwner(context.Background(), *username, hash); err != nil {
-			return err
-		}
-		fmt.Println("Owner created. Start Witmoot, sign in, and invite your people.")
-		return nil
-	}
 	secure := env("WITMOOT_SECURE_COOKIES", "false")
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")

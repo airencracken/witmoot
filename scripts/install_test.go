@@ -32,6 +32,11 @@ func TestInstallServicesPreservesConfiguration(t *testing.T) {
 			if err != nil || !strings.Contains(string(unit), `ExecStart="`+prefix+`/bin/witmoot"`) || strings.Contains(string(unit), dest) {
 				t.Fatalf("systemd binary path: %s (%v)", unit, err)
 			}
+			for _, setting := range []string{"StandardOutput=journal\n", "StandardError=journal\n", "SyslogIdentifier=witmoot\n"} {
+				if !strings.Contains(string(unit), setting) {
+					t.Errorf("installed service omits %s", setting)
+				}
+			}
 			configs := map[string]os.FileMode{
 				"etc/conf.d/witmoot":      0600,
 				"etc/witmoot/witmoot.env": 0600,
