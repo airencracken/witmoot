@@ -76,6 +76,18 @@ For a prebuilt Linux binary or Debian package, head to
 [GitHub Releases](https://github.com/airencracken/witmoot/releases) and the
 [binary installation guide](docs/releases.md).
 
+The binary includes deployment help and HTTPS proxy config helpers:
+
+```sh
+witmoot --help
+witmoot help create-owner
+witmoot proxy-config caddy --domain board.example.org > witmoot.Caddyfile
+```
+
+Use `nginx` or `apache` in place of `caddy` for those servers. The
+[proxy guide](docs/reverse-proxies.md#generate-a-site-configuration) covers
+custom ports, certificates, and installation.
+
 Requires Go 1.26 or later. Dependencies are pinned in `go.mod`; HTMX 2.0.10 and
 its license are included locally. The first build downloads Go dependencies.
 

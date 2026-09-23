@@ -6,6 +6,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=witmoot
 User=witmoot
 Group=witmoot
 UMask=0077

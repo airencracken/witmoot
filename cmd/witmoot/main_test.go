@@ -2,9 +2,24 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestHelpDoesNotCreateDatabase(t *testing.T) {
+	args := os.Args
+	os.Args = []string{"witmoot", "--help"}
+	t.Cleanup(func() { os.Args = args })
+	data := filepath.Join(t.TempDir(), "not-created")
+	t.Setenv("WITMOOT_DATA_DIR", data)
+	if err := run(); err != nil {
+		t.Fatalf("help failed: %v", err)
+	}
+	if _, err := os.Stat(data); !os.IsNotExist(err) {
+		t.Fatalf("help touched the data directory: %v", err)
+	}
+}
 
 func TestStartupRejectsInvalidDeploymentConfiguration(t *testing.T) {
 	args := os.Args
