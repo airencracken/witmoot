@@ -35,6 +35,16 @@ button:disabled { cursor: wait; opacity: .65; }
 .lifecycle-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
 .board-confirmation, .board-lifecycle { overflow-wrap: anywhere; }
 .paper.archive-notice { border-left: 4px solid var(--rust); }
+.settings-form .group-members { margin-top: 28px; }
+.group-member { display: flex; align-items: center; gap: 12px; padding: 10px 0; margin: 0; }
+.group-member input { width: 18px; height: 18px; margin: 0; accent-color: var(--green); }
+.group-report { margin-top: 36px; }
+.group-board { margin-bottom: 18px; }
+.access-report { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; overflow-wrap: anywhere; }
+.access-report caption { text-align: left; margin-bottom: 12px; color: var(--muted); }
+.access-report th, .access-report td { text-align: left; vertical-align: top; padding: 12px 8px; border-top: 1px solid var(--line); }
+.permission-override { background: var(--soft); }
+.access-report small, .member-permission small { display: block; color: var(--muted); font-weight: 400; }
 :focus-visible { outline: 3px solid light-dark(#a76a35, #d6ab75); outline-offset: 4px; }
 .skip-link { position: absolute; left: 12px; top: -80px; padding: 10px; background: var(--paper); z-index: 5; }
 .skip-link:focus { top: 8px; }

@@ -87,7 +87,7 @@ func TestArchivePreservesAccessAndBlocksWrites(t *testing.T) {
 			t.Fatalf("archive allowed edit: %v", err)
 		}
 	}
-	if _, err := s.SaveBoard(ctx, f.owner.ID, b, nil); !errors.Is(err, errBoardConflict) {
+	if _, err := s.SaveBoard(ctx, f.owner.ID, b, nil, nil); !errors.Is(err, errBoardConflict) {
 		t.Fatalf("stale settings survived archiving: %v", err)
 	}
 	if err := s.ChangeBoard(ctx, f.owner.ID, b.ID, 1, "restore", ""); err != nil {
@@ -159,7 +159,7 @@ func TestBoardActionsRequireOwnerConfirmationAndFreshRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 	b.Name = "New name & friends"
-	if _, err := s.SaveBoard(ctx, f.owner.ID, b, nil); err != nil {
+	if _, err := s.SaveBoard(ctx, f.owner.ID, b, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	form.Set("revision", "2")
@@ -272,7 +272,7 @@ func TestLifecycleMigrationKeepsDataAndRetiresDeletedURLs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	boardID, err := s.SaveBoard(ctx, 1, Board{Name: "Next summer", Category: "Plans"}, nil)
+	boardID, err := s.SaveBoard(ctx, 1, Board{Name: "Next summer", Category: "Plans"}, nil, nil)
 	if err != nil || boardID <= 50 {
 		t.Fatalf("reused board URL: %d %v", boardID, err)
 	}

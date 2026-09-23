@@ -37,7 +37,7 @@ func privateBoardFixture(t *testing.T) accessFixture {
 	f.writer = &User{ID: testMember(t, s, "writer"), Role: "member"}
 	f.reader = &User{ID: testMember(t, s, "reader"), Role: "member"}
 	f.outsider = &User{ID: testMember(t, s, "outsider"), Role: "member"}
-	f.boardID, err = s.SaveBoard(ctx, owner.ID, Board{Name: "Hidden planning room", Category: "Private corners", Description: "A secret description", Restricted: true}, map[int64]string{f.writer.ID: "write", f.reader.ID: "read"})
+	f.boardID, err = s.SaveBoard(ctx, owner.ID, Board{Name: "Hidden planning room", Category: "Private corners", Description: "A secret description", Restricted: true}, map[int64]string{f.writer.ID: "write", f.reader.ID: "read"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestRevokedBoardAccessBlocksStaleFormsAndImages(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, level := range []string{"read", "none"} {
-		if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: level}); err != nil {
+		if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: level}, nil); err != nil {
 			t.Fatal(err)
 		}
 		b.Revision++
@@ -188,13 +188,13 @@ func TestBoardSettingsAreOwnerOnlyAtomicAndConflictChecked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.app.store.SaveBoard(ctx, f.writer.ID, b, nil); !errors.Is(err, errOwner) {
+	if _, err := f.app.store.SaveBoard(ctx, f.writer.ID, b, nil, nil); !errors.Is(err, errOwner) {
 		t.Fatalf("member saved board: %v", err)
 	}
 	changed := b
 	changed.Name, changed.Restricted = "Leaked name", false
 	for _, access := range []map[int64]string{{f.writer.ID: "admin"}, {99999: "write"}, {f.owner.ID: "none"}} {
-		if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, changed, access); !errors.Is(err, errBoardAccess) {
+		if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, changed, access, nil); !errors.Is(err, errBoardAccess) {
 			t.Fatalf("bad permissions accepted: %v", err)
 		}
 		actual, err := f.app.store.Board(ctx, b.ID, f.writer)
@@ -202,10 +202,10 @@ func TestBoardSettingsAreOwnerOnlyAtomicAndConflictChecked(t *testing.T) {
 			t.Fatalf("partial board update: %+v %v", actual, err)
 		}
 	}
-	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: "read"}); err != nil {
+	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: "read"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: "write"}); !errors.Is(err, errBoardConflict) {
+	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: "write"}, nil); !errors.Is(err, errBoardConflict) {
 		t.Fatalf("stale settings accepted: %v", err)
 	}
 	actual, err := f.app.store.Board(ctx, b.ID, f.writer)
@@ -235,7 +235,7 @@ func TestRestrictingExistingBoardFiltersEveryReadAndOldAudience(t *testing.T) {
 		t.Fatal(err)
 	}
 	b.Restricted = true
-	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: "write"}); err != nil {
+	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.writer.ID: "write"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, reader := range []*User{nil, f.reader, f.outsider} {

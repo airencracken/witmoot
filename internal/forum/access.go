@@ -42,13 +42,23 @@ func (s requestState) canRead() bool {
 
 func (s requestState) canPost() bool { return s.User != nil && s.canRead() }
 
+// Readers and the owner's group access report use the same permission calculation.
+// Individual overrides (including 'none') take precedence over every group grant.
+const boardPermissions = `group_access AS (
+	SELECT gm.user_id, bg.board_id, CASE WHEN max(bg.access = 'write') THEN 'write' ELSE 'read' END AS access
+	FROM group_members gm JOIN board_groups bg ON bg.group_id = gm.group_id
+	JOIN reader r ON r.id = gm.user_id GROUP BY gm.user_id, bg.board_id
+), board_permissions AS (
+	SELECT b.*, r.id AS user_id, CASE WHEN r.owner OR (b.restricted = 0 AND r.id != 0) THEN 'write'
+		WHEN b.restricted = 0 THEN 'read' ELSE coalesce(bm.access, ga.access, 'none') END AS access
+	FROM boards b CROSS JOIN reader r
+	LEFT JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = r.id
+	LEFT JOIN group_access ga ON ga.board_id = b.id AND ga.user_id = r.id
+) `
+
 // All aggregate and detail reads start with this same audience filter.
-const visibleTopics = `WITH reader AS (SELECT ? AS id, ? AS owner), visible_boards AS (
-	SELECT b.*, CASE WHEN r.owner OR (b.restricted = 0 AND r.id != 0) THEN 'write'
-		WHEN b.restricted = 0 THEN 'read' ELSE bm.access END AS access
-	FROM boards b CROSS JOIN reader r LEFT JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = r.id
-	WHERE b.restricted = 0 OR r.owner OR bm.access IS NOT NULL
-), visible_topics AS (
+const visibleTopics = `WITH reader AS (SELECT ? AS id, ? AS owner), ` + boardPermissions + `,
+visible_boards AS (SELECT * FROM board_permissions WHERE access != 'none'), visible_topics AS (
 	SELECT t.* FROM topics t JOIN visible_boards b ON b.id = t.board_id CROSS JOIN reader r
 	WHERE t.audience = 'public' OR (r.id != 0 AND t.audience = 'members') OR r.owner
 ) `

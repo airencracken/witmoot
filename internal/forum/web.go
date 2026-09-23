@@ -72,6 +72,11 @@ type Page struct {
 	Boards                                                  []Board
 	Board                                                   Board
 	BoardMembers                                            []BoardMember
+	BoardGroups                                             []BoardGroup
+	Groups                                                  []Group
+	Group                                                   Group
+	GroupMembers                                            []GroupMember
+	GroupBoards                                             []GroupBoard
 	BoardAction                                             string
 	BoardContents                                           BoardContents
 	Deleted                                                 bool
@@ -96,6 +101,7 @@ func New(store *Store, config Config) (*App, error) {
 	config.BaseURL = baseURL
 	tmpl, err := template.New("forum").Funcs(template.FuncMap{
 		"add":     func(a, b int) int { return a + b },
+		"access":  accessLabel,
 		"date":    func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006") },
 		"stamp":   func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006 · 15:04 UTC") },
 		"iso":     func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -142,6 +148,13 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /posts/{id}/edit", a.private(a.editPostForm))
 	mux.HandleFunc("POST /posts/{id}/edit", a.private(a.editPost))
 	mux.HandleFunc("GET /boards/manage", a.owner(a.manageBoards))
+	mux.HandleFunc("GET /groups", a.owner(a.manageGroups))
+	mux.HandleFunc("GET /groups/new", a.owner(a.groupSettings))
+	mux.HandleFunc("POST /groups/new", a.owner(a.saveGroup))
+	mux.HandleFunc("GET /groups/{id}", a.owner(a.groupSettings))
+	mux.HandleFunc("POST /groups/{id}", a.owner(a.saveGroup))
+	mux.HandleFunc("GET /groups/{id}/delete", a.owner(a.groupDeleteForm))
+	mux.HandleFunc("POST /groups/{id}/delete", a.owner(a.deleteGroup))
 	mux.HandleFunc("GET /boards/new", a.owner(a.boardSettings))
 	mux.HandleFunc("POST /boards/new", a.owner(a.saveBoardSettings))
 	mux.HandleFunc("GET /boards/{id}/settings", a.owner(a.boardSettings))

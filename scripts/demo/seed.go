@@ -68,7 +68,7 @@ func seed(ctx context.Context, store *forum.Store) error {
 }
 
 func seedArchivedBoard(ctx context.Context, store *forum.Store, users map[string]int64) error {
-	id, err := store.SaveBoard(ctx, users["demo"], forum.Board{Name: "Last summer", Category: "The keepsake shelf", Description: "Old plans, good memories, and a suspicious amount of leftover jam."}, nil)
+	id, err := store.SaveBoard(ctx, users["demo"], forum.Board{Name: "Last summer", Category: "The keepsake shelf", Description: "Old plans, good memories, and a suspicious amount of leftover jam."}, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -79,11 +79,15 @@ func seedArchivedBoard(ctx context.Context, store *forum.Store, users map[string
 }
 
 func seedPrivateBoard(ctx context.Context, store *forum.Store, users map[string]int64) error {
-	id, err := store.SaveBoard(ctx, users["demo"], forum.Board{Name: "The planning nook", Category: "A smaller table", Description: "A private board: freya can post, jules can read, and everyone else stays outside.", Restricted: true}, map[int64]string{users["freya"]: "write", users["jules"]: "read"})
+	groupID, err := store.SaveGroup(ctx, users["demo"], forum.Group{Name: "Sunday regulars", Description: "The people who keep bringing soup."}, []int64{users["freya"], users["jules"]})
 	if err != nil {
 		return err
 	}
-	topic, err := store.CreateTopic(ctx, id, users["demo"], "A little surprise for Sunday", "This board is only visible to its selected members. Owners choose No access, Read only, or Read and post under Manage boards.\n\nFreya can join in. Jules can read along. Sign out and the whole board disappears.", forum.AudienceMembers)
+	id, err := store.SaveBoard(ctx, users["demo"], forum.Board{Name: "The planning nook", Category: "A smaller table", Description: "A private board: freya can post, jules can read, and everyone else stays outside.", Restricted: true}, map[int64]string{users["jules"]: "read"}, map[int64]string{groupID: "write"})
+	if err != nil {
+		return err
+	}
+	topic, err := store.CreateTopic(ctx, id, users["demo"], "A little surprise for Sunday", "The Sunday regulars group can read and post here. Freya inherits that access; Jules has an individual Read only override. Owners can see both in Manage groups, and change the rules in Manage boards.\n\nSign out and the whole board disappears.", forum.AudienceMembers)
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,38 @@
+{{define "groups"}}
+<div class="page-heading"><div><p class="eyebrow">A few familiar faces</p><h1>Manage groups</h1><p class="lede">Gather people into groups, then grant board access to the whole group.</p></div><a class="button" href="/groups/new">Create a group</a></div>
+{{if .Deleted}}<p class="save-notice" role="status">The group and its board grants have been deleted. Accounts and conversations are unchanged.</p>{{end}}
+{{range .Groups}}<article class="board-row"><div class="board-description"><h2><a href="/groups/{{.ID}}">{{.Name}}</a></h2><p>{{.Description}}</p><p>{{.Members}} members · {{.Boards}} boards</p></div><a class="button secondary small" href="/groups/{{.ID}}" aria-label="Manage {{.Name}}">Manage</a></article>{{else}}<p class="paper">No groups yet. Try Family, Book club, or The soup committee.</p>{{end}}
+{{end}}
+
+{{define "group-settings"}}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/groups">Manage groups</a><span aria-hidden="true">/</span><span>{{if .Group.ID}}{{.Group.Name}}{{else}}{{.Title}}{{end}}</span></nav>
+<div class="page-heading"><div><p class="eyebrow">Your people, together</p><h1>{{.Title}}</h1><p class="lede">Membership changes apply immediately to every board using this group.</p></div></div>
+{{if .Saved}}<p class="save-notice" role="status">Your group settings are saved.</p>{{end}}
+{{template "error" .}}
+<form class="paper settings-form" action="{{if .Group.ID}}/groups/{{.Group.ID}}{{else}}/groups/new{{end}}" method="post" hx-disabled-elt="find button[type='submit']">
+	{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Group.Revision}}">
+	<label for="group-name">Group name</label><input id="group-name" name="name" maxlength="80" required value="{{.Group.Name}}">
+	<label for="group-description">Description</label><textarea id="group-description" name="description" maxlength="500" rows="3">{{.Group.Description}}</textarea>
+	<fieldset class="group-members"><legend>Members</legend><p class="muted">Select the people who belong here. Individual overrides and other groups keep applying when someone leaves this group. Owners already manage every board and do not need group membership.</p>
+		{{range .GroupMembers}}<label class="group-member"><input type="checkbox" name="members" value="{{.ID}}" {{if .Selected}}checked{{end}}><span>{{.Username}}</span></label>{{else}}<p class="muted">No member accounts yet. You can create an empty group and add people later.</p>{{end}}
+	</fieldset>
+	<div class="form-footer"><a href="/groups">Back to groups</a><button type="submit">{{if .Group.ID}}Save group{{else}}Create group{{end}}</button></div>
+</form>
+{{if .Group.ID}}
+<section class="group-report" aria-labelledby="group-access-heading"><h2 id="group-access-heading">Current board access</h2><p class="muted">Based on saved memberships and permissions. Individual overrides take priority over every group grant. Otherwise, Read and post wins across groups. Effective board access also reflects site access rules and archived boards; each conversation's audience still applies.</p>
+{{if eq .Mode "personal"}}<p class="paper">This site is in Personal mode. Only owners can access boards.</p>{{end}}
+{{range .GroupBoards}}<article class="paper group-board" data-board-id="{{.Board.ID}}"><h3><a href="/boards/{{.Board.ID}}/settings">{{.Board.Name}}</a></h3><p>Group grant: <strong>{{access .Access}}</strong>{{if .Board.Archived}} · Archived, read only{{end}}</p>
+{{if not .Board.Restricted}}<p class="muted">This board uses site access rules. Group grants and individual overrides apply only when it uses Selected members only.</p>{{end}}
+<table class="access-report"><caption>Member permissions on {{.Board.Name}}</caption><thead><tr><th scope="col">Member</th><th scope="col">Individual rule</th><th scope="col">Effective board access</th></tr></thead><tbody>
+{{range .Members}}<tr {{if ne .Override "inherit"}}class="permission-override"{{end}}><th scope="row">{{.Username}}</th><td>{{access .Override}}{{if ne .Override "inherit"}}<small>Individual override</small>{{end}}</td><td>{{access .Effective}}</td></tr>{{else}}<tr><td colspan="3">No members in this group.</td></tr>{{end}}
+</tbody></table></article>{{else}}<p class="paper">No board grants yet. Open a board under <a href="/boards/manage">Manage boards</a> and choose this group's access level.</p>{{end}}
+</section>
+<section class="paper board-lifecycle"><h2>Remove this group</h2><p>Deleting the group removes its memberships and board grants. Individual overrides and other groups still apply.</p><a class="button danger" href="/groups/{{.Group.ID}}/delete">Delete group</a></section>
+{{end}}
+{{end}}
+
+{{define "group-delete"}}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/groups">Manage groups</a><span aria-hidden="true">/</span><a href="/groups/{{.Group.ID}}">{{.Group.Name}}</a></nav>
+<section class="paper narrow board-confirmation"><h1>Delete group</h1><p>Delete <strong>{{.Group.Name}}</strong> and remove its {{.Group.Members}} memberships and {{.Group.Boards}} board grants? People may lose access to those boards. Accounts, conversations, individual overrides, and other groups stay in place.</p><p>This cannot be undone.</p>{{template "error" .}}
+<form method="post" action="/groups/{{.Group.ID}}/delete" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Group.Revision}}"><label for="confirmation">Type the group name to confirm</label><p class="field-help" id="confirmation-help">Enter exactly: <strong>{{.Group.Name}}</strong></p><input id="confirmation" name="confirmation" required maxlength="160" autocomplete="off" spellcheck="false" aria-describedby="confirmation-help"><div class="form-footer"><a href="/groups/{{.Group.ID}}">Cancel</a><button class="danger" type="submit">Delete group</button></div></form></section>
+{{end}}

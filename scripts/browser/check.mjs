@@ -7,6 +7,7 @@ import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkThemes } from './themes.mjs';
 import { checkBoards } from './boards.mjs';
+import { checkGroups } from './groups.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -30,6 +31,21 @@ async function ready() {
 		await new Promise(done => setTimeout(done, 100));
 	}
 	throw new Error('Server did not become ready');
+}
+
+async function startServer() {
+	await stopServer();
+	server = spawn(binary, [], { env, stdio: ['ignore', 'ignore', 'pipe'] });
+	server.stderr.on('data', chunk => process.stderr.write(chunk));
+	await ready();
+}
+
+async function stopServer() {
+	if (server && server.exitCode === null) {
+		const exited = new Promise(done => server.once('exit', done));
+		server.kill('SIGTERM');
+		await exited;
+	}
 }
 
 async function flow(javaScriptEnabled) {
@@ -207,9 +223,7 @@ async function modeFlow(javaScriptEnabled) {
 }
 try {
 	execFileSync(binary, ['create-owner', '--username', 'alex', '--password-stdin'], { env, input: password + '\n' });
-	server = spawn(binary, [], { env, stdio: ['ignore', 'ignore', 'pipe'] });
-	server.stderr.on('data', chunk => process.stderr.write(chunk));
-	await ready();
+	await startServer();
 	browser = await chromium.launch({ headless: true });
 	await checkThemes(browser, origin);
 	await flow(true);
@@ -218,13 +232,13 @@ try {
 	await modeFlow(false);
 	await checkBoards(browser, origin, password, true);
 	await checkBoards(browser, origin, password, false);
+	// Keep each scenario within the real sign-in rate limit. Data survives the restart.
+	await startServer();
+	await checkGroups(browser, origin, password, true);
+	await checkGroups(browser, origin, password, false);
 	assert.deepEqual(problems, [], 'Browser script or CSP errors');
 } finally {
 	if (browser) await browser.close();
-	if (server && server.exitCode === null) {
-		const exited = new Promise(done => server.once('exit', done));
-		server.kill('SIGTERM');
-		await exited;
-	}
+	await stopServer();
 	await rm(data, { recursive: true, force: true });
 }

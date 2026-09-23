@@ -7,9 +7,9 @@ import (
 )
 
 var (
-	errOwner         = errors.New("only owners can manage boards")
+	errOwner         = errors.New("only owners can manage boards and groups")
 	errBoardConflict = errors.New("this board has changed since you opened its settings; reload before saving")
-	errBoardAccess   = errors.New("choose No access, Read only, or Read and post for each member")
+	errBoardAccess   = errors.New("choose a valid permission for each member and group; reload if a group has been removed")
 	errBoardDetails  = errors.New("use 1–80 characters for the name and category, and up to 500 for the description")
 )
 
@@ -19,7 +19,7 @@ type BoardMember struct {
 }
 
 func (s *Store) BoardMembers(ctx context.Context, boardID int64) ([]BoardMember, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, coalesce(bm.access, 'none')
+	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, coalesce(bm.access, 'inherit')
 		FROM users u LEFT JOIN board_members bm ON bm.user_id = u.id AND bm.board_id = ?
 		WHERE u.role = 'member' ORDER BY u.username`, boardID)
 	if err != nil {
@@ -37,7 +37,7 @@ func (s *Store) BoardMembers(ctx context.Context, boardID int64) ([]BoardMember,
 	return members, rows.Err()
 }
 
-func (s *Store) SaveBoard(ctx context.Context, ownerID int64, board Board, access map[int64]string) (int64, error) {
+func (s *Store) SaveBoard(ctx context.Context, ownerID int64, board Board, access, groups map[int64]string) (int64, error) {
 	if !validText(board.Name, 1, 80) || !validText(board.Category, 1, 80) || !validText(board.Description, 0, 500) {
 		return 0, errBoardDetails
 	}
@@ -56,6 +56,9 @@ func (s *Store) SaveBoard(ctx context.Context, ownerID int64, board Board, acces
 	if err := replaceBoardMembers(ctx, tx, id, access); err != nil {
 		return 0, err
 	}
+	if err := replaceBoardGroups(ctx, tx, id, groups); err != nil {
+		return 0, err
+	}
 	return id, tx.Commit()
 }
 
@@ -64,14 +67,14 @@ func replaceBoardMembers(ctx context.Context, tx *sql.Tx, id int64, access map[i
 		return err
 	}
 	for userID, level := range access {
-		if level != "none" && level != "read" && level != "write" {
+		if !validAccess(level, true) {
 			return errBoardAccess
 		}
 		var role string
 		if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", userID).Scan(&role); err != nil || role != "member" {
 			return errBoardAccess
 		}
-		if level == "none" {
+		if level == "inherit" {
 			continue
 		}
 		if _, err := tx.ExecContext(ctx, "INSERT INTO board_members(board_id, user_id, access) VALUES (?, ?, ?)", id, userID, level); err != nil {

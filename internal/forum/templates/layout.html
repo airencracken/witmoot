@@ -25,6 +25,7 @@
 				{{if .User}}
 				{{if eq .User.Role "owner"}}
 				<a href="/boards/manage">Manage boards</a>
+				<a href="/groups" {{if or (eq .View "groups") (eq .View "group-settings") (eq .View "group-delete")}}aria-current="page"{{end}}>Manage groups</a>
 				{{if ne .Mode "personal"}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
 				{{end}}
@@ -54,6 +55,9 @@
 		{{else if eq .View "invites"}}{{template "invites" .}}
 		{{else if eq .View "settings"}}{{template "settings" .}}
 		{{else if eq .View "boards"}}{{template "boards" .}}
+		{{else if eq .View "groups"}}{{template "groups" .}}
+		{{else if eq .View "group-settings"}}{{template "group-settings" .}}
+		{{else if eq .View "group-delete"}}{{template "group-delete" .}}
 		{{else if eq .View "archive"}}{{template "archive" .}}
 		{{else if eq .View "board-action"}}{{template "board-action" .}}
 		{{else if eq .View "board-settings"}}{{template "board-settings" .}}
