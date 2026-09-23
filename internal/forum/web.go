@@ -14,6 +14,7 @@ import (
 	"mime"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,6 +72,9 @@ type Page struct {
 	Boards                                                  []Board
 	Board                                                   Board
 	BoardMembers                                            []BoardMember
+	BoardAction                                             string
+	BoardContents                                           BoardContents
+	Deleted                                                 bool
 	Post                                                    Post
 	ComposeAudience                                         Audience
 	Topics                                                  []Topic
@@ -142,6 +146,11 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /boards/new", a.owner(a.saveBoardSettings))
 	mux.HandleFunc("GET /boards/{id}/settings", a.owner(a.boardSettings))
 	mux.HandleFunc("POST /boards/{id}/settings", a.owner(a.saveBoardSettings))
+	for _, action := range []string{"archive", "restore", "delete"} {
+		mux.HandleFunc("GET /boards/{id}/"+action, a.owner(a.boardActionForm(action)))
+		mux.HandleFunc("POST /boards/{id}/"+action, a.owner(a.boardAction(action)))
+	}
+	mux.HandleFunc("GET /archive", a.readable(a.archive))
 	mux.HandleFunc("GET /recent", a.readable(a.recent))
 	mux.HandleFunc("GET /search", a.readable(a.search))
 	mux.HandleFunc("GET /invites", a.private(a.invites))
@@ -279,10 +288,10 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 	p.Name, p.CSRF, p.User = a.config.Name, state(r).CSRF, state(r).User
 	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
 	if p.Board.ID != 0 {
-		p.CanPost = p.CanPost && p.Board.Access == "write"
+		p.CanPost = p.CanPost && boardWriteError(p.Board.Access, p.Board.Archived) == nil
 	}
 	if p.Topic.ID != 0 {
-		p.CanPost = p.CanPost && p.Topic.BoardAccess == "write"
+		p.CanPost = p.CanPost && boardWriteError(p.Topic.BoardAccess, p.Topic.BoardArchived) == nil
 	}
 	p.ComposeAudience = p.Board.Audience(p.Mode)
 	for i := range p.Posts {
@@ -310,7 +319,7 @@ func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	a.fail(w, r, 500, "Something went wrong. Please try again in a moment.")
 }
 func (a *App) storeError(w http.ResponseWriter, r *http.Request, err error) {
-	if errors.Is(err, errReadOnly) || errors.Is(err, errPersonal) || errors.Is(err, errOwner) {
+	if errors.Is(err, errReadOnly) || errors.Is(err, errArchived) || errors.Is(err, errPersonal) || errors.Is(err, errOwner) {
 		a.fail(w, r, 403, err.Error())
 		return
 	}
@@ -368,6 +377,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	boards = slices.DeleteFunc(boards, func(b Board) bool { return b.Archived })
 	a.render(w, r, 200, Page{View: "home", Title: "Our board", Boards: boards, Stats: stats})
 }
 
@@ -447,8 +457,8 @@ func (a *App) newTopic(w http.ResponseWriter, r *http.Request) {
 		a.storeError(w, r, err)
 		return
 	}
-	if b.Access != "write" {
-		a.fail(w, r, 403, errReadOnly.Error())
+	if err := boardWriteError(b.Access, b.Archived); err != nil {
+		a.storeError(w, r, err)
 		return
 	}
 	a.render(w, r, 200, Page{View: "compose", Title: "Start a conversation", Board: b})
@@ -465,8 +475,8 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 		a.storeError(w, r, err)
 		return
 	}
-	if b.Access != "write" {
-		a.fail(w, r, 403, errReadOnly.Error())
+	if err := boardWriteError(b.Access, b.Archived); err != nil {
+		a.storeError(w, r, err)
 		return
 	}
 	title, body := strings.TrimSpace(r.PostForm.Get("title")), strings.TrimSpace(r.PostForm.Get("body"))
@@ -517,8 +527,8 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 		a.storeError(w, r, err)
 		return
 	}
-	if topic.BoardAccess != "write" {
-		a.fail(w, r, 403, errReadOnly.Error())
+	if err := boardWriteError(topic.BoardAccess, topic.BoardArchived); err != nil {
+		a.storeError(w, r, err)
 		return
 	}
 	body := strings.TrimSpace(r.PostForm.Get("body"))

@@ -178,6 +178,57 @@ func TestBoardRevocationDuringUploadRollsBackReplyAndCleansImage(t *testing.T) {
 	}
 }
 
+func TestBoardLifecycleDuringUploadCleansOnlyUnattachedImages(t *testing.T) {
+	for _, action := range []string{"archive", "delete"} {
+		for _, compose := range []string{"topic", "reply"} {
+			t.Run(action+"/"+compose, func(t *testing.T) {
+				a, c, ownerID, upstream := imageTestApp(t)
+				ctx := context.Background()
+				img := Attachment{Server: a.vault.Base, RemoteID: "own", CredentialUserID: sql.NullInt64{Int64: ownerID, Valid: true}, Name: "Family photo.png", Rendition: "thumb"}
+				topicID, err := a.store.CreateTopic(ctx, 1, ownerID, "Existing photos", "Keep the original", AudienceMembers, img)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// An attachment on another board can reference the same imvault original.
+				if _, err := a.store.CreateTopic(ctx, 2, ownerID, "Another conversation", "Still using this photo", AudienceMembers, img); err != nil {
+					t.Fatal(err)
+				}
+				upstream.beforeUpload = func() {
+					if err := a.store.ChangeBoard(ctx, ownerID, 1, 0, action, "The kitchen table"); err != nil {
+						t.Fatal(err)
+					}
+				}
+				path := "/boards/1/new"
+				if compose == "reply" {
+					path = fmt.Sprintf("/topics/%d/replies", topicID)
+				}
+				want, posts := 403, 2
+				if action == "delete" {
+					want, posts = 404, 1
+				}
+				requireStatus(t, multipartPost(t, c, path, imageForm(), [][]byte{testPNG}, true), want)
+				if upstream.uploads != 1 || len(upstream.deleted) != 1 || upstream.deleted[0] != "upload1" {
+					t.Fatalf("cleanup must remove only the new unattached upload: %+v", upstream)
+				}
+				stats, err := a.store.Stats(ctx, &User{ID: ownerID, Role: "owner"})
+				if err != nil || stats.Posts != posts || stats.Topics != posts {
+					t.Fatalf("unexpected surviving content: %+v %v", stats, err)
+				}
+				requireStatus(t, c.request("GET", "/images/2", nil, nil), 200)
+				before := upstream.requests
+				if action == "archive" {
+					requireStatus(t, c.request("GET", "/images/1", nil, nil), 200)
+				} else {
+					requireStatus(t, c.request("GET", "/images/1", nil, nil), 404)
+					if upstream.requests != before {
+						t.Fatal("deleted image URL reached imvault")
+					}
+				}
+			})
+		}
+	}
+}
+
 func multipartPost(t *testing.T, c *testClient, path string, form url.Values, files [][]byte, csrf bool) *httptest.ResponseRecorder {
 	t.Helper()
 	var body bytes.Buffer

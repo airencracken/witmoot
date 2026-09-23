@@ -78,8 +78,8 @@ func (a *App) editablePost(w http.ResponseWriter, r *http.Request) (Post, Topic,
 		a.storeError(w, r, err)
 		return p, t, false
 	}
-	if t.BoardAccess != "write" {
-		a.fail(w, r, 403, errReadOnly.Error())
+	if err := boardWriteError(t.BoardAccess, t.BoardArchived); err != nil {
+		a.storeError(w, r, err)
 		return p, t, false
 	}
 	return p, t, true

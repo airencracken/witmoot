@@ -18,7 +18,7 @@
 			<div class="board-count"><strong>{{.Topics}}</strong><span>conversations</span></div>
 			<div class="board-latest">{{if .LastTopicID}}<a href="/topics/{{.LastTopicID}}">{{.LastTitle}}</a><span>{{.LastAuthor}} · <time datetime="{{iso .LastAt}}">{{date .LastAt}}</time></span>{{else}}<span>Room for a first conversation.</span>{{end}}</div>
 		</article>
-		{{end}}
+		{{else}}<p class="paper">No active boards to show. You can still visit the <a href="/archive">Archive</a>.</p>{{end}}
 	</div>
 	<aside class="sidebar">
 		<section class="paper side-note"><img class="mascot" src="/static/moot-knight.png" alt="The Moot Knight, keeping a place at the table" width="180" height="180"><p class="eyebrow">{{if eq .Mode "open"}}Room at the table{{else}}Between us{{end}}</p><h2>A little slower.<br>A little closer.</h2><p>Share the small things. Ask the long question. Come back when you have a moment.</p><p>{{if eq .Mode "personal"}}Only owners can use this board. New conversations are for owners only.{{else if eq .Mode "open"}}Public conversations are open to everyone. Create an account to take part.{{else}}Members can read and join the shared conversations here. New people join by invitation.{{end}}</p></section>

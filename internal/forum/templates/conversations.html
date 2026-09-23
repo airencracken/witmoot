@@ -1,20 +1,21 @@
 {{define "board"}}
 {{template "crumb" .}}
-<div class="page-heading"><div><p class="eyebrow">{{.Board.Category}}</p><h1>{{.Board.Name}}</h1><p class="lede">{{.Board.Description}}</p></div>{{if .CanPost}}<a class="button" href="/boards/{{.Board.ID}}/new">Start a conversation</a>{{else if .User}}<p class="audience-note">You have read-only access.</p>{{else}}<a class="button" href="/login">Sign in to start a conversation</a>{{end}}</div>
+<div class="page-heading"><div><p class="eyebrow">{{.Board.Category}}</p><h1>{{.Board.Name}}</h1><p class="lede">{{.Board.Description}}</p></div>{{if .CanPost}}<a class="button" href="/boards/{{.Board.ID}}/new">Start a conversation</a>{{else if .Board.Archived}}<p class="audience-note">Archived · Read only</p>{{else if .User}}<p class="audience-note">You have read-only access.</p>{{else}}<a class="button" href="/login">Sign in to start a conversation</a>{{end}}</div>
+{{if .Board.Archived}}{{template "archive-notice" .}}{{end}}
 {{template "topics" .}}{{template "pager" .}}
 {{end}}
 
 {{define "listing"}}
 {{template "crumb" .}}
 <div class="page-heading"><div><p class="eyebrow">Around our board</p><h1>{{.Title}}</h1><p class="lede">{{if eq .View "search"}}That recipe, that idea, that thing someone mentioned.{{else}}Catch up in your own time.{{end}}</p></div></div>
-{{if eq .View "search"}}<form class="search-form" action="/search" method="get"><label for="search">Search conversations and messages</label><div><input id="search" type="search" name="q" value="{{.Query}}" maxlength="100" placeholder="What are you looking for?"><button type="submit">Search</button></div></form>{{end}}
+{{if eq .View "search"}}<form class="search-form" action="/search" method="get"><label for="search">Search conversations and messages</label><p class="muted">Includes archived conversations you can access.</p><div><input id="search" type="search" name="q" value="{{.Query}}" maxlength="100" placeholder="What are you looking for?"><button type="submit">Search</button></div></form>{{end}}
 {{if or (ne .View "search") .Query}}{{template "topics" .}}{{template "pager" .}}{{end}}
 {{end}}
 
 {{define "topics"}}
 <section class="paper topic-list" aria-label="Conversations">
 	{{if .Topics}}<div class="topic-list-header"><span>Conversation</span><span>Replies</span><span>Last activity</span></div>{{end}}
-	{{range .Topics}}<article class="topic-row"><div><h2><a href="/topics/{{.ID}}">{{.Title}}</a></h2><p class="muted">{{.Author}} <span aria-hidden="true">·</span> <a href="/boards/{{.BoardID}}">{{.BoardName}}</a> · {{.AudienceLabel}}</p></div><span class="reply-count">{{.Replies}}<span class="mobile-only"> replies</span></span><time datetime="{{iso .UpdatedAt}}">{{date .UpdatedAt}}</time></article>
+	{{range .Topics}}<article class="topic-row"><div><h2><a href="/topics/{{.ID}}">{{.Title}}</a></h2><p class="muted">{{.Author}} <span aria-hidden="true">·</span> <a href="/boards/{{.BoardID}}">{{.BoardName}}</a> · {{.AudienceLabel}}{{if .BoardArchived}} · Archived{{end}}</p></div><span class="reply-count">{{.Replies}}<span class="mobile-only"> replies</span></span><time datetime="{{iso .UpdatedAt}}">{{date .UpdatedAt}}</time></article>
 	{{else}}<div class="empty-state"><span class="empty-mark" aria-hidden="true">w</span><h2>{{if eq .View "search"}}Nothing here matches just yet.{{else}}Every good conversation starts somewhere.{{end}}</h2><p>{{if eq .View "search"}}Try a different word or a shorter phrase.{{else}}A little update or a simple question is a lovely place to begin.{{end}}</p>{{if and .Board.ID .CanPost}}<a href="/boards/{{.Board.ID}}/new">Be the first to say something <span aria-hidden="true">→</span></a>{{else if eq .View "recent"}}<a href="/">Find a place to start</a>{{end}}</div>{{end}}
 </section>
 {{end}}
@@ -22,10 +23,11 @@
 {{define "topic"}}
 {{template "crumb" .}}
 <div class="page-heading"><div><p class="eyebrow">{{.Topic.BoardName}}</p><h1>{{.Topic.Title}}</h1><p class="muted">Started by {{.Topic.Author}} · {{date .Topic.CreatedAt}} · {{.Topic.AudienceLabel}}</p></div>{{if .CanPost}}<a class="button secondary" href="#reply" hx-boost="false">Add a reply</a>{{end}}</div>
+{{if .Topic.BoardArchived}}{{template "archive-notice" .}}{{end}}
 {{template "pager" .}}
 <div class="posts">{{range .Posts}}<article class="post paper" id="post-{{.ID}}"><aside class="post-author"><span class="avatar" aria-hidden="true">{{initial .Author}}</span><strong>{{.Author}}</strong><span>Here since {{date .JoinedAt}}</span></aside><div class="post-content"><header><div><time datetime="{{iso .CreatedAt}}">{{stamp .CreatedAt}}</time>{{if .EditedAt}}<span class="edited">Edited <time datetime="{{iso .EditedAt}}">{{stamp .EditedAt}}</time></span>{{end}}</div>{{if .CanEdit}}<a href="/posts/{{.ID}}/edit" aria-label="Edit message {{.Number}}">Edit</a>{{end}}<a href="#post-{{.ID}}" aria-label="Message {{.Number}}" hx-boost="false">#{{.Number}}</a></header><div class="post-body" hx-disable>{{.Body}}</div>{{if .Images}}<div class="post-images">{{range .Images}}<figure><a href="/images/{{.ID}}" target="_blank" rel="noopener" hx-boost="false"><img src="/images/{{.ID}}" alt="{{.Name}}" loading="lazy"></a><figcaption>{{.Name}}</figcaption></figure>{{end}}</div>{{end}}</div></article>{{else}}<p class="paper">There are no messages on this page.</p>{{end}}</div>
 {{template "pager" .}}
-{{if .CanPost}}<section class="paper reply-box" id="reply"><h2>Join the conversation</h2><p class="audience-note">Who can read your reply: <strong>{{.Topic.AudienceLabel}}</strong>.</p>{{template "error" .}}<form action="/topics/{{.Topic.ID}}/replies" method="post" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<label for="body">Your reply</label><textarea id="body" name="body" rows="5" maxlength="20000" required placeholder="Leave a little something…">{{.BodyInput}}</textarea>{{template "image-fields" .}}<div class="form-footer"><span class="muted">Take your time. Line breaks welcome.</span><button type="submit">Post reply</button></div></form></section>{{else if .User}}<p class="paper audience-note">You have read-only access to this board.</p>{{else}}<section class="paper reply-box"><h2>Join the conversation</h2><p><a href="/login">Sign in to reply</a> or <a href="/join">create an account</a>.</p></section>{{end}}
+{{if .CanPost}}<section class="paper reply-box" id="reply"><h2>Join the conversation</h2><p class="audience-note">Who can read your reply: <strong>{{.Topic.AudienceLabel}}</strong>.</p>{{template "error" .}}<form action="/topics/{{.Topic.ID}}/replies" method="post" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<label for="body">Your reply</label><textarea id="body" name="body" rows="5" maxlength="20000" required placeholder="Leave a little something…">{{.BodyInput}}</textarea>{{template "image-fields" .}}<div class="form-footer"><span class="muted">Take your time. Line breaks welcome.</span><button type="submit">Post reply</button></div></form></section>{{else if .Topic.BoardArchived}}{{else if .User}}<p class="paper audience-note">You have read-only access to this board.</p>{{else}}<section class="paper reply-box"><h2>Join the conversation</h2><p><a href="/login">Sign in to reply</a> or <a href="/join">create an account</a>.</p></section>{{end}}
 {{end}}
 
 {{define "compose"}}

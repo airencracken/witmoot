@@ -64,6 +64,7 @@ var (
 	errPersonal        = errors.New("this board is in Personal mode; only owners can use it")
 	errAudienceChanged = errors.New("the board's audience has changed; review who can read this conversation and submit again")
 	errReadOnly        = errors.New("you have read-only access to this board")
+	errArchived        = errors.New("this board is archived; an owner must restore it before anyone can post or edit")
 	errEditConflict    = errors.New("this message has changed since you opened it; reload it before editing again")
 )
 
@@ -92,10 +93,20 @@ func boardForWriter(ctx context.Context, q rowQuerier, boardID, authorID int64) 
 		return Board{}, mode, err
 	}
 	b, err := readBoard(ctx, q, boardID, &user)
-	if err == nil && b.Access != "write" {
-		err = errReadOnly
+	if err == nil {
+		err = boardWriteError(b.Access, b.Archived)
 	}
 	return b, mode, err
+}
+
+func boardWriteError(access string, archived bool) error {
+	if archived {
+		return errArchived
+	}
+	if access != "write" {
+		return errReadOnly
+	}
+	return nil
 }
 
 func (b Board) Audience(mode Mode) Audience {

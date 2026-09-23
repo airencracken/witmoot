@@ -108,7 +108,7 @@ func (s *Store) DisconnectImages(ctx context.Context, userID int64) error {
 
 func attachImages(ctx context.Context, tx *sql.Tx, postID int64, images []Attachment) error {
 	for _, img := range images {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO attachments(post_id, server, remote_id, credential_user_id, name, rendition) VALUES (?, ?, ?, ?, ?, ?)`, postID, img.Server, img.RemoteID, img.CredentialUserID, img.Name, img.Rendition); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO attachments(id, post_id, server, remote_id, credential_user_id, name, rendition) VALUES ((SELECT last_id + 1 FROM object_sequences WHERE kind = 'attachments'), ?, ?, ?, ?, ?, ?)`, postID, img.Server, img.RemoteID, img.CredentialUserID, img.Name, img.Rendition); err != nil {
 			return err
 		}
 	}

@@ -19,6 +19,7 @@
 				{{if .CanRead}}
 				<a href="/" {{if eq .View "home"}}aria-current="page"{{end}}>Our board</a>
 				<a href="/recent" {{if eq .View "recent"}}aria-current="page"{{end}}>Recent</a>
+				<a href="/archive" {{if eq .View "archive"}}aria-current="page"{{end}}>Archive</a>
 				<a href="/search" {{if eq .View "search"}}aria-current="page"{{end}}>Search</a>
 				{{end}}
 				{{if .User}}
@@ -53,6 +54,8 @@
 		{{else if eq .View "invites"}}{{template "invites" .}}
 		{{else if eq .View "settings"}}{{template "settings" .}}
 		{{else if eq .View "boards"}}{{template "boards" .}}
+		{{else if eq .View "archive"}}{{template "archive" .}}
+		{{else if eq .View "board-action"}}{{template "board-action" .}}
 		{{else if eq .View "board-settings"}}{{template "board-settings" .}}
 		{{else if eq .View "edit-post"}}{{template "edit-post" .}}
 		{{else if eq .View "image-account"}}{{template "image-account" .}}
