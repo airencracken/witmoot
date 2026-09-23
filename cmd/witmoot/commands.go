@@ -20,7 +20,7 @@ Usage: witmoot [COMMAND] [OPTIONS]
 
 Commands:
   serve          Start the HTTP server (also the default with no arguments).
-  create-owner   Provision a new owner using a password from stdin.
+  create-owner   Provision a new owner using a hidden prompt or stdin.
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
   help [COMMAND] Show help; COMMAND --help also works.
 
@@ -40,7 +40,8 @@ Run create-owner with the service's WITMOOT_DATA_DIR and service user.
 
 Examples:
   WITMOOT_ADDR=127.0.0.1:8082 WITMOOT_DATA_DIR=/var/lib/witmoot witmoot serve
-  witmoot create-owner --username alex --password-stdin
+  witmoot create-owner --username alex --password-prompt
+  witmoot create-owner --username alex --password-stdin < password-file
   witmoot proxy-config caddy --domain board.example.org > witmoot.Caddyfile
 
 Logs: stdout/stderr; systemd uses journald, OpenRC uses /var/log/witmoot.log.
@@ -99,7 +100,7 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 		if command == "serve" {
 			fmt.Fprintln(out, "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.")
 		} else {
-			fmt.Fprintln(out, "Create a new owner locally. Existing accounts are never promoted or changed.\nRun as the service user with its WITMOOT_DATA_DIR. Read the password from stdin.")
+			fmt.Fprintln(out, "Create a new owner locally. Existing accounts are never promoted or changed.\nRun as the service user with its WITMOOT_DATA_DIR. Use a hidden terminal prompt or read from stdin.")
 		}
 		fmt.Fprintln(out)
 		flags.PrintDefaults()
@@ -110,24 +111,32 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 func createOwner(args []string, stdin io.Reader, stdout io.Writer) error {
 	flags := commandFlags("create-owner", stdout)
 	username := flags.String("username", "", "owner username (required)")
-	passwordStdin := flags.Bool("password-stdin", false, "read the password from standard input (required)")
+	passwordPrompt := flags.Bool("password-prompt", false, "prompt twice without echoing (requires a terminal)")
+	passwordStdin := flags.Bool("password-stdin", false, "read the password from standard input")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err
 	}
-	if !*passwordStdin || flags.NArg() != 0 || *username == "" {
-		return errors.New("usage: witmoot create-owner --username NAME --password-stdin")
+	if flags.NArg() != 0 || *username == "" || *passwordPrompt == *passwordStdin {
+		return errors.New("usage: witmoot create-owner --username NAME (--password-prompt | --password-stdin)")
 	}
-	password, err := io.ReadAll(io.LimitReader(stdin, 1025))
+	var value string
+	var err error
+	if *passwordPrompt {
+		value, err = readPromptPassword()
+	} else {
+		var password []byte
+		password, err = io.ReadAll(io.LimitReader(stdin, 1025))
+		if err == nil && len(password) > 1024 {
+			err = errors.New("password input is too long")
+		}
+		value = strings.TrimSuffix(strings.TrimSuffix(string(password), "\n"), "\r")
+	}
 	if err != nil {
 		return err
 	}
-	if len(password) > 1024 {
-		return errors.New("password input is too long")
-	}
-	value := strings.TrimSuffix(strings.TrimSuffix(string(password), "\n"), "\r")
 	if message := forum.ValidateCredentials(*username, value); message != "" {
 		return errors.New(message)
 	}

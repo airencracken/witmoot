@@ -36,20 +36,18 @@ configuration, provision the owner, then enable the service. Native package
 defaults bind to `127.0.0.1:8082`; configure your HTTPS reverse proxy and
 secure cookies before exposing the site.
 
-In a root Bash shell, provision the account using the same data directory:
+In a terminal, provision the account using the same data directory. The hidden
+prompt asks for the password twice:
 
 ```bash
-read -r -s -p 'Owner password: ' account_password
-printf '\n'
-printf '%s\n' "$account_password" | runuser -u witmoot -- \
-	env WITMOOT_DATA_DIR=/var/lib/witmoot \
-	/usr/bin/witmoot create-owner --username alex --password-stdin
-unset account_password
+runuser -u witmoot -- env WITMOOT_DATA_DIR=/var/lib/witmoot \
+	/usr/bin/witmoot create-owner --username alex --password-prompt
 systemctl enable --now witmoot
 ```
 
 The CLI does not read the environment file; pass any customized data/database
-settings explicitly. See [deployment](deployment.md) for reverse proxy and
+settings explicitly. For scripts, pass one password line on stdin with
+`--password-stdin`. See [deployment](deployment.md) for reverse proxy and
 service settings. Logs go to `journalctl -u witmoot`.
 
 An upgrade restarts a running service and leaves an inactive service inactive.
