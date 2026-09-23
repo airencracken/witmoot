@@ -7,7 +7,7 @@ LOGROTATEDIR ?= $(SYSCONFDIR)/logrotate.d
 PORT ?= 8082
 
 .DEFAULT_GOAL := help
-.PHONY: help all demo run test test-js test-browser test-imvault check fmt build clean install install-openrc install-systemd install-logrotate release-check release-snapshot
+.PHONY: help all demo run test test-js test-browser test-imvault test-proxies check fmt build clean install install-openrc install-systemd install-logrotate release-check release-snapshot
 
 help: ## Show available commands
 	@printf '\nWitmoot\n\n'
@@ -35,6 +35,9 @@ test-browser: build ## Run browser checks (needs Node and Playwright; see README
 
 test-imvault: build ## Test image integration (set IMVAULT_BINARY; see README)
 	node scripts/browser/imvault.mjs
+
+test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
+	go test -tags=proxyintegration -count=1 -timeout=60s ./contrib/proxy
 
 check: test-js ## Run JavaScript tests, vet, race tests, and formatting checks
 	go vet ./...

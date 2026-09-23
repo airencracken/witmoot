@@ -58,6 +58,8 @@ rate-limit bucket. Invalid configuration stops startup.
 
 Caddy normally replaces untrusted forwarded headers; see its
 [forwarded-header defaults](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#defaults).
+The [nginx and Apache examples](reverse-proxies.md) also replace these headers
+when accepting visitors' connections directly.
 If another proxy sits in front of Caddy, configure the trusted chain in Caddy
 and Witmoot. Keep the application port private. These settings affect client
 addresses for rate limiting; `WITMOOT_SECURE_COOKIES=true` remains necessary for

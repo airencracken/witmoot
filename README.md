@@ -100,7 +100,8 @@ an empty installation. Invited and openly registered accounts are always members
 
 For a permanent home, see the [deployment guide](docs/deployment.md): source
 install targets, a Gentoo ebuild, OpenRC and systemd services, log rotation,
-Caddy, and Docker Compose. Native services default to `127.0.0.1:8082`, so the
+Caddy, and Docker Compose. [nginx and Apache are also supported](docs/reverse-proxies.md);
+Caddy is the recommended proxy. Native services default to `127.0.0.1:8082`, so the
 board and imvault can share a host without competing for the same port.
 
 ## Your place, your house rules
