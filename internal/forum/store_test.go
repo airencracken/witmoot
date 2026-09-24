@@ -91,7 +91,7 @@ func TestTopicCreationIsAtomic(t *testing.T) {
 func TestInvitationIsSingleUseAtomicAndExpiring(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
-	owner := testMember(t, s, "owner")
+	owner := testInvitationOwner(t, s, "owner")
 	if err := s.Invite(ctx, owner, "invitation"); err != nil {
 		t.Fatal(err)
 	}

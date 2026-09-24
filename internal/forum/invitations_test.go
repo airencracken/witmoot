@@ -19,7 +19,7 @@ import (
 func TestInvitationOptionsAndRevocation(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
-	owner := testMember(t, s, "owner")
+	owner := testInvitationOwner(t, s, "owner")
 	id, err := s.CreateInvitation(ctx, owner, "unlimited", "code-prefix", InvitationOptions{Label: "The whole crew", MaxUses: 0})
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestInvitationOptionsAndRevocation(t *testing.T) {
 func TestMultiUseInvitationRaceAndRollback(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
-	owner := testMember(t, s, "owner")
+	owner := testInvitationOwner(t, s, "owner")
 	if _, err := s.CreateInvitation(ctx, owner, "group", "", InvitationOptions{MaxUses: 2}); err != nil {
 		t.Fatal(err)
 	}
@@ -106,6 +106,18 @@ func TestMultiUseInvitationRaceAndRollback(t *testing.T) {
 	if err != nil || accepted != 2 || list[0].Uses != 2 || list[0].Status() != "used up" {
 		t.Fatalf("accepted %d; list %+v; err %v", accepted, list, err)
 	}
+}
+
+func testInvitationOwner(t *testing.T, s *Store, name string) int64 {
+	t.Helper()
+	if err := s.CreateOwner(context.Background(), name, "test-hash"); err != nil {
+		t.Fatal(err)
+	}
+	user, _, err := s.Credentials(context.Background(), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return user.ID
 }
 
 func TestInvitationMigrationPreservesExistingLinks(t *testing.T) {
@@ -233,5 +245,44 @@ func TestInvitationInputValidationAndURL(t *testing.T) {
 		if got, err := canonicalBaseURL(value); err != nil || got != "https://board.example.org" {
 			t.Fatalf("canonical origin: %s %v", got, err)
 		}
+	}
+}
+
+func TestDelegatedInvitationsTrackAndRestrictCustody(t *testing.T) {
+	a, owner := newTestApp(t, false)
+	ownerID := signInTest(t, a, owner, true)
+	delegate := memberClient(t, a, "jules")
+	delegateUser, _, err := a.store.Credentials(context.Background(), "jules")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requireStatus(t, delegate.request("GET", "/invites", nil, nil), 403)
+	requireStatus(t, owner.post(fmt.Sprintf("/invites/members/%d/permission", delegateUser.ID), url.Values{"enabled": {"1"}}), 303)
+	requireStatus(t, delegate.request("GET", "/invites", nil, nil), 200)
+
+	w := delegate.post("/invites", url.Values{"label": {"From Jules"}, "max_uses": {"1"}, "expires_days": {"7"}})
+	requireStatus(t, w, 200)
+	match := regexp.MustCompile(`/join\?invite=([a-f0-9]{64})`).FindStringSubmatch(w.Body.String())
+	if len(match) != 2 {
+		t.Fatal("delegated invitation link missing")
+	}
+	list, _, err := a.store.InvitationsByCreator(context.Background(), delegateUser.ID, 20, 0)
+	if err != nil || len(list) != 1 || list[0].Creator != "jules" {
+		t.Fatalf("delegated invitations: %+v, %v", list, err)
+	}
+	newcomer := &testClient{app: a, cookies: make(map[string]*http.Cookie)}
+	newcomer.request("GET", "/join", nil, nil)
+	requireStatus(t, newcomer.post("/join", url.Values{"username": {"sam"}, "password": {"a long test password"}, "invite": {match[1]}}), 303)
+
+	joined, _, err := a.store.Credentials(context.Background(), "sam")
+	if err != nil || joined.InvitedBy != delegateUser.ID || joined.InvitedByName != "jules" || joined.InvitationID != list[0].ID {
+		t.Fatalf("invite attribution: %+v, %v", joined, err)
+	}
+	if !strings.Contains(owner.request("GET", "/invites", nil, nil).Body.String(), "Joined from an invitation by jules") {
+		t.Fatal("owner could not inspect invitation attribution")
+	}
+	if ownerID == 0 {
+		t.Fatal("owner id was not set")
 	}
 }

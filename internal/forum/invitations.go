@@ -34,8 +34,9 @@ func (a *App) inviteURL(r *http.Request, token string) string {
 }
 
 func (a *App) mayInvite(w http.ResponseWriter, r *http.Request) bool {
-	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only owners can manage invitations.")
+	user := state(r).User
+	if user.Role != "owner" && !user.CanInvite {
+		a.fail(w, r, 403, "You do not have permission to issue invitations.")
 		return false
 	}
 	if state(r).Mode == ModePersonal {
@@ -51,12 +52,26 @@ func (a *App) renderInvites(w http.ResponseWriter, r *http.Request, status int, 
 		a.fail(w, r, 400, "That page number is not valid.")
 		return
 	}
-	list, more, err := a.store.Invitations(r.Context(), pageSize, (page-1)*pageSize)
+	user := state(r).User
+	var list []Invitation
+	var more bool
+	if user.Role == "owner" {
+		list, more, err = a.store.Invitations(r.Context(), pageSize, (page-1)*pageSize)
+	} else {
+		list, more, err = a.store.InvitationsByCreator(r.Context(), user.ID, pageSize, (page-1)*pageSize)
+	}
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	p.View, p.Title, p.Invitations = "invites", "Invite someone in", list
+	if user.Role == "owner" {
+		p.InviteMembers, err = a.store.InviteMembers(r.Context())
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
 	pagination(r, &p, page, more)
 	a.render(w, r, status, p)
 }
@@ -124,7 +139,17 @@ func (a *App) revokeInvite(w http.ResponseWriter, r *http.Request) {
 	if !a.mayInvite(w, r) {
 		return
 	}
-	if err := a.store.RevokeInvitation(r.Context(), pathID(r)); err != nil {
+	user := state(r).User
+	if err := a.store.RevokeInvitationByCreator(r.Context(), pathID(r), user.ID, user.Role == "owner"); err != nil {
+		a.storeError(w, r, err)
+		return
+	}
+	a.redirect(w, r, "/invites?saved=1")
+}
+
+func (a *App) setInvitePermission(w http.ResponseWriter, r *http.Request) {
+	enabled := r.PostForm.Get("enabled") == "1"
+	if err := a.store.SetInvitePermission(r.Context(), pathID(r), enabled); err != nil {
 		a.storeError(w, r, err)
 		return
 	}

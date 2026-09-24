@@ -28,6 +28,7 @@ Server configuration uses environment variables:
   WITMOOT_ADDR            Listen address (binary default: 127.0.0.1:8080).
   WITMOOT_DATA_DIR        Database directory (default: ./data).
   WITMOOT_NAME            Board name (default: Witmoot).
+  WITMOOT_SOURCE_URL      Footer source link (default: upstream repository).
   WITMOOT_BASE_URL        Public origin, for example https://board.example.org.
   WITMOOT_SECURE_COOKIES  Set true for HTTPS (default: false).
   WITMOOT_TRUSTED_PROXIES Comma-separated proxy IPs/CIDRs; empty trusts none.
@@ -35,8 +36,9 @@ Server configuration uses environment variables:
 
 Native services and proxy examples use 127.0.0.1:8082 by default.
 Service settings: /etc/conf.d/witmoot (OpenRC), /etc/witmoot/witmoot.env (systemd).
-The CLI reads the environment; it does not source service configuration files.
-Run create-owner with the service's WITMOOT_DATA_DIR and service user.
+create-owner reads WITMOOT_DATA_DIR from the active service configuration when
+it is not set in the environment. When run as root, it repeats the database
+operation as the service user to preserve ownership.
 
 Examples:
   WITMOOT_ADDR=127.0.0.1:8082 WITMOOT_DATA_DIR=/var/lib/witmoot witmoot serve
@@ -100,7 +102,7 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 		if command == "serve" {
 			fmt.Fprintln(out, "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.")
 		} else {
-			fmt.Fprintln(out, "Create a new owner locally. Existing accounts are never promoted or changed.\nRun as the service user with its WITMOOT_DATA_DIR. Use a hidden terminal prompt or read from stdin.")
+			fmt.Fprintln(out, "Create a new owner locally. Existing accounts are never promoted or changed.\nWITMOOT_DATA_DIR is read from the active service configuration unless set in the environment. Root invocations use the configured service user. Use a hidden terminal prompt or read from stdin.")
 		}
 		fmt.Fprintln(out)
 		flags.PrintDefaults()
@@ -109,6 +111,10 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 }
 
 func createOwner(args []string, stdin io.Reader, stdout io.Writer) error {
+	return createOwnerWithConfigPaths(args, stdin, stdout, defaultProvisioningConfigPaths())
+}
+
+func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths provisioningConfigPaths) error {
 	flags := commandFlags("create-owner", stdout)
 	username := flags.String("username", "", "owner username (required)")
 	passwordPrompt := flags.Bool("password-prompt", false, "prompt twice without echoing (requires a terminal)")
@@ -144,7 +150,10 @@ func createOwner(args []string, stdin io.Reader, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	dataDir := env("WITMOOT_DATA_DIR", "./data")
+	dataDir, err := resolveProvisioningDataDir(paths)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return err
 	}

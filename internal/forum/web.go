@@ -30,6 +30,7 @@ const pageSize = 20
 
 type Config struct {
 	Name           string
+	SourceURL      string
 	BaseURL        string
 	SecureCookies  bool
 	ImvaultURL     string
@@ -55,44 +56,50 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
-	Invitations                                             []Invitation
-	InviteCode, InviteLabel, InviteUses, InviteDays         string
-	ImagesEnabled, ImageConnected, LibraryMore              bool
-	ImageUsername, ImageServer, ImageLinks, ImageError      string
-	Library                                                 []imvault.File
-	LibraryOffset                                           int
-	SelectedImages                                          map[string]bool
-	CarriedImages                                           []string
-	LibraryPicking                                          bool
-	LibraryLoaded                                           bool
-	Name, Title, View, CSRF, Error                          string
-	User                                                    *User
-	Mode                                                    Mode
-	CanRead, CanPost, Saved                                 bool
-	Boards                                                  []Board
-	Board                                                   Board
-	BoardMembers                                            []BoardMember
-	BoardGroups                                             []BoardGroup
-	Groups                                                  []Group
-	Group                                                   Group
-	GroupMembers                                            []GroupMember
-	GroupBoards                                             []GroupBoard
-	BoardAction                                             string
-	BoardContents                                           BoardContents
-	Deleted                                                 bool
-	Post                                                    Post
-	ComposeAudience                                         Audience
-	Topics                                                  []Topic
-	Topic                                                   Topic
-	Posts                                                   []Post
-	Stats                                                   Stats
-	Query, Prev, Next                                       string
-	Username, TitleInput, BodyInput, Invitation, InviteLink string
+	Invitations                                                 []Invitation
+	InviteMembers                                               []InviteMember
+	InviteCode, InviteLabel, InviteUses, InviteDays             string
+	ImagesEnabled, ImageConnected, LibraryMore                  bool
+	ImageUsername, ImageServer, ImageLinks, ImageError          string
+	Library                                                     []imvault.File
+	LibraryOffset                                               int
+	SelectedImages                                              map[string]bool
+	CarriedImages                                               []string
+	LibraryPicking                                              bool
+	LibraryLoaded                                               bool
+	Name, Title, View, CSRF, Error                              string
+	SourceURL, WelcomeTitle, WelcomeText, MascotURL, FaviconURL string
+	User                                                        *User
+	Mode                                                        Mode
+	CanRead, CanPost, Saved                                     bool
+	CanManageInvites                                            bool
+	Boards                                                      []Board
+	Board                                                       Board
+	BoardMembers                                                []BoardMember
+	BoardGroups                                                 []BoardGroup
+	Groups                                                      []Group
+	Group                                                       Group
+	GroupMembers                                                []GroupMember
+	GroupBoards                                                 []GroupBoard
+	BoardAction                                                 string
+	BoardContents                                               BoardContents
+	Deleted                                                     bool
+	Post                                                        Post
+	ComposeAudience                                             Audience
+	Topics                                                      []Topic
+	Topic                                                       Topic
+	Posts                                                       []Post
+	Stats                                                       Stats
+	Query, Prev, Next                                           string
+	Username, TitleInput, BodyInput, Invitation, InviteLink     string
 }
 
 func New(store *Store, config Config) (*App, error) {
 	if strings.TrimSpace(config.Name) == "" {
 		config.Name = "Witmoot"
+	}
+	if config.SourceURL == "" {
+		config.SourceURL = "https://github.com/airencracken/witmoot"
 	}
 	baseURL, err := canonicalBaseURL(config.BaseURL)
 	if err != nil {
@@ -130,6 +137,7 @@ func New(store *Store, config Config) (*App, error) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	mux.HandleFunc("GET /branding/{name}", a.brandingAsset)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
@@ -169,8 +177,10 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /invites", a.private(a.invites))
 	mux.HandleFunc("POST /invites", a.private(a.createInvite))
 	mux.HandleFunc("POST /invites/{id}/revoke", a.private(a.revokeInvite))
+	mux.HandleFunc("POST /invites/members/{id}/permission", a.owner(a.setInvitePermission))
 	mux.HandleFunc("GET /settings", a.signedIn(a.settings))
 	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
+	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
 	mux.HandleFunc("GET /account/imvault", a.signedIn(a.imageAccount))
 	mux.HandleFunc("POST /account/imvault", a.private(a.connectImages))
 	mux.HandleFunc("POST /account/imvault/disconnect", a.signedIn(a.disconnectImages))
@@ -233,6 +243,9 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			limit := int64(256 << 10)
 			contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 			multipart := contentType == "multipart/form-data"
+			if multipart && r.URL.Path == "/settings/branding-assets" {
+				limit = 5 << 20
+			}
 			if multipart && state.canPost() && a.vault != nil {
 				limit = maxImages*imvault.MaxImageBytes + (1 << 20)
 			}
@@ -298,8 +311,36 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
-	p.Name, p.CSRF, p.User = a.config.Name, state(r).CSRF, state(r).User
+	brand, err := a.store.LoadBranding(r.Context(), SiteBranding{
+		Name: a.config.Name, SourceURL: a.config.SourceURL,
+		WelcomeTitle: "Good company. Conversations worth keeping.",
+		WelcomeText:  "For the plans, the little updates, and the stories that deserve more than a passing message.",
+	})
+	if err == nil {
+		if p.View != "settings" || r.Method == http.MethodGet {
+			p.Name, p.SourceURL, p.WelcomeTitle, p.WelcomeText = brand.Name, brand.SourceURL, brand.WelcomeTitle, brand.WelcomeText
+		}
+		mascot, favicon, assetErr := a.store.BrandingAssetState(r.Context())
+		if assetErr == nil {
+			p.MascotURL = "/static/moot-knight.png"
+			if mascot {
+				p.MascotURL = "/branding/mascot"
+			}
+			if favicon {
+				p.FaviconURL = "/branding/favicon"
+			}
+		}
+	} else {
+		slog.Error("load site branding", "error", err)
+		p.Name, p.SourceURL = a.config.Name, a.config.SourceURL
+		p.MascotURL = "/static/moot-knight.png"
+	}
+	if p.Name == "" {
+		p.Name = a.config.Name
+	}
+	p.CSRF, p.User = state(r).CSRF, state(r).User
 	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
+	p.CanManageInvites = state(r).User != nil && state(r).User.Role == "owner"
 	if p.Board.ID != 0 {
 		p.CanPost = p.CanPost && boardWriteError(p.Board.Access, p.Board.Archived) == nil
 	}

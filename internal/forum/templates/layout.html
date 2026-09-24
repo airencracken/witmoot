@@ -5,6 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"historyCacheSize":0,"refreshOnHistoryMiss":true}'>
 	<title>{{.Title}} · {{.Name}}</title>
+	{{if .FaviconURL}}<link rel="icon" href="{{.FaviconURL}}" type="image/png">{{end}}
 	<script src="/static/theme.js"></script>
 	<link rel="stylesheet" href="/static/style.css">
 	<script src="/static/htmx.min.js" defer></script>
@@ -26,9 +27,9 @@
 				{{if eq .User.Role "owner"}}
 				<a href="/boards/manage">Manage boards</a>
 				<a href="/groups" {{if or (eq .View "groups") (eq .View "group-settings") (eq .View "group-delete")}}aria-current="page"{{end}}>Manage groups</a>
-				{{if ne .Mode "personal"}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
 				{{end}}
+				{{if and (ne .Mode "personal") (or (eq .User.Role "owner") .User.CanInvite)}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				{{if .ImagesEnabled}}<a href="/account/imvault">Images</a>{{end}}
 				<span class="signed-in">{{.User.Username}}</span>
 				<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form>
@@ -66,7 +67,7 @@
 		{{else if eq .View "library"}}{{template "library" .}}
 		{{else}}<section class="paper narrow"><p class="eyebrow">A small detour</p><h1>{{.Title}}</h1>{{template "error" .}}<a href="/">Back to our board</a></section>{{end}}
 	</main>
-	<footer class="site-footer"><span>{{.Name}} · A little corner of the internet, together.</span><span>Take your time. Stay a while.</span></footer>
+	<footer class="site-footer"><span>{{.Name}} · A little corner of the internet, together.</span><span>Take your time. Stay a while.{{if .SourceURL}} · <a href="{{.SourceURL}}" rel="noopener">Source</a>{{end}}</span></footer>
 </body>
 </html>{{end}}
 

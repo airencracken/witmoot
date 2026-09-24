@@ -1,10 +1,15 @@
 package forum
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -38,6 +43,140 @@ func TestSettingsRequireOwnerAndCSRF(t *testing.T) {
 	signInTest(t, app, member, false)
 	requireStatus(t, member.request("GET", "/settings", nil, nil), 403)
 	requireStatus(t, member.post("/settings", url.Values{"mode": {"open"}}), 403)
+}
+
+func TestOwnerCanWhiteboxSiteAndKeepFooterSourceLink(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	guest := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
+	page := guest.request("GET", "/", nil, nil).Body.String()
+	if !strings.Contains(page, `href="https://github.com/airencracken/witmoot"`) {
+		t.Fatal("default footer does not link to the project source")
+	}
+	form := url.Values{
+		"mode": {"private"}, "site_name": {"Garden & Table"},
+		"source_url":    {"https://example.org/witmoot"},
+		"welcome_title": {"<script>gather</script>"},
+		"welcome_text":  {"Welcome to our small community."},
+	}
+	requireStatus(t, owner.post("/settings", form), http.StatusSeeOther)
+	page = guest.request("GET", "/", nil, nil).Body.String()
+	for _, text := range []string{"<title>A place for your people · Garden &amp; Table</title>", "href=\"https://example.org/witmoot\"", "&lt;script&gt;gather&lt;/script&gt;", "Welcome to our small community."} {
+		if !strings.Contains(page, text) {
+			t.Errorf("customized page missing escaped content %q", text)
+		}
+	}
+	form.Set("source_url", "")
+	requireStatus(t, owner.post("/settings", form), http.StatusSeeOther)
+	page = guest.request("GET", "/", nil, nil).Body.String()
+	if strings.Contains(page, "https://example.org/witmoot") {
+		t.Fatal("blank source setting did not hide the footer link")
+	}
+}
+
+func TestSavingModeAndBrandingIsAtomic(t *testing.T) {
+	app, _ := newTestApp(t, false)
+	before, err := app.store.Mode(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.store.db.Exec(`CREATE TRIGGER reject_branding BEFORE INSERT ON instance_branding
+		BEGIN SELECT RAISE(ABORT, 'branding write failed'); END`); err != nil {
+		t.Fatal(err)
+	}
+	err = app.store.SaveInstanceSettings(context.Background(), ModeOpen, SiteBranding{
+		Name: "Should not stick", SourceURL: "https://example.org/source",
+	})
+	if err == nil {
+		t.Fatal("expected branding write to fail")
+	}
+	after, err := app.store.Mode(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatalf("mode changed to %q after transaction failed, want %q", after, before)
+	}
+	resolved, err := app.store.LoadBranding(context.Background(), SiteBranding{Name: "Witmoot"})
+	if err != nil || resolved.Name != "Witmoot" {
+		t.Fatalf("failed transaction changed branding to %+v: %v", resolved, err)
+	}
+}
+
+func TestOwnerCanReplaceAndRemoveBrandImages(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	imageData := pngBrandFixture(t)
+	w := postBrandingMultipart(t, owner, url.Values{}, map[string][]byte{"mascot": imageData, "favicon": imageData})
+	requireStatus(t, w, http.StatusSeeOther)
+	page := owner.request("GET", "/", nil, nil).Body.String()
+	if !strings.Contains(page, `src="/branding/mascot"`) || !strings.Contains(page, `href="/branding/favicon"`) {
+		t.Fatal("custom images are not referenced from the page")
+	}
+	for _, name := range []string{"mascot", "favicon"} {
+		w := owner.request("GET", "/branding/"+name, nil, nil)
+		requireStatus(t, w, http.StatusOK)
+		if w.Header().Get("Content-Type") != "image/png" {
+			t.Errorf("%s content type = %q", name, w.Header().Get("Content-Type"))
+		}
+		if _, err := png.Decode(bytes.NewReader(w.Body.Bytes())); err != nil {
+			t.Errorf("%s was not served as a PNG: %v", name, err)
+		}
+	}
+
+	w = postBrandingMultipart(t, owner, url.Values{"remove_mascot": {"1"}, "remove_favicon": {"1"}}, nil)
+	requireStatus(t, w, http.StatusSeeOther)
+	requireStatus(t, owner.request("GET", "/branding/mascot", nil, nil), http.StatusNotFound)
+	requireStatus(t, owner.request("GET", "/branding/favicon", nil, nil), http.StatusNotFound)
+
+	w = postBrandingMultipart(t, owner, url.Values{}, map[string][]byte{"mascot": []byte("<svg onload=alert(1)>")})
+	requireStatus(t, w, http.StatusUnprocessableEntity)
+}
+
+func postBrandingMultipart(t *testing.T, client *testClient, fields url.Values, files map[string][]byte) *httptest.ResponseRecorder {
+	t.Helper()
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	if cookie := client.cookies[client.app.cookieName("csrf")]; cookie != nil {
+		fields.Set("csrf", cookie.Value)
+	}
+	for key, values := range fields {
+		for _, value := range values {
+			if err := form.WriteField(key, value); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for key, content := range files {
+		part, err := form.CreateFormFile(key, key+".png")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.Copy(part, bytes.NewReader(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodPost, "/settings/branding-assets", &body)
+	r.RemoteAddr = "127.0.0.1:1234"
+	r.Header.Set("Content-Type", form.FormDataContentType())
+	for _, cookie := range client.cookies {
+		r.AddCookie(cookie)
+	}
+	w := httptest.NewRecorder()
+	client.app.ServeHTTP(w, r)
+	return w
+}
+
+func pngBrandFixture(t *testing.T) []byte {
+	t.Helper()
+	var data bytes.Buffer
+	if err := png.Encode(&data, image.NewRGBA(image.Rect(0, 0, 32, 32))); err != nil {
+		t.Fatal(err)
+	}
+	return data.Bytes()
 }
 
 func memberClient(t *testing.T, app *App, name string) *testClient {

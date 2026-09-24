@@ -102,6 +102,83 @@ func TestCreateOwnerCommand(t *testing.T) {
 	}
 }
 
+func TestCreateOwnerUsesOpenRCDataDirectoryWithoutEnvironment(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("WITMOOT_DATA_DIR", "")
+	dataDir := filepath.Join(t.TempDir(), "service data")
+	configPath := filepath.Join(t.TempDir(), "witmoot.confd")
+	if err := os.WriteFile(configPath, []byte("WITMOOT_DATA_DIR=\""+dataDir+"\" # service data\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths := provisioningConfigPaths{
+		openRCConfig:    configPath,
+		openRCInstalled: true,
+		serviceDefault:  "/var/lib/witmoot",
+	}
+	if err := createOwnerWithConfigPaths([]string{"--username", "alex", "--password-stdin"}, strings.NewReader("long enough password"), &bytes.Buffer{}, paths); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "witmoot.db")); err != nil {
+		t.Fatalf("database was not created in the configured OpenRC directory: %v", err)
+	}
+	if _, err := os.Stat("data"); !os.IsNotExist(err) {
+		t.Fatalf("command created the fallback data directory: %v", err)
+	}
+}
+
+func TestCreateOwnerUsesSystemdEnvironmentFileAndHonorsExplicitEnvironment(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("WITMOOT_DATA_DIR", "")
+	serviceDir := filepath.Join(t.TempDir(), "service-data")
+	explicitDir := filepath.Join(t.TempDir(), "explicit-data")
+	envPath := filepath.Join(t.TempDir(), "witmoot.env")
+	if err := os.WriteFile(envPath, []byte("WITMOOT_DATA_DIR=\""+serviceDir+"\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	unitPath := filepath.Join(t.TempDir(), "witmoot.service")
+	unit := "[Service]\nEnvironment=WITMOOT_DATA_DIR=/var/lib/witmoot\nEnvironmentFile=-" + envPath + "\n"
+	if err := os.WriteFile(unitPath, []byte(unit), 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths := provisioningConfigPaths{systemdUnit: unitPath, serviceDefault: "/var/lib/witmoot"}
+	if err := createOwnerWithConfigPaths([]string{"--username", "alex", "--password-stdin"}, strings.NewReader("long enough password"), &bytes.Buffer{}, paths); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(serviceDir, "witmoot.db")); err != nil {
+		t.Fatalf("database was not created in the systemd environment-file directory: %v", err)
+	}
+	t.Setenv("WITMOOT_DATA_DIR", explicitDir)
+	if err := createOwnerWithConfigPaths([]string{"--username", "bex", "--password-stdin"}, strings.NewReader("long enough password"), &bytes.Buffer{}, paths); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(explicitDir, "witmoot.db")); err != nil {
+		t.Fatalf("explicit environment directory was not used: %v", err)
+	}
+}
+
+func TestProvisioningDataDirRejectsAmbiguousAndExecutableOpenRCValues(t *testing.T) {
+	t.Setenv("WITMOOT_DATA_DIR", "")
+	openRCPath := filepath.Join(t.TempDir(), "openrc.conf")
+	unitPath := filepath.Join(t.TempDir(), "witmoot.service")
+	if err := os.WriteFile(openRCPath, []byte("WITMOOT_DATA_DIR=/var/lib/openrc\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(unitPath, []byte("[Service]\nEnvironment=WITMOOT_DATA_DIR=/var/lib/systemd\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths := provisioningConfigPaths{openRCConfig: openRCPath, openRCInstalled: true, systemdUnit: unitPath, serviceDefault: "/var/lib/witmoot"}
+	if _, err := resolveProvisioningDataDir(paths); err == nil || !strings.Contains(err.Error(), "different Witmoot data directories") {
+		t.Fatalf("ambiguous service configuration error = %v", err)
+	}
+	if err := os.WriteFile(openRCPath, []byte("WITMOOT_DATA_DIR=\"$(touch /tmp/not-run)\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths.systemdUnit = ""
+	if _, err := resolveProvisioningDataDir(paths); err == nil || !strings.Contains(err.Error(), "shell expression") {
+		t.Fatalf("executable OpenRC value error = %v", err)
+	}
+}
+
 func TestCreateOwnerRejectsInvalidInputBeforeOpeningData(t *testing.T) {
 	data := filepath.Join(t.TempDir(), "not-created")
 	t.Setenv("WITMOOT_DATA_DIR", data)

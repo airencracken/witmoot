@@ -56,14 +56,27 @@
 		<label for="invite-days">Expires after (days)</label><input id="invite-days" name="expires_days" type="number" min="0" max="3650" value="{{.InviteDays}}" placeholder="Never"><p class="field-help">Leave blank or set 0 for no expiry.</p>
 		<button type="submit">Create an invitation</button>
 	</form>
-	<p class="muted">Only owners can manage invitations. New accounts are always members.</p>
+	<p class="muted">New accounts are always members. The owner decides which members can invite people.</p>
 	<h2>Your invitations</h2>
 	{{range .Invitations}}<article class="invitation-record">
 		<h3>{{if .Label}}{{.Label}}{{else}}Invitation #{{.ID}}{{end}}</h3>
-		<p><strong>{{.Status}}</strong> · {{.UsesLabel}}</p>
+		<p><strong>{{.Status}}</strong> · {{.UsesLabel}} · {{.Invitees}} account{{if ne .Invitees 1}}s{{end}} joined</p>
 		<p class="muted">Issued by {{.Creator}}{{if .Prefix}} · Code starts with <code>{{.Prefix}}</code>{{end}}<br>{{if .ExpiresAt.Valid}}Expires <time datetime="{{iso .ExpiresAt.Int64}}">{{stamp .ExpiresAt.Int64}} UTC</time>{{else}}No expiry{{end}}</p>
 		{{if eq .Status "open"}}<form action="/invites/{{.ID}}/revoke" method="post" hx-disabled-elt="find button[type='submit']"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Revoke invitation</button></form>{{end}}
 	</article>{{else}}<p class="muted">No invitations yet.</p>{{end}}
 	{{template "pager" .}}
+	{{if .CanManageInvites}}
+	<h2>Members who can invite</h2>
+	<p class="muted">Grant invitation access to individual members. Each new account records the person who issued its invitation.</p>
+	{{range .InviteMembers}}<article class="invitation-record">
+		<h3>{{.Username}}</h3>
+		<p class="muted">{{if .InvitedByName}}Joined from an invitation by {{.InvitedByName}}{{else}}No invitation attribution recorded{{end}}</p>
+		<form action="/invites/members/{{.ID}}/permission" method="post">
+			<input type="hidden" name="csrf" value="{{$.CSRF}}">
+			<input type="hidden" name="enabled" value="{{if .CanInvite}}0{{else}}1{{end}}">
+			<button type="submit" class="secondary">{{if .CanInvite}}Remove invite access{{else}}Allow this member to invite{{end}}</button>
+		</form>
+	</article>{{else}}<p class="muted">There are no member accounts yet.</p>{{end}}
+	{{end}}
 </section>
 {{end}}
