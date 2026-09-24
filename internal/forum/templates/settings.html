@@ -6,6 +6,13 @@
 <form class="paper settings-form" action="/settings" method="post" hx-disabled-elt="find button[type='submit']">
 	{{template "csrf" .}}
 	<fieldset>
+		<legend>Make this place yours</legend>
+		<label for="site-name">Site name</label><input id="site-name" name="site_name" maxlength="80" value="{{.Name}}" required>
+		<label for="source-url">Source link</label><input id="source-url" name="source_url" type="url" maxlength="512" value="{{.SourceURL}}" placeholder="Leave blank to hide the link"><p class="field-help">The link appears in the footer. Use an HTTP(S) URL; blank hides it.</p>
+		<label for="welcome-title">Welcome heading</label><input id="welcome-title" name="welcome_title" maxlength="120" value="{{.WelcomeTitle}}">
+		<label for="welcome-text">Welcome text</label><textarea id="welcome-text" name="welcome_text" rows="4" maxlength="2000">{{.WelcomeText}}</textarea>
+	</fieldset>
+	<fieldset>
 		<legend>Who is this site for?</legend>
 		<div class="mode-choices">
 			<label class="mode-choice" for="mode-personal">
@@ -31,4 +38,16 @@
 	</div>
 	<div class="form-footer"><span class="muted">Changes take effect for new requests and are kept after a restart.</span><button type="submit">Save settings</button></div>
 </form>
+<section class="paper settings-form">
+	<h2>Favicon and mascot</h2>
+	<p class="muted">Upload a PNG, JPEG, or GIF image up to 2 MiB. Images are converted to PNG before they are served.</p>
+	<form action="/settings/branding-assets" method="post" enctype="multipart/form-data">
+		{{template "csrf" .}}
+		<label for="mascot">Mascot image</label><input id="mascot" name="mascot" type="file" accept="image/png,image/jpeg,image/gif">
+		{{if .MascotURL}}<label><input type="checkbox" name="remove_mascot" value="1"> Use the default mascot</label>{{end}}
+		<label for="favicon">Favicon</label><input id="favicon" name="favicon" type="file" accept="image/png,image/jpeg,image/gif">
+		{{if .FaviconURL}}<label><input type="checkbox" name="remove_favicon" value="1"> Remove the custom favicon</label>{{end}}
+		<button type="submit">Save images</button>
+	</form>
+</section>
 {{end}}

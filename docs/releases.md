@@ -40,15 +40,17 @@ In a terminal, provision the account using the same data directory. The hidden
 prompt asks for the password twice:
 
 ```bash
-runuser -u witmoot -- env WITMOOT_DATA_DIR=/var/lib/witmoot \
-	/usr/bin/witmoot create-owner --username alex --password-prompt
+sudo /usr/bin/witmoot create-owner \
+	--username alex --password-prompt
 systemctl enable --now witmoot
 ```
 
-The CLI does not read the environment file; pass any customized data/database
-settings explicitly. For scripts, pass one password line on stdin with
-`--password-stdin`. See [deployment](deployment.md) for reverse proxy and
-service settings. Logs go to `journalctl -u witmoot`.
+The command reads `WITMOOT_DATA_DIR` from the systemd unit and environment file
+or OpenRC configuration when it is unset in the process environment. When run
+as root, it repeats the database operation as the configured service account.
+For scripts, pass one password line on stdin with `--password-stdin`. See
+[deployment](deployment.md) for reverse proxy and service settings. Logs go to
+`journalctl -u witmoot`.
 
 An upgrade restarts a running service and leaves an inactive service inactive.
 Back up before upgrading: startup can migrate the database. Debian manages

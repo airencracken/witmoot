@@ -15,6 +15,12 @@ import (
 )
 
 func main() {
+	if handled, status, err := reexecProvisioningAsService(os.Args[1:]); handled {
+		if err != nil {
+			slog.Error("witmoot stopped", "error", err)
+		}
+		os.Exit(status)
+	}
 	if err := run(); err != nil {
 		slog.Error("witmoot stopped", "error", err)
 		os.Exit(1)
@@ -39,7 +45,7 @@ func runServer() error {
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")
 	}
-	config := forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), BaseURL: os.Getenv("WITMOOT_BASE_URL"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
+	config := forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), SourceURL: env("WITMOOT_SOURCE_URL", "https://github.com/airencracken/witmoot"), BaseURL: os.Getenv("WITMOOT_BASE_URL"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
 	config.TrustedProxies, err = forum.ParseTrustedProxies(os.Getenv("WITMOOT_TRUSTED_PROXIES"))
 	if err != nil {
 		return err

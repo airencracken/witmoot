@@ -20,10 +20,14 @@ var migrations embed.FS
 type Store struct{ db *sql.DB }
 
 type User struct {
-	ID        int64
-	Username  string
-	Role      string
-	CreatedAt int64
+	ID            int64
+	Username      string
+	Role          string
+	CreatedAt     int64
+	CanInvite     bool
+	InvitedBy     int64
+	InvitedByName string
+	InvitationID  int64
 }
 
 type Board struct {
@@ -97,7 +101,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -323,13 +327,13 @@ func (s *Store) CreateUser(ctx context.Context, name, hash string) (int64, error
 func (s *Store) Credentials(ctx context.Context, name string) (User, string, error) {
 	var u User
 	var hash string
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, password_hash FROM users WHERE username = ?", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &hash)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), password_hash FROM users WHERE username = ?", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &hash)
 	return u, hash, err
 }
 
 func (s *Store) Session(ctx context.Context, hash string) (*User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`, hash, time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt)
+	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0) FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`, hash, time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -371,7 +375,17 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 	if mode == ModePersonal {
 		return 0, errPersonal
 	}
+	var inviterID, invitationID any
+	var inviterName string
 	if inviteHash != "" || mode != ModeOpen {
+		var invite struct {
+			ID        int64
+			CreatedBy int64
+			Creator   string
+		}
+		if err := tx.QueryRowContext(ctx, `SELECT i.id, i.created_by, u.username FROM invitations i JOIN users u ON u.id = i.created_by WHERE i.token_hash = ?`, inviteHash).Scan(&invite.ID, &invite.CreatedBy, &invite.Creator); err != nil {
+			return 0, errInvitation
+		}
 		result, err := tx.ExecContext(ctx, `UPDATE invitations SET uses = uses + 1 WHERE token_hash = ? AND revoked_at IS NULL
 			AND (expires_at IS NULL OR expires_at > ?) AND (max_uses = 0 OR uses < max_uses)`, inviteHash, time.Now().Unix())
 		if err != nil {
@@ -384,8 +398,9 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 		if n != 1 {
 			return 0, errInvitation
 		}
+		inviterID, invitationID, inviterName = invite.CreatedBy, invite.ID, invite.Creator
 	}
-	result, err := tx.ExecContext(ctx, `INSERT INTO users(username, password_hash, created_at) VALUES (?, ?, ?) ON CONFLICT(username) DO NOTHING`, name, passwordHash, time.Now().Unix())
+	result, err := tx.ExecContext(ctx, `INSERT INTO users(username, password_hash, created_at, invited_by, invited_by_name, invitation_id) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(username) DO NOTHING`, name, passwordHash, time.Now().Unix(), inviterID, inviterName, invitationID)
 	if err != nil {
 		return 0, err
 	}

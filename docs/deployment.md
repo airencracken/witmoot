@@ -11,17 +11,17 @@ still defaults to `127.0.0.1:8080` and `./data`.
 
 ## Source install on Gentoo / OpenRC
 
-From the source checkout, run these administrative commands as root. You need
-Go 1.26 or later, Make, and the normal install tools; the first build downloads
-the pinned Go dependencies. Install `app-admin/logrotate` and
+From the source checkout, create the service account first, then install as
+root. You need Go 1.26 or later, Make, and the normal install tools; the first
+build downloads the pinned Go dependencies. Install `app-admin/logrotate` and
 `app-misc/ca-certificates` through Portage too.
 
 ```sh
-make install install-openrc
 groupadd --system witmoot
 useradd --system --gid witmoot --home-dir /var/lib/witmoot \
 	--shell "$(command -v nologin)" witmoot
 install -d -m 0700 -o witmoot -g witmoot /var/lib/witmoot
+make install install-openrc
 ```
 
 Create the account only once. `make install` installs `/usr/local/bin/witmoot`;
@@ -57,21 +57,38 @@ Witmoot handles SIGTERM and has ten seconds to finish active requests.
 
 ## Provision the owner
 
-The CLI reads environment variables; it does not read the service's config
-file. Set the **same data directory as the service** and run it as the service
-account so the board can read and update its files. The hidden prompt asks for
-the password twice and needs a terminal:
+The command reads `WITMOOT_DATA_DIR` from the active OpenRC or systemd service
+configuration when the environment variable is unset. You can invoke it as root;
+it repeats the database operation as the configured service account so new
+database files keep the right ownership. The hidden prompt asks for the password
+twice and needs a terminal:
 
 ```bash
-runuser -u witmoot -- env WITMOOT_DATA_DIR=/var/lib/witmoot \
-	/usr/local/bin/witmoot create-owner --username alex --password-prompt
+sudo /usr/local/bin/witmoot create-owner \
+	--username alex --password-prompt
 ```
 
-For the Gentoo package or `PREFIX=/usr`, use `/usr/bin/witmoot`. If you changed
-the service data directory or account, change those here too. Passwords need
+For the Gentoo package or `PREFIX=/usr`, use `/usr/bin/witmoot`. If OpenRC and
+systemd are both installed but configure different data directories, run under
+the active service manager or set `WITMOOT_DATA_DIR` explicitly. Passwords need
 at least 12 characters and at most 72 bytes. New boards start in Private mode;
 public registration never provisions an owner. For scripts, pass one password
 line on stdin with `--password-stdin`.
+
+## Site identity and invitations
+
+Owners can set the site name, footer source link, welcome heading and text, and
+upload a favicon or mascot under **Settings**. Brand images accept PNG, JPEG, or
+GIF up to 2 MiB; Witmoot converts them to PNG and serves them from the same
+origin. The source link defaults to the Witmoot repository and can be changed
+or hidden in Settings. `WITMOOT_SOURCE_URL` sets the default used before an
+owner saves an override.
+
+Owners can grant individual members permission to issue invitations on the
+**Invites** page. Members with that permission see and revoke only the
+invitations they issued. New accounts record the issuer and invitation used;
+owners can review that attribution on the same page. New accounts remain
+members and do not inherit invitation permission.
 
 ## Gentoo ebuild
 
@@ -184,7 +201,8 @@ docker compose logs -f witmoot
 
 Open <http://localhost:8082> for a local trial. For HTTPS hosting, put
 `WITMOOT_BASE_URL`, `WITMOOT_SECURE_COOKIES=true`, and optionally
-`WITMOOT_IMVAULT_URL` in a local `.env` file. `WITMOOT_NAME` and `WITMOOT_PORT`
+`WITMOOT_IMVAULT_URL` in a local `.env` file. `WITMOOT_NAME`,
+`WITMOOT_SOURCE_URL`, and `WITMOOT_PORT`
 are configurable there too. Run `docker compose up -d` to apply changes.
 
 When proxying into Docker, the peer seen by Witmoot is usually a Docker network
