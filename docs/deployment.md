@@ -42,6 +42,8 @@ WITMOOT_SECURE_COOKIES="true"
 WITMOOT_TRUSTED_PROXIES="127.0.0.1/32,::1/128"
 # Optional; use your imvault server's public, canonical URL.
 WITMOOT_IMVAULT_URL="https://img.internetrelay.chat"
+# Optional mail relay for reset links; leave unset to disable sending.
+# WITMOOT_SMTP_HOST="smtp.example.org"
 ```
 
 Provision the owner as described below, then start the board:
@@ -74,6 +76,46 @@ the active service manager or set `WITMOOT_DATA_DIR` explicitly. Passwords need
 at least 12 characters and at most 72 bytes. New boards start in Private mode;
 public registration never provisions an owner. For scripts, pass one password
 line on stdin with `--password-stdin`.
+
+## Passwords and account recovery
+
+An owner can issue a single-use reset link for any account under **Members**.
+The link is shown once and expires after 24 hours; the member opens it to choose
+their own password. **Cancel reset link** revokes a link before it is used.
+Members can change their own password under **Account**, which ends their other
+sessions.
+
+For someone who cannot use a link, reset a password directly. These commands
+read `WITMOOT_DATA_DIR` from the service configuration and re-run as the service
+user when invoked with root:
+
+```bash
+sudo /usr/local/bin/witmoot set-password --username freya --password-prompt
+sudo /usr/local/bin/witmoot reset-link --username freya --expires 48h
+sudo /usr/local/bin/witmoot list-users
+```
+
+`set-password` replaces the password and signs the account out everywhere.
+`reset-link` prints a link and its code; set `WITMOOT_BASE_URL` so the printed
+link is complete. `list-users` prints each account's ID, username, role, and
+address.
+
+Mail is optional. With an SMTP relay configured, an owner can email a reset link
+to a member who has an address on file:
+
+```sh
+WITMOOT_SMTP_HOST="smtp.example.org"
+WITMOOT_SMTP_PORT="587"
+WITMOOT_SMTP_USERNAME="witmoot"
+WITMOOT_SMTP_PASSWORD="…"
+WITMOOT_SMTP_FROM="Witmoot <no-reply@example.org>"
+WITMOOT_SMTP_TLS="starttls"
+```
+
+`starttls` is the default, `implicit` suits port 465, and `none` is for a trusted
+local relay. Leave `WITMOOT_SMTP_HOST` unset to disable sending; reset links
+still work when an owner copies them. Member addresses are optional and are set
+under **Account**.
 
 ## Site identity and invitations
 

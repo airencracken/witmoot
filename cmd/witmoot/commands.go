@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"witmoot/contrib"
 	"witmoot/internal/forum"
@@ -21,6 +20,9 @@ Usage: witmoot [COMMAND] [OPTIONS]
 Commands:
   serve          Start the HTTP server (also the default with no arguments).
   create-owner   Provision a new owner using a hidden prompt or stdin.
+  set-password   Replace an account's password and end its sessions.
+  reset-link     Make a single-use link an account can use to choose a password.
+  list-users     List local accounts with their roles and email addresses.
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
   help [COMMAND] Show help; COMMAND --help also works.
 
@@ -33,17 +35,25 @@ Server configuration uses environment variables:
   WITMOOT_SECURE_COOKIES  Set true for HTTPS (default: false).
   WITMOOT_TRUSTED_PROXIES Comma-separated proxy IPs/CIDRs; empty trusts none.
   WITMOOT_IMVAULT_URL     Optional HTTPS origin of your Imvault image host.
+  WITMOOT_SMTP_HOST       Optional SMTP relay; empty leaves mail disabled.
+  WITMOOT_SMTP_PORT       Relay port (default: 587).
+  WITMOOT_SMTP_USERNAME   Relay username, if it needs one.
+  WITMOOT_SMTP_PASSWORD   Relay password, if it needs one.
+  WITMOOT_SMTP_FROM       From address, for example Witmoot <no-reply@example.org>.
+  WITMOOT_SMTP_TLS        starttls (default), implicit, or none.
 
 Native services and proxy examples use 127.0.0.1:8082 by default.
 Service settings: /etc/conf.d/witmoot (OpenRC), /etc/witmoot/witmoot.env (systemd).
-create-owner reads WITMOOT_DATA_DIR from the active service configuration when
-it is not set in the environment. When run as root, it repeats the database
+Account commands read WITMOOT_DATA_DIR from the active service configuration when
+it is not set in the environment. When run as root, they repeat the database
 operation as the service user to preserve ownership.
 
 Examples:
   WITMOOT_ADDR=127.0.0.1:8082 WITMOOT_DATA_DIR=/var/lib/witmoot witmoot serve
   witmoot create-owner --username alex --password-prompt
   witmoot create-owner --username alex --password-stdin < password-file
+  witmoot set-password --username freya --password-prompt
+  witmoot reset-link --username freya --expires 48h
   witmoot proxy-config caddy --domain board.example.org > witmoot.Caddyfile
 
 Logs: stdout/stderr; systemd uses journald, OpenRC uses /var/log/witmoot.log.
@@ -59,10 +69,16 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 		return serve(args[1:], stdout)
 	case "create-owner":
 		return createOwner(args[1:], stdin, stdout)
+	case "set-password":
+		return setPassword(args[1:], stdin, stdout)
+	case "reset-link":
+		return resetLink(args[1:], stdout)
+	case "list-users":
+		return listUsers(args[1:], stdout)
 	case "proxy-config":
 		return proxyconfig.Run(args[1:], stdout)
 	case "help":
-		if len(args) == 2 && (args[1] == "serve" || args[1] == "create-owner" || args[1] == "proxy-config") {
+		if len(args) == 2 && (commandSummary[args[1]] != "" || args[1] == "proxy-config") {
 			return runCommand([]string{args[1], "--help"}, stdin, stdout)
 		}
 		if len(args) != 1 {
@@ -99,11 +115,7 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 	flags.SetOutput(out)
 	flags.Usage = func() {
 		fmt.Fprintf(out, "Usage: witmoot %s [OPTIONS]\n\n", command)
-		if command == "serve" {
-			fmt.Fprintln(out, "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.")
-		} else {
-			fmt.Fprintln(out, "Create a new owner locally. Existing accounts are never promoted or changed.\nWITMOOT_DATA_DIR is read from the active service configuration unless set in the environment. Root invocations use the configured service user. Use a hidden terminal prompt or read from stdin.")
-		}
+		fmt.Fprintln(out, commandSummary[command])
 		fmt.Fprintln(out)
 		flags.PrintDefaults()
 	}
@@ -128,18 +140,7 @@ func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if flags.NArg() != 0 || *username == "" || *passwordPrompt == *passwordStdin {
 		return errors.New("usage: witmoot create-owner --username NAME (--password-prompt | --password-stdin)")
 	}
-	var value string
-	var err error
-	if *passwordPrompt {
-		value, err = readPromptPassword()
-	} else {
-		var password []byte
-		password, err = io.ReadAll(io.LimitReader(stdin, 1025))
-		if err == nil && len(password) > 1024 {
-			err = errors.New("password input is too long")
-		}
-		value = strings.TrimSuffix(strings.TrimSuffix(string(password), "\n"), "\r")
-	}
+	value, err := readProvisionedPassword(*passwordPrompt, stdin)
 	if err != nil {
 		return err
 	}

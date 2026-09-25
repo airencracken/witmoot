@@ -104,8 +104,10 @@ or pressure to keep checking in.
 ## Where to go next
 
 1. Local governance and ownership: visible house rules and responsible hosts,
-   account recovery, member removal, editing one's own
-   posts, owner moderation, configurable rooms, and useful exports.
+   member removal, owner moderation, configurable rooms, and useful exports.
+   Member password changes, owner-issued reset links, and a local
+   `set-password` command are a first piece of account recovery; self-service
+   email recovery and account removal remain.
 2. Shared memories: richer image descriptions and album browsing, while keeping
    sharing deliberate and access rules understandable.
 3. Gentle conveniences: bookmarks, unread markers, optional email digests, and

@@ -22,15 +22,20 @@ func canonicalBaseURL(value string) (string, error) {
 }
 
 func (a *App) inviteURL(r *http.Request, token string) string {
-	base := a.config.BaseURL
-	if base == "" {
-		scheme := "http"
-		if r.TLS != nil || a.config.SecureCookies {
-			scheme = "https"
-		}
-		base = (&url.URL{Scheme: scheme, Host: r.Host}).String()
+	return a.origin(r) + "/join?invite=" + token
+}
+
+// origin is the public HTTP(S) origin used to build shareable links. It prefers
+// WITMOOT_BASE_URL and otherwise trusts the request, matching invitation links.
+func (a *App) origin(r *http.Request) string {
+	if a.config.BaseURL != "" {
+		return a.config.BaseURL
 	}
-	return base + "/join?invite=" + token
+	scheme := "http"
+	if r.TLS != nil || a.config.SecureCookies {
+		scheme = "https"
+	}
+	return (&url.URL{Scheme: scheme, Host: r.Host}).String()
 }
 
 func (a *App) mayInvite(w http.ResponseWriter, r *http.Request) bool {
