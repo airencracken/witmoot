@@ -124,7 +124,8 @@ under **Account**.
 Owners can set the site name, footer source link, welcome heading and text, and
 upload a favicon or mascot under **Settings**. Brand images accept PNG, JPEG, or
 GIF up to 2 MiB; Witmoot converts them to PNG and serves them from the same
-origin. The source link defaults to the Witmoot repository and can be changed
+origin. A custom favicon replaces the small Moot Knight that ships with the
+board. The source link defaults to the Witmoot repository and can be changed
 or hidden in Settings. `WITMOOT_SOURCE_URL` sets the default used before an
 owner saves an override.
 
