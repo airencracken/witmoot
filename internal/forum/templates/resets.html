@@ -4,6 +4,16 @@
 	<p class="muted">Signed in as <strong>{{.User.Username}}</strong>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="save-notice" role="status">{{.Notice}}</p>{{end}}
+	<h2>Your avatar</h2>
+	{{if .HasAvatar}}<p><img class="avatar large" src="/avatars/{{.User.ID}}" alt="Your current avatar"></p>{{end}}
+	<form action="/account/avatar" method="post" enctype="multipart/form-data" hx-disabled-elt="find button[type='submit']">
+		{{template "csrf" .}}
+		<label for="avatar">Choose a picture</label><input id="avatar" name="avatar" type="file" accept="image/png,image/jpeg,image/gif">
+		<p class="field-help">PNG, JPEG, or GIF up to 2 MiB. We crop it square and store a small PNG; any camera details are dropped.</p>
+		<button type="submit" class="secondary">Save avatar</button>
+	</form>
+	{{if .ImageConnected}}<p class="muted"><a href="/account/avatar/imvault">Choose an image from your imvault library</a> instead. Witmoot copies it, so the avatar keeps working even if imvault is unavailable.</p>{{end}}
+	{{if .HasAvatar}}<form action="/account/avatar" method="post"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="remove" value="1"><button type="submit" class="secondary">Remove my avatar</button></form>{{end}}
 	<h2>Change your password</h2>
 	<form action="/account/password" method="post" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
@@ -60,6 +70,7 @@
 	</div>
 	{{end}}
 	{{range .Members}}<article class="invitation-record">
+		{{if .HasAvatar}}<img class="avatar" src="/avatars/{{.ID}}" alt="">{{else}}<span class="avatar" aria-hidden="true">{{initial .Username}}</span>{{end}}
 		<h3>{{.Username}}{{if eq .Role "owner"}} <span class="muted">· owner</span>{{end}}</h3>
 		<p class="muted">{{if .Email}}{{.Email}}{{else}}No email address on file{{end}}{{if .Pending}} · reset link waiting{{end}}</p>
 		<form action="/members/{{.ID}}/reset" method="post">
@@ -68,6 +79,20 @@
 			<button type="submit" class="secondary">Create a reset link</button>
 		</form>
 		{{if .Pending}}<form action="/members/{{.ID}}/reset/revoke" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Cancel reset link</button></form>{{end}}
+		{{if .HasAvatar}}<form action="/members/{{.ID}}/avatar/remove" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Remove avatar</button></form>{{end}}
 	</article>{{else}}<p class="muted">There are no accounts yet.</p>{{end}}
+</section>
+{{end}}
+
+{{define "avatar-library"}}
+{{template "crumb" .}}
+<section class="paper">
+	<p class="eyebrow">A face for your name</p><h1>Choose an avatar.</h1>
+	<p>Pick an image from your imvault library. Witmoot copies it, crops it square, and scales it down; your original stays in imvault.</p>
+	<form class="search-form" method="get" action="/account/avatar/imvault" hx-boost="false"><label for="avatar-search">Search your library</label><div><input id="avatar-search" name="q" type="search" value="{{.Query}}" maxlength="100"><button type="submit">Find images</button></div></form>
+	{{template "error" .}}{{if .ImageError}}<p role="alert">{{.ImageError}}</p>{{end}}
+	{{if .LibraryLoaded}}<div class="image-grid">{{range .Library}}<div class="image-choice"><img src="/imvault/library/{{.ID}}/image" alt="{{.Name}}" loading="lazy"><span>{{.Name}}</span><form action="/account/avatar/imvault" method="post">{{template "csrf" $}}<input type="hidden" name="image_id" value="{{.ID}}"><button type="submit" class="secondary">Use as avatar</button></form></div>{{else}}<p class="muted">No images on this page.</p>{{end}}</div>
+	<nav class="pagination" aria-label="Image library pages">{{if gt .LibraryOffset 0}}<a class="button secondary" href="/account/avatar/imvault?q={{.Query}}&amp;offset={{add .LibraryOffset -12}}">Previous images</a>{{end}}{{if .LibraryMore}}<a class="button secondary" href="/account/avatar/imvault?q={{.Query}}&amp;offset={{add .LibraryOffset 12}}">Next images</a>{{end}}</nav>{{end}}
+	<p><a href="/account">Back to your account</a></p>
 </section>
 {{end}}

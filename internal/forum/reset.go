@@ -32,7 +32,13 @@ func (a *App) siteName(r *http.Request) string {
 }
 
 func (a *App) accountPage(r *http.Request, message, notice, email string) Page {
-	return Page{View: "account", Title: "Your account", Error: message, Notice: notice, Email: email, MailEnabled: a.mailer.Enabled()}
+	page := Page{View: "account", Title: "Your account", Error: message, Notice: notice, Email: email, MailEnabled: a.mailer.Enabled()}
+	if user := state(r).User; user != nil {
+		if has, err := a.store.HasAvatar(r.Context(), user.ID); err == nil {
+			page.HasAvatar = has
+		}
+	}
+	return page
 }
 
 func (a *App) account(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +48,8 @@ func (a *App) account(w http.ResponseWriter, r *http.Request) {
 		notice = "Your password has been changed. Other devices have been signed out."
 	case "email":
 		notice = "Your email address has been saved."
+	case "avatar":
+		notice = "Your avatar has been saved."
 	}
 	a.render(w, r, 200, a.accountPage(r, "", notice, state(r).User.Email))
 }
@@ -186,8 +194,11 @@ func (a *App) renderMembers(w http.ResponseWriter, r *http.Request, status int, 
 
 func (a *App) members(w http.ResponseWriter, r *http.Request) {
 	notice := ""
-	if r.URL.Query().Get("saved") == "link-revoked" {
+	switch r.URL.Query().Get("saved") {
+	case "link-revoked":
 		notice = "The reset link was cancelled. It can no longer be used."
+	case "avatar-removed":
+		notice = "The avatar was removed."
 	}
 	a.renderMembers(w, r, 200, Page{Notice: notice})
 }

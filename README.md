@@ -203,6 +203,8 @@ Open requires an account to post; it does not reproduce imvault's anonymous uplo
   bare web addresses shown as links.
 - Optional imvault images: upload from a post, choose from your library, or
   paste an image link. Image access follows the conversation's audience.
+- Optional member avatars: upload a picture or import one from your imvault
+  library. Witmoot crops it square, drops any metadata, and keeps a small PNG.
 - Search across conversation titles and message text.
 - Owner invitations, member accounts, sign-in, and sign-out.
 - Password changes for signed-in members, single-use reset links owners hand
@@ -300,9 +302,11 @@ Passwords use bcrypt. Session, invitation, and reset tokens are random and only
 their SHA-256 hashes are stored. Reset links work once and expire. Sessions
 expire after seven days. Forms require CSRF tokens and use Go's cross-origin
 protection. User text is escaped; only bare `http://` and `https://` addresses
-are turned into links, and nothing else is treated as markup. Private pages send
-`Cache-Control: no-store` and disable HTMX history storage. Assets are served
-locally under a restrictive content security policy.
+are turned into links, and nothing else is treated as markup. Avatars are
+re-encoded to PNG, which drops camera metadata, and are served through the same
+audience gate as the board. Private pages send `Cache-Control: no-store` and
+disable HTMX history storage. Assets are served locally under a restrictive
+content security policy.
 
 Sign-in, open registration, and invitation redemption share a limit of 20 attempts per 15 minutes
 per client IP. The limiter is in memory and does not trust forwarded
@@ -313,14 +317,16 @@ budget. See [running beside imvault](docs/imvault.md#running-beside-imvault).
 For a simple backup, **stop the server and copy the entire data directory**.
 Restore it with the server stopped, then start Witmoot against that directory.
 Do not copy only the live `.db` file while SQLite is using WAL journaling.
+Avatars live in the database, so this copy includes them.
 
 **Taking your data is a core comfyware requirement.** Under **Account**, each
 member can download their own contributions as a Zip archive: a versioned
 `manifest.json`, a readable `archive.html` that opens offline, and the
 conversation and image-reference context needed to understand them. It holds
-that member's messages only, never anyone else's, and never credentials. Images
-are references to the imvault preview that was posted; originals come from your
-imvault account export. Operator backups remain the copy of the whole board.
+that member's messages and avatar only, never anyone else's, and never
+credentials. Conversation images are references to the imvault preview that was
+posted; originals come from your imvault account export. Operator backups remain
+the copy of the whole board.
 
 A portable community archive, so a whole board can move, and import workflows
 are core work still to do. See the
@@ -333,6 +339,11 @@ password changes, owner-issued reset links, and the local `set-password`
 command; there is no self-service email reset, and mail stays off until a relay
 is configured. Do not use it as the sole copy of irreplaceable family material.
 SQLite data is not encrypted at rest.
+
+Links are deliberately not embedded: a shared video or music URL stays a link,
+never a player, so opening a page never contacts a third party. Avatars are
+optional and re-encoded locally; an animated upload becomes a still PNG, and an
+owner can remove any member's avatar.
 
 ## Working on it
 

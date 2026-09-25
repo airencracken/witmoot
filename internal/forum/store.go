@@ -62,6 +62,7 @@ type Post struct {
 	Images                                []Attachment
 	TopicID, AuthorID, EditedAt, Revision int64
 	CanEdit                               bool
+	HasAvatar                             bool
 }
 
 type Stats struct{ Topics, Posts, Members int }
@@ -102,7 +103,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -206,7 +207,7 @@ func (s *Store) Topic(ctx context.Context, id int64, reader *User) (Topic, error
 }
 
 func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, reader *User) ([]Post, bool, error) {
-	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, u.username, p.created_at, u.created_at, p.author_id, p.topic_id, p.edited_at, p.revision FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
+	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, u.username, p.created_at, u.created_at, p.author_id, p.topic_id, p.edited_at, p.revision, (SELECT EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = p.author_id)) FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -214,7 +215,7 @@ func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, rea
 	var posts []Post
 	for rows.Next() {
 		var p Post
-		if err := rows.Scan(&p.ID, &p.Body, &p.Author, &p.CreatedAt, &p.JoinedAt, &p.AuthorID, &p.TopicID, &p.EditedAt, &p.Revision); err != nil {
+		if err := rows.Scan(&p.ID, &p.Body, &p.Author, &p.CreatedAt, &p.JoinedAt, &p.AuthorID, &p.TopicID, &p.EditedAt, &p.Revision, &p.HasAvatar); err != nil {
 			return nil, false, err
 		}
 		p.Number = offset + len(posts) + 1

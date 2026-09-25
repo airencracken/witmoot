@@ -31,6 +31,9 @@ type vaultFixture struct {
 	deleted           []string
 	beforeUpload      func()
 	unavailable       bool
+	// imageBytes is what the fixture serves for image requests. It defaults to
+	// testPNG; avatar import needs a real, decodable image.
+	imageBytes []byte
 }
 
 func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
@@ -43,7 +46,7 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := &vaultFixture{}
+	fixture := &vaultFixture{imageBytes: testPNG}
 	a.vault.HTTP.Transport = vaultTransport(func(r *http.Request) (*http.Response, error) {
 		fixture.requests++
 		w := httptest.NewRecorder()
@@ -57,7 +60,7 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 		token := r.Header.Get("Authorization")
 		path := r.URL.Path
 		if path == "/f/public/thumb" && token == "" {
-			w.Write(testPNG)
+			w.Write(fixture.imageBytes)
 			return w.Result(), nil
 		}
 		if token != "Bearer test-key" {
@@ -94,7 +97,7 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 			}
 			json.NewEncoder(w).Encode(imvault.File{ID: id, Name: "Family photo.png", Kind: "image", Visibility: "private"})
 		case strings.HasPrefix(path, "/f/own/") || strings.HasPrefix(path, "/f/upload"):
-			w.Write(testPNG)
+			w.Write(fixture.imageBytes)
 		default:
 			w.WriteHeader(404)
 		}

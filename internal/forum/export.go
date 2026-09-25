@@ -2,7 +2,9 @@ package forum
 
 import (
 	"archive/zip"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -42,6 +44,7 @@ type exportAccount struct {
 	Role      string `json:"role"`
 	CreatedAt string `json:"created_at"`
 	Email     string `json:"email,omitempty"`
+	HasAvatar bool   `json:"has_avatar"`
 }
 
 type exportBoard struct {
@@ -105,6 +108,11 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	avatar, _, avatarErr := a.store.Avatar(ctx, user.ID)
+	if avatarErr != nil && !errors.Is(avatarErr, sql.ErrNoRows) {
+		a.serverError(w, r, avatarErr)
+		return
+	}
 
 	origin := a.origin(r)
 	manifest := exportManifest{
@@ -117,6 +125,7 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 			Role:      user.Role,
 			CreatedAt: time.Unix(user.CreatedAt, 0).UTC().Format(time.RFC3339),
 			Email:     user.Email,
+			HasAvatar: len(avatar) > 0,
 		},
 		Note: exportNote,
 	}
@@ -167,6 +176,17 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 	if err := a.writeArchivePage(archive, manifest); err != nil {
 		slog.Error("export: write archive page", "user", user.ID, "error", err)
 		return
+	}
+	if len(avatar) > 0 {
+		entry, err := archive.Create("avatar.png")
+		if err != nil {
+			slog.Error("export: write avatar", "user", user.ID, "error", err)
+			return
+		}
+		if _, err := entry.Write(avatar); err != nil {
+			slog.Error("export: write avatar", "user", user.ID, "error", err)
+			return
+		}
 	}
 	slog.Info("account exported", "user", user.ID, "posts", len(manifest.Posts))
 }

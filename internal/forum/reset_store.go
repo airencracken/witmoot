@@ -154,13 +154,15 @@ func (s *Store) SetEmail(ctx context.Context, userID int64, email string) error 
 // MemberReset reports one account and whether a reset link is waiting for it.
 type MemberReset struct {
 	User
-	Pending bool
+	Pending   bool
+	HasAvatar bool
 }
 
 // Members lists every account for the owner's member page.
 func (s *Store) Members(ctx context.Context) ([]MemberReset, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email,
-		EXISTS(SELECT 1 FROM auth_tokens t WHERE t.user_id = u.id AND t.purpose = 'password_reset' AND t.used_at IS NULL AND t.expires_at > ?) AS pending
+		EXISTS(SELECT 1 FROM auth_tokens t WHERE t.user_id = u.id AND t.purpose = 'password_reset' AND t.used_at IS NULL AND t.expires_at > ?) AS pending,
+		EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = u.id) AS has_avatar
 		FROM users u ORDER BY u.role DESC, u.username COLLATE NOCASE`, time.Now().Unix())
 	if err != nil {
 		return nil, err
@@ -169,7 +171,7 @@ func (s *Store) Members(ctx context.Context) ([]MemberReset, error) {
 	var members []MemberReset
 	for rows.Next() {
 		var m MemberReset
-		if err := rows.Scan(&m.ID, &m.Username, &m.Role, &m.CreatedAt, &m.CanInvite, &m.InvitedBy, &m.InvitedByName, &m.InvitationID, &m.Email, &m.Pending); err != nil {
+		if err := rows.Scan(&m.ID, &m.Username, &m.Role, &m.CreatedAt, &m.CanInvite, &m.InvitedBy, &m.InvitedByName, &m.InvitationID, &m.Email, &m.Pending, &m.HasAvatar); err != nil {
 			return nil, err
 		}
 		members = append(members, m)

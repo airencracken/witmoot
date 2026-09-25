@@ -90,6 +90,14 @@ Still images use imvault's generated preview. Animated images use a still
 thumbnail. Witmoot does not fetch originals or expose camera metadata. This is
 image sharing, not a general attachment store or an embedded imvault browser.
 
+## Avatars from your library
+
+Under **Account**, a member can import an image from their connected imvault
+library as their avatar. Witmoot copies the chosen preview, crops it square, and
+stores a small PNG in its own database, so the avatar keeps working even if
+imvault is unreachable later or the connection is removed. This is the one place
+Witmoot keeps image bytes of its own; conversation images remain references.
+
 ## Who can see a shared image
 
 Attaching an image explicitly shares its preview with everyone allowed to read
@@ -102,8 +110,8 @@ become a member, as explained in the board settings.
 Witmoot serves images through local `/images/...` URLs. Each request checks the
 current board mode and conversation audience before accessing imvault. Private
 and Personal modes close access to formerly public images along with the board.
-The proxy does not forward browser cookies, expose API keys, or store image
-bytes in SQLite. Responses use `Cache-Control: no-store`.
+The proxy does not forward browser cookies, expose API keys, or store shared
+conversation image bytes in SQLite. Responses use `Cache-Control: no-store`.
 
 Existing public imvault links remain public at their original URLs. Sharing one
 in a private conversation does not change its visibility in imvault. Anyone
