@@ -77,5 +77,6 @@
 
 {{define "error"}}{{if .Error}}<div class="form-error" role="alert" tabindex="-1">{{.Error}}</div>{{end}}{{end}}
 {{define "csrf"}}<input type="hidden" name="csrf" value="{{.CSRF}}">{{end}}
+{{define "body"}}{{range segments .}}{{if .URL}}<a href="{{.URL}}" rel="noopener noreferrer external">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}{{end}}
 {{define "pager"}}{{if or .Prev .Next}}<nav class="pagination" aria-label="Pages">{{if .Prev}}<a class="button secondary" href="{{.Prev}}">Previous page</a>{{end}}{{if .Next}}<a class="button secondary" href="{{.Next}}">Next page</a>{{end}}</nav>{{end}}{{end}}
 {{define "crumb"}}<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Our board</a><span aria-hidden="true">/</span>{{if .Board.ID}}<a href="/boards/{{.Board.ID}}">{{.Board.Name}}</a>{{else if .Topic.ID}}<a href="/boards/{{.Topic.BoardID}}">{{.Topic.BoardName}}</a>{{else}}<span>{{.Title}}</span>{{end}}</nav>{{end}}
