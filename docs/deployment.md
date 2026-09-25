@@ -93,12 +93,14 @@ user when invoked with root:
 sudo /usr/local/bin/witmoot set-password --username freya --password-prompt
 sudo /usr/local/bin/witmoot reset-link --username freya --expires 48h
 sudo /usr/local/bin/witmoot list-users
+sudo /usr/local/bin/witmoot admin
 ```
 
 `set-password` replaces the password and signs the account out everywhere.
 `reset-link` prints a link and its code; set `WITMOOT_BASE_URL` so the printed
 link is complete. `list-users` prints each account's ID, username, role, and
-address.
+address. `admin` opens an interactive manager for the same work and needs a
+terminal; the other commands remain the scriptable path.
 
 Mail is optional. With an SMTP relay configured, an owner can email a reset link
 to a member who has an address on file:

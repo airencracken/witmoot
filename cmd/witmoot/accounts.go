@@ -13,7 +13,11 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"golang.org/x/term"
+
+	"witmoot/internal/admin"
 	"witmoot/internal/forum"
+	"witmoot/internal/mail"
 )
 
 // commandSummary describes each command for its --help output.
@@ -23,6 +27,7 @@ var commandSummary = map[string]string{
 	"set-password": "Replace an account's password and end its signed-in sessions.\nThis is the forced reset for someone who cannot use a one-time link. Root invocations use the configured service user.",
 	"reset-link":   "Make a single-use link an account can open to choose its own password.\nThe link expires (24 hours by default) and is shown once. Root invocations use the configured service user.",
 	"list-users":   "List every account in the local database with its role and email address.",
+	"admin":        "Open an interactive manager for accounts: browse members, create owners,\nissue or cancel reset links, and set passwords. It needs an interactive terminal;\nuse set-password, reset-link, or list-users for scripts.",
 }
 
 // openProvisioningStore opens the database in the resolved data directory. It
@@ -183,6 +188,43 @@ func listUsersWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 		}
 	}
 	return table.Flush()
+}
+
+// runAdmin opens the interactive account manager. It shares the same store
+// operations as the account commands, so the two cannot disagree about what a
+// reset link or a forced password change does.
+func runAdmin(args []string, stdout io.Writer) error {
+	flags := commandFlags("admin", stdout)
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+	if flags.NArg() != 0 {
+		return errors.New("usage: witmoot admin")
+	}
+	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
+		return errors.New("witmoot admin needs an interactive terminal; use set-password, reset-link, or list-users for scripts")
+	}
+	store, err := openProvisioningStore(defaultProvisioningConfigPaths())
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	var sender mail.Sender = mail.Disabled{}
+	mailSettings, err := mailConfig()
+	if err != nil {
+		return err
+	}
+	if mailSettings.Host != "" {
+		sender = mail.NewSMTP(mailSettings)
+	}
+	return admin.Run(store, admin.Options{
+		BaseURL:  os.Getenv("WITMOOT_BASE_URL"),
+		SiteName: env("WITMOOT_NAME", "Witmoot"),
+		Mailer:   sender,
+	})
 }
 
 // readProvisionedPassword reads a password the way create-owner and
