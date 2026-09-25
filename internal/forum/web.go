@@ -103,6 +103,7 @@ type Page struct {
 	ResetLink, ResetFor                                         string
 	ResetEmailed                                                bool
 	Members                                                     []MemberReset
+	HasAvatar                                                   bool
 }
 
 func New(store *Store, config Config) (*App, error) {
@@ -203,11 +204,16 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /account/export", a.signedIn(a.handleAccountExport))
 	mux.HandleFunc("POST /account/password", a.signedIn(a.changePassword))
 	mux.HandleFunc("POST /account/email", a.signedIn(a.saveEmail))
+	mux.HandleFunc("POST /account/avatar", a.signedIn(a.saveAvatar))
+	mux.HandleFunc("GET /account/avatar/imvault", a.signedIn(a.avatarLibrary))
+	mux.HandleFunc("POST /account/avatar/imvault", a.signedIn(a.importAvatar))
+	mux.HandleFunc("GET /avatars/{id}", a.readable(a.avatar))
 	mux.HandleFunc("GET /reset/{token}", a.resetForm)
 	mux.HandleFunc("POST /reset/{token}", a.resetPassword)
 	mux.HandleFunc("GET /members", a.owner(a.members))
 	mux.HandleFunc("POST /members/{id}/reset", a.owner(a.createResetLink))
 	mux.HandleFunc("POST /members/{id}/reset/revoke", a.owner(a.revokeResetLink))
+	mux.HandleFunc("POST /members/{id}/avatar/remove", a.owner(a.removeMemberAvatar))
 	mux.HandleFunc("GET /account/imvault", a.signedIn(a.imageAccount))
 	mux.HandleFunc("POST /account/imvault", a.private(a.connectImages))
 	mux.HandleFunc("POST /account/imvault/disconnect", a.signedIn(a.disconnectImages))
@@ -270,7 +276,7 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			limit := int64(256 << 10)
 			contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 			multipart := contentType == "multipart/form-data"
-			if multipart && r.URL.Path == "/settings/branding-assets" {
+			if multipart && (r.URL.Path == "/settings/branding-assets" || r.URL.Path == "/account/avatar") {
 				limit = 5 << 20
 			}
 			if multipart && state.canPost() && a.vault != nil {

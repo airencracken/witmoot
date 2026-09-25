@@ -15,6 +15,7 @@
 	.post { border: 1px solid #dde; border-radius: .6rem; padding: .75rem 1rem; margin: .9rem 0; }
 	.post h3 { margin: 0 0 .2rem; font-size: .95rem; }
 	.body { white-space: pre-wrap; }
+	.avatar { width: 72px; height: 72px; border-radius: 18px; object-fit: cover; }
 	.edited { font-weight: 400; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
 	ul { padding-left: 1.2rem; }
 	footer { margin-top: 3rem; border-top: 1px solid #dde; padding-top: 1rem; font-size: .85rem; color: #667; }
@@ -30,6 +31,7 @@
 <header>
 	<p class="eyebrow">Witmoot archive</p>
 	<h1>Your contributions</h1>
+	{{if .Manifest.Account.HasAvatar}}<img class="avatar" src="avatar.png" alt="Avatar" width="72" height="72">{{end}}
 	<p class="meta">{{.Manifest.Account.Username}} · exported {{human .Manifest.ExportedAt}}</p>
 </header>
 <p class="note">{{.Manifest.Note}}</p>
