@@ -18,6 +18,7 @@ var provisioningCommands = map[string]bool{
 	"set-password": true,
 	"reset-link":   true,
 	"list-users":   true,
+	"admin":        true,
 }
 
 // reexecProvisioningAsService makes `sudo witmoot create-owner` use the same

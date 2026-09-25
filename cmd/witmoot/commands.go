@@ -23,6 +23,7 @@ Commands:
   set-password   Replace an account's password and end its sessions.
   reset-link     Make a single-use link an account can use to choose a password.
   list-users     List local accounts with their roles and email addresses.
+  admin          Open an interactive manager for accounts (needs a terminal).
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
   help [COMMAND] Show help; COMMAND --help also works.
 
@@ -75,6 +76,8 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 		return resetLink(args[1:], stdout)
 	case "list-users":
 		return listUsers(args[1:], stdout)
+	case "admin":
+		return runAdmin(args[1:], stdout)
 	case "proxy-config":
 		return proxyconfig.Run(args[1:], stdout)
 	case "help":

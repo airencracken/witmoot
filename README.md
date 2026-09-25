@@ -199,13 +199,15 @@ Open requires an account to post; it does not reproduce imvault's anonymous uplo
 - Five starter rooms for everyday conversation, plans, projects, recommendations,
   and the group itself.
 - Audience-aware topic lists, chronological messages, and pagination.
-- New conversations and replies, with plain text and preserved line breaks.
+- New conversations and replies, with plain text, preserved line breaks, and
+  bare web addresses shown as links.
 - Optional imvault images: upload from a post, choose from your library, or
   paste an image link. Image access follows the conversation's audience.
 - Search across conversation titles and message text.
 - Owner invitations, member accounts, sign-in, and sign-out.
 - Password changes for signed-in members, single-use reset links owners hand
-  over, and an optional SMTP relay that can email them.
+  over, an optional SMTP relay that can email them, and an interactive
+  `witmoot admin` view for the same account work.
 - A per-member export: download your own posts and their context as a Zip with
   a versioned manifest and a page that opens offline.
 - Responsive pages and HTMX navigation. The same forms work without JavaScript.
@@ -272,9 +274,11 @@ under **Account**, which asks for the current one and signs other devices out.
 On the command line, `witmoot set-password --username NAME` replaces a password
 outright and ends that account's sessions, for when nobody can use a link.
 `witmoot reset-link --username NAME [--expires 48h]` prints a link and its code,
-and `witmoot list-users` lists accounts with their roles and addresses. All three
-read `WITMOOT_DATA_DIR` from the service configuration and, when run as root,
-repeat the work as the service user.
+and `witmoot list-users` lists accounts with their roles and addresses. On a
+terminal, `witmoot admin` opens an interactive view of the same work: browse
+members, create owners, issue or cancel reset links, and set passwords. All of
+these read `WITMOOT_DATA_DIR` from the service configuration and, when run as
+root, repeat the work as the service user.
 
 Members may add an optional email address under **Account**. When an operator has
 configured an SMTP relay, an owner can email a reset link instead of copying it.
@@ -295,9 +299,10 @@ and set `WITMOOT_SECURE_COOKIES=true`. Secure mode uses `__Host-` cookies.
 Passwords use bcrypt. Session, invitation, and reset tokens are random and only
 their SHA-256 hashes are stored. Reset links work once and expire. Sessions
 expire after seven days. Forms require CSRF tokens and use Go's cross-origin
-protection. User text is escaped; private pages send `Cache-Control: no-store`
-and disable HTMX history storage. Assets are served locally under a restrictive
-content security policy.
+protection. User text is escaped; only bare `http://` and `https://` addresses
+are turned into links, and nothing else is treated as markup. Private pages send
+`Cache-Control: no-store` and disable HTMX history storage. Assets are served
+locally under a restrictive content security policy.
 
 Sign-in, open registration, and invitation redemption share a limit of 20 attempts per 15 minutes
 per client IP. The limiter is in memory and does not trust forwarded
