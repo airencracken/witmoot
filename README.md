@@ -340,10 +340,11 @@ command; there is no self-service email reset, and mail stays off until a relay
 is configured. Do not use it as the sole copy of irreplaceable family material.
 SQLite data is not encrypted at rest.
 
-Links are deliberately not embedded: a shared video or music URL stays a link,
-never a player, so opening a page never contacts a third party. Avatars are
-optional and re-encoded locally; an animated upload becomes a still PNG, and an
-owner can remove any member's avatar.
+Links are not embedded yet: a shared video or music URL stays a link, so opening
+a page does not contact a third party. Whether to add click-to-load players is a
+product decision still open, since an embed would mean relaxing the content
+security policy. Avatars are optional and re-encoded locally; an animated upload
+becomes a still PNG, and an owner can remove any member's avatar.
 
 ## Working on it
 
