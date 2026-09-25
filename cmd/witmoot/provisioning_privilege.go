@@ -11,13 +11,23 @@ import (
 	"syscall"
 )
 
+// provisioningCommands are the local commands that touch the database and so
+// should run as the service user when invoked with root.
+var provisioningCommands = map[string]bool{
+	"create-owner": true,
+	"set-password": true,
+	"reset-link":   true,
+	"list-users":   true,
+}
+
 // reexecProvisioningAsService makes `sudo witmoot create-owner` use the same
 // filesystem identity as the installed service. The child receives the
 // already-resolved data directory so it does not need to read root-only config.
 func reexecProvisioningAsService(args []string) (bool, int, error) {
-	if os.Geteuid() != 0 || len(args) == 0 || args[0] != "create-owner" || hasHelpFlag(args[1:]) {
+	if os.Geteuid() != 0 || len(args) == 0 || !provisioningCommands[args[0]] || hasHelpFlag(args[1:]) {
 		return false, 0, nil
 	}
+	commandName := args[0]
 	paths := defaultProvisioningConfigPaths()
 	username, groupName, managed, err := resolveProvisioningServiceAccount(paths)
 	if err != nil {
@@ -27,7 +37,7 @@ func reexecProvisioningAsService(args []string) (bool, int, error) {
 		return false, 0, nil
 	}
 	if username == "root" {
-		return true, 1, errors.New("the configured Witmoot service user is root; create-owner refuses to write its database as root")
+		return true, 1, fmt.Errorf("the configured Witmoot service user is root; %s refuses to write its database as root", commandName)
 	}
 	dataDir, err := resolveProvisioningDataDir(paths)
 	if err != nil {
@@ -82,7 +92,7 @@ func reexecProvisioningAsService(args []string) (bool, int, error) {
 		if errors.As(err, &exitError) {
 			return true, exitError.ExitCode(), nil
 		}
-		return true, 1, fmt.Errorf("run create-owner as service user %q: %w", username, err)
+		return true, 1, fmt.Errorf("run %s as service user %q: %w", commandName, username, err)
 	}
 	return true, 0, nil
 }

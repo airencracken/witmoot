@@ -21,6 +21,28 @@ func TestHelpDoesNotCreateDatabase(t *testing.T) {
 	}
 }
 
+func TestMailConfigValidation(t *testing.T) {
+	t.Setenv("WITMOOT_SMTP_HOST", "")
+	if cfg, err := mailConfig(); err != nil || cfg.Host != "" {
+		t.Fatalf("mail should be disabled without a host: %+v %v", cfg, err)
+	}
+	t.Setenv("WITMOOT_SMTP_HOST", "relay.example.org")
+	t.Setenv("WITMOOT_SMTP_PORT", "not-a-port")
+	if _, err := mailConfig(); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_PORT") {
+		t.Fatalf("invalid port: %v", err)
+	}
+	t.Setenv("WITMOOT_SMTP_PORT", "587")
+	t.Setenv("WITMOOT_SMTP_TLS", "bogus")
+	if _, err := mailConfig(); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_TLS") {
+		t.Fatalf("invalid TLS mode: %v", err)
+	}
+	t.Setenv("WITMOOT_SMTP_TLS", "implicit")
+	cfg, err := mailConfig()
+	if err != nil || cfg.Host != "relay.example.org" || cfg.Port != 587 || string(cfg.Mode) != "implicit" || cfg.From == "" {
+		t.Fatalf("mail config: %+v %v", cfg, err)
+	}
+}
+
 func TestStartupRejectsInvalidDeploymentConfiguration(t *testing.T) {
 	args := os.Args
 	os.Args = []string{"witmoot"}

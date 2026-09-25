@@ -21,6 +21,9 @@ func TestCLIHelpAndProxyConfigDoNotTouchData(t *testing.T) {
 	for _, args := range [][]string{
 		{"--help"}, {"-h"}, {"help"}, {"serve", "--help"}, {"help", "serve"},
 		{"create-owner", "--help"}, {"help", "create-owner"},
+		{"set-password", "--help"}, {"help", "set-password"},
+		{"reset-link", "--help"}, {"help", "reset-link"},
+		{"list-users", "--help"}, {"help", "list-users"},
 		{"proxy-config", "--help"}, {"help", "proxy-config"},
 		{"proxy-config", "nginx", "--help"},
 	} {
@@ -40,7 +43,7 @@ func TestCLIHelpAndProxyConfigDoNotTouchData(t *testing.T) {
 			t.Fatalf("wrong proxy config: %s", &output)
 		}
 	}
-	for _, args := range [][]string{{"wat"}, {"help", "wat"}, {"serve", "extra"}, {"--help", "extra"}, {"create-owner"}, {"create-owner", "--username", "alex", "--password-prompt", "--password-stdin"}} {
+	for _, args := range [][]string{{"wat"}, {"help", "wat"}, {"serve", "extra"}, {"--help", "extra"}, {"create-owner"}, {"create-owner", "--username", "alex", "--password-prompt", "--password-stdin"}, {"set-password"}, {"reset-link"}, {"list-users", "extra"}} {
 		if err := runCommand(args, strings.NewReader(""), &bytes.Buffer{}); err == nil {
 			t.Fatalf("invalid arguments succeeded: %v", args)
 		}
@@ -201,7 +204,7 @@ func TestHelpExplainsDeployment(t *testing.T) {
 	if err := runCommand([]string{"--help"}, strings.NewReader(""), &output); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"WITMOOT_ADDR", "WITMOOT_DATA_DIR", "WITMOOT_BASE_URL", "WITMOOT_SECURE_COOKIES", "/etc/conf.d/witmoot", "logrotate", "journald", "proxy-config", "password-prompt", "password-stdin"} {
+	for _, want := range []string{"WITMOOT_ADDR", "WITMOOT_DATA_DIR", "WITMOOT_BASE_URL", "WITMOOT_SECURE_COOKIES", "/etc/conf.d/witmoot", "logrotate", "journald", "proxy-config", "password-prompt", "password-stdin", "set-password", "reset-link", "list-users", "WITMOOT_SMTP_HOST"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("help omits %s", want)
 		}

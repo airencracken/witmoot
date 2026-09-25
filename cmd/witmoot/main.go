@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
 	"witmoot/internal/forum"
+	"witmoot/internal/mail"
 )
 
 func main() {
@@ -50,6 +52,10 @@ func runServer() error {
 	if err != nil {
 		return err
 	}
+	config.Mail, err = mailConfig()
+	if err != nil {
+		return err
+	}
 	if config.ImvaultURL != "" {
 		config.ImageKey, err = forum.LoadImageKey(filepath.Join(dataDir, "imvault.key"))
 		if err != nil {
@@ -83,4 +89,31 @@ func env(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// mailConfig reads the optional SMTP relay. An empty WITMOOT_SMTP_HOST leaves
+// mail disabled; everything else is only validated when a relay is configured.
+func mailConfig() (mail.Config, error) {
+	host := os.Getenv("WITMOOT_SMTP_HOST")
+	if host == "" {
+		return mail.Config{}, nil
+	}
+	port, err := strconv.Atoi(env("WITMOOT_SMTP_PORT", "587"))
+	if err != nil || port < 1 || port > 65535 {
+		return mail.Config{}, errors.New("WITMOOT_SMTP_PORT must be a whole number from 1 to 65535")
+	}
+	mode := mail.TLSMode(env("WITMOOT_SMTP_TLS", string(mail.TLSStartTLS)))
+	switch mode {
+	case mail.TLSStartTLS, mail.TLSImplicit, mail.TLSNone:
+	default:
+		return mail.Config{}, errors.New("WITMOOT_SMTP_TLS must be starttls, implicit, or none")
+	}
+	return mail.Config{
+		Host:     host,
+		Port:     port,
+		Username: os.Getenv("WITMOOT_SMTP_USERNAME"),
+		Password: os.Getenv("WITMOOT_SMTP_PASSWORD"),
+		From:     env("WITMOOT_SMTP_FROM", "Witmoot <no-reply@localhost>"),
+		Mode:     mode,
+	}, nil
 }

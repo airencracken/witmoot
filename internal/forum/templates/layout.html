@@ -27,11 +27,12 @@
 				{{if eq .User.Role "owner"}}
 				<a href="/boards/manage">Manage boards</a>
 				<a href="/groups" {{if or (eq .View "groups") (eq .View "group-settings") (eq .View "group-delete")}}aria-current="page"{{end}}>Manage groups</a>
+				<a href="/members" {{if eq .View "members"}}aria-current="page"{{end}}>Members</a>
 				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
 				{{end}}
 				{{if and (ne .Mode "personal") (or (eq .User.Role "owner") .User.CanInvite)}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				{{if .ImagesEnabled}}<a href="/account/imvault">Images</a>{{end}}
-				<span class="signed-in">{{.User.Username}}</span>
+				<a href="/account" class="signed-in" {{if eq .View "account"}}aria-current="page"{{end}}>{{.User.Username}}</a>
 				<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form>
 				{{else}}{{if eq .Mode "open"}}<a href="/join">Join our board</a>{{end}}<a href="/login" class="button small">Come on in</a>{{end}}
 				<label class="theme-picker" hidden>Theme
@@ -54,6 +55,9 @@
 		{{else if eq .View "login"}}{{template "login" .}}
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}
+		{{else if eq .View "account"}}{{template "account" .}}
+		{{else if eq .View "reset"}}{{template "reset" .}}
+		{{else if eq .View "members"}}{{template "members" .}}
 		{{else if eq .View "settings"}}{{template "settings" .}}
 		{{else if eq .View "boards"}}{{template "boards" .}}
 		{{else if eq .View "groups"}}{{template "groups" .}}

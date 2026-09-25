@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"witmoot/internal/imvault"
+	"witmoot/internal/mail"
 )
 
 //go:embed templates/*.html static/*
@@ -36,6 +37,9 @@ type Config struct {
 	ImvaultURL     string
 	ImageKey       []byte
 	TrustedProxies []netip.Prefix
+	// Mail describes an optional SMTP relay. An empty Host leaves mail
+	// disabled, and password reset links are handed over by an owner instead.
+	Mail mail.Config
 }
 
 type App struct {
@@ -46,6 +50,7 @@ type App struct {
 	limiter   limiter
 	dummyHash string
 	vault     *imvault.Client
+	mailer    mail.Sender
 }
 
 type requestState struct {
@@ -92,6 +97,12 @@ type Page struct {
 	Stats                                                       Stats
 	Query, Prev, Next                                           string
 	Username, TitleInput, BodyInput, Invitation, InviteLink     string
+	Email, Notice                                               string
+	MailEnabled                                                 bool
+	ResetToken, ResetUser                                       string
+	ResetLink, ResetFor                                         string
+	ResetEmailed                                                bool
+	Members                                                     []MemberReset
 }
 
 func New(store *Store, config Config) (*App, error) {
@@ -121,7 +132,11 @@ func New(store *Store, config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: limiter{entries: make(map[string]rateEntry)}}
+	var mailer mail.Sender = mail.Disabled{}
+	if config.Mail.Host != "" {
+		mailer = mail.NewSMTP(config.Mail)
+	}
+	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: limiter{entries: make(map[string]rateEntry)}, mailer: mailer}
 	if config.ImvaultURL != "" {
 		if len(config.ImageKey) != 32 {
 			return nil, errors.New("imvault integration requires a 32-byte encryption key")
@@ -181,6 +196,14 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /settings", a.signedIn(a.settings))
 	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
 	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
+	mux.HandleFunc("GET /account", a.signedIn(a.account))
+	mux.HandleFunc("POST /account/password", a.signedIn(a.changePassword))
+	mux.HandleFunc("POST /account/email", a.signedIn(a.saveEmail))
+	mux.HandleFunc("GET /reset/{token}", a.resetForm)
+	mux.HandleFunc("POST /reset/{token}", a.resetPassword)
+	mux.HandleFunc("GET /members", a.owner(a.members))
+	mux.HandleFunc("POST /members/{id}/reset", a.owner(a.createResetLink))
+	mux.HandleFunc("POST /members/{id}/reset/revoke", a.owner(a.revokeResetLink))
 	mux.HandleFunc("GET /account/imvault", a.signedIn(a.imageAccount))
 	mux.HandleFunc("POST /account/imvault", a.private(a.connectImages))
 	mux.HandleFunc("POST /account/imvault/disconnect", a.signedIn(a.disconnectImages))
