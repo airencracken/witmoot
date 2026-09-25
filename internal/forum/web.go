@@ -126,6 +126,7 @@ func New(store *Store, config Config) (*App, error) {
 		"initial":  func(name string) string { r, _ := utf8.DecodeRuneInString(name); return strings.ToUpper(string(r)) },
 		"human":    humanStamp,
 		"audience": func(a string) string { return Audience(a).Label() },
+		"segments": segments,
 	}).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, err

@@ -47,7 +47,7 @@
 	<article class="post">
 		<h3>#{{$post.Number}}{{if $post.EditedAt}} <span class="edited">edited</span>{{end}}</h3>
 		<p class="meta">{{human $post.CreatedAt}}{{if $post.URL}} · <a href="{{$post.URL}}">view online</a>{{end}}</p>
-		<div class="body">{{$post.Body}}</div>
+		<div class="body">{{template "body" $post.Body}}</div>
 		{{if $post.Attachments}}<p class="meta">Images: {{range $post.Attachments}}{{.Name}} ({{.Rendition}}) on {{.Server}} · {{end}}</p>{{end}}
 	</article>
 	{{end}}{{end}}
