@@ -247,6 +247,26 @@ func TestCookieSecurityAndLogout(t *testing.T) {
 	requireStatus(t, w, 303)
 }
 
+func TestDefaultFavicon(t *testing.T) {
+	app, client := newTestApp(t, false)
+	signInTest(t, app, client, false)
+	w := client.request("GET", "/", nil, nil)
+	requireStatus(t, w, 200)
+	body := w.Body.String()
+	for _, want := range []string{`href="/static/favicon-32.png"`, `href="/static/favicon-16.png"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("default favicon link %s is missing", want)
+		}
+	}
+	for _, path := range []string{"/static/favicon-32.png", "/static/favicon-16.png"} {
+		w := client.request("GET", path, nil, nil)
+		requireStatus(t, w, 200)
+		if ct := w.Header().Get("Content-Type"); ct != "image/png" {
+			t.Errorf("%s content type = %q, want image/png", path, ct)
+		}
+	}
+}
+
 func TestBadRoutesMethodsAndInput(t *testing.T) {
 	app, client := newTestApp(t, false)
 	signInTest(t, app, client, false)

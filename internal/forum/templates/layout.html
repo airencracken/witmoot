@@ -5,7 +5,8 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"historyCacheSize":0,"refreshOnHistoryMiss":true}'>
 	<title>{{.Title}} · {{.Name}}</title>
-	{{if .FaviconURL}}<link rel="icon" href="{{.FaviconURL}}" type="image/png">{{end}}
+	{{if .FaviconURL}}<link rel="icon" href="{{.FaviconURL}}" type="image/png">{{else}}<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">{{end}}
 	<script src="/static/theme.js"></script>
 	<link rel="stylesheet" href="/static/style.css">
 	<script src="/static/htmx.min.js" defer></script>
