@@ -1,0 +1,60 @@
+{{define "export"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your contributions · {{.Manifest.Site.Name}}</title>
+<style>
+	:root { color-scheme: light dark; }
+	body { margin: 0 auto; max-width: 46rem; padding: 2rem 1.25rem 4rem; font: 16px/1.6 system-ui, sans-serif; }
+	h1, h2, h3 { line-height: 1.25; }
+	.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; opacity: .7; }
+	.meta { color: #667; font-size: .85rem; }
+	.note { border-left: 3px solid #b9c; padding: .5rem .9rem; background: #f4f4f8; font-size: .9rem; }
+	.topic { margin-top: 2.5rem; border-top: 1px solid #dde; padding-top: 1.25rem; }
+	.post { border: 1px solid #dde; border-radius: .6rem; padding: .75rem 1rem; margin: .9rem 0; }
+	.post h3 { margin: 0 0 .2rem; font-size: .95rem; }
+	.body { white-space: pre-wrap; }
+	.edited { font-weight: 400; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
+	ul { padding-left: 1.2rem; }
+	footer { margin-top: 3rem; border-top: 1px solid #dde; padding-top: 1rem; font-size: .85rem; color: #667; }
+	@media (prefers-color-scheme: dark) {
+		body { background: #14161a; color: #e7e7ea; }
+		.meta, footer { color: #9aa; }
+		.note { background: #1d2026; border-color: #567; }
+		.post, .topic, footer { border-color: #2a2e36; }
+	}
+</style>
+</head>
+<body>
+<header>
+	<p class="eyebrow">Witmoot archive</p>
+	<h1>Your contributions</h1>
+	<p class="meta">{{.Manifest.Account.Username}} · exported {{human .Manifest.ExportedAt}}</p>
+</header>
+<p class="note">{{.Manifest.Note}}</p>
+{{if .Manifest.Boards}}
+<section>
+	<h2>Boards</h2>
+	<ul>{{range .Manifest.Boards}}<li>{{.Category}} — {{.Name}}</li>{{end}}</ul>
+</section>
+{{end}}
+{{range $topic := .Manifest.Topics}}
+<section class="topic">
+	<h2>{{$topic.Title}}</h2>
+	<p class="meta">{{audience $topic.Audience}} · {{$topic.Posts}} message{{if ne $topic.Posts 1}}s{{end}} · started {{human $topic.CreatedAt}}{{if $topic.URL}} · <a href="{{$topic.URL}}">read online</a>{{end}}</p>
+	{{range $post := $.Manifest.Posts}}{{if eq $post.TopicID $topic.ID}}
+	<article class="post">
+		<h3>#{{$post.Number}}{{if $post.EditedAt}} <span class="edited">edited</span>{{end}}</h3>
+		<p class="meta">{{human $post.CreatedAt}}{{if $post.URL}} · <a href="{{$post.URL}}">view online</a>{{end}}</p>
+		<div class="body">{{$post.Body}}</div>
+		{{if $post.Attachments}}<p class="meta">Images: {{range $post.Attachments}}{{.Name}} ({{.Rendition}}) on {{.Server}} · {{end}}</p>{{end}}
+	</article>
+	{{end}}{{end}}
+</section>
+{{else}}
+<p>You have not posted anything yet. When you do, it will appear here.</p>
+{{end}}
+<footer>Exported from {{.Manifest.Site.Name}}{{if .Manifest.Site.SourceURL}} · <a href="{{.Manifest.Site.SourceURL}}">source</a>{{end}}</footer>
+</body>
+</html>{{end}}

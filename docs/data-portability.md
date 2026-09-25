@@ -5,9 +5,10 @@ their contributions, and communities should be able to move their shared place.
 An export should remain useful after the original server is gone.
 
 This is a working design for Witmoot and a proposed companion imageboard.
-Witmoot currently supports operator backups by copying its stopped data
-directory. Account exports, portable community archives, and import workflows
-are not implemented yet. The imageboard is a proposal.
+Witmoot supports operator backups by copying its stopped data directory, and a
+member can download their own contributions as a Zip with `manifest.json` and an
+offline `archive.html`. A portable community archive and import workflows are not
+implemented yet. The imageboard is a proposal.
 
 ## The example already in imvault
 
@@ -69,9 +70,10 @@ metadata. Export must respect that boundary. Fetching originals requires the
 appropriate ownership or explicit permission.
 
 imvault's account export can already return a member's uploaded originals.
-Witmoot still needs to export the conversations and references that connect those
-images to their shared context. Cross-application export and import behavior
-remains to be designed and implemented.
+Witmoot's member export records the conversations and the image references that
+connect those shared previews to their context, without carrying the originals
+or camera metadata. A community archive that carries a whole board, and
+cross-application import, remain to be designed and implemented.
 
 ## Verification belongs in the feature
 

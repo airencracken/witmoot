@@ -206,6 +206,8 @@ Open requires an account to post; it does not reproduce imvault's anonymous uplo
 - Owner invitations, member accounts, sign-in, and sign-out.
 - Password changes for signed-in members, single-use reset links owners hand
   over, and an optional SMTP relay that can email them.
+- A per-member export: download your own posts and their context as a Zip with
+  a versioned manifest and a page that opens offline.
 - Responsive pages and HTMX navigation. The same forms work without JavaScript.
 - Transactional schema initialization, topic creation, replies, and invitation
   redemption. Restarting keeps your conversations and sessions.
@@ -307,9 +309,16 @@ For a simple backup, **stop the server and copy the entire data directory**.
 Restore it with the server stopped, then start Witmoot against that directory.
 Do not copy only the live `.db` file while SQLite is using WAL journaling.
 
-**Taking your data is a core comfyware requirement.** Witmoot currently has the
-backup procedure above, but does not yet offer account exports or a portable
-community archive. Those are core work still to do. See the
+**Taking your data is a core comfyware requirement.** Under **Account**, each
+member can download their own contributions as a Zip archive: a versioned
+`manifest.json`, a readable `archive.html` that opens offline, and the
+conversation and image-reference context needed to understand them. It holds
+that member's messages only, never anyone else's, and never credentials. Images
+are references to the imvault preview that was posted; originals come from your
+imvault account export. Operator backups remain the copy of the whole board.
+
+A portable community archive, so a whole board can move, and import workflows
+are core work still to do. See the
 [data portability requirements](docs/data-portability.md), informed by imvault's
 existing account exports.
 

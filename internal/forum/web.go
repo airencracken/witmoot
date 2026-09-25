@@ -118,12 +118,14 @@ func New(store *Store, config Config) (*App, error) {
 	}
 	config.BaseURL = baseURL
 	tmpl, err := template.New("forum").Funcs(template.FuncMap{
-		"add":     func(a, b int) int { return a + b },
-		"access":  accessLabel,
-		"date":    func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006") },
-		"stamp":   func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006 · 15:04 UTC") },
-		"iso":     func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
-		"initial": func(name string) string { r, _ := utf8.DecodeRuneInString(name); return strings.ToUpper(string(r)) },
+		"add":      func(a, b int) int { return a + b },
+		"access":   accessLabel,
+		"date":     func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006") },
+		"stamp":    func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006 · 15:04 UTC") },
+		"iso":      func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
+		"initial":  func(name string) string { r, _ := utf8.DecodeRuneInString(name); return strings.ToUpper(string(r)) },
+		"human":    humanStamp,
+		"audience": func(a string) string { return Audience(a).Label() },
 	}).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, err
@@ -197,6 +199,7 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
 	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
 	mux.HandleFunc("GET /account", a.signedIn(a.account))
+	mux.HandleFunc("GET /account/export", a.signedIn(a.handleAccountExport))
 	mux.HandleFunc("POST /account/password", a.signedIn(a.changePassword))
 	mux.HandleFunc("POST /account/email", a.signedIn(a.saveEmail))
 	mux.HandleFunc("GET /reset/{token}", a.resetForm)
