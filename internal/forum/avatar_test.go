@@ -220,3 +220,28 @@ func TestAvatarExportIncludesTheImage(t *testing.T) {
 		t.Fatal("the manifest does not record the avatar")
 	}
 }
+
+func TestAvatarCacheChangesWhenImageChangesWithinOneSecond(t *testing.T) {
+	app, client := newTestApp(t, false)
+	userID := signInTest(t, app, client, false)
+	ctx := context.Background()
+	path := "/avatars/" + strconv.FormatInt(userID, 10)
+	var etag string
+	for _, size := range []int{64, 128} {
+		if err := app.store.SaveAvatar(ctx, userID, pngAvatarFixture(t, size, size)); err != nil {
+			t.Fatal(err)
+		}
+		// Pin the timestamp to reproduce two uploads during the same second.
+		if _, err := app.store.db.Exec("UPDATE user_avatars SET updated_at = 123 WHERE user_id = ?", userID); err != nil {
+			t.Fatal(err)
+		}
+		w := client.request("GET", path, nil, map[string]string{"If-None-Match": etag})
+		requireStatus(t, w, http.StatusOK)
+		etag = w.Header().Get("ETag")
+		stored, _, err := app.store.Avatar(ctx, userID)
+		if err != nil || !bytes.Equal(w.Body.Bytes(), stored) {
+			t.Fatalf("cached response did not return the current image: %v", err)
+		}
+	}
+	requireStatus(t, client.request("GET", path, nil, map[string]string{"If-None-Match": etag}), http.StatusNotModified)
+}
