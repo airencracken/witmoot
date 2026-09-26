@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"net/textproto"
 	"strings"
 	"testing"
 	"time"
@@ -122,18 +123,11 @@ func (s *fakeSMTP) handle(conn net.Conn) {
 
 		case upper == "DATA":
 			reply("354 end with <CRLF>.<CRLF>")
-			var body strings.Builder
-			for {
-				bodyLine, err := reader.ReadString('\n')
-				if err != nil {
-					return
-				}
-				if strings.TrimRight(bodyLine, "\r\n") == "." {
-					break
-				}
-				body.WriteString(bodyLine)
+			body, err := textproto.NewReader(reader).ReadDotBytes()
+			if err != nil {
+				return
 			}
-			current.data = body.String()
+			current.data = string(body)
 			s.messages <- current
 			current = received{}
 			reply("250 queued")
@@ -333,7 +327,7 @@ func TestHeadersCannotBeInjected(t *testing.T) {
 	}
 }
 
-func TestBodyLineEndingsAndDotStuffing(t *testing.T) {
+func TestBodyLineEndings(t *testing.T) {
 	message := string(buildMessage("a@example.org", Message{
 		To:      "b@example.org",
 		Subject: "s",
@@ -343,11 +337,92 @@ func TestBodyLineEndingsAndDotStuffing(t *testing.T) {
 	if strings.Contains(message, "\n") && strings.Contains(strings.ReplaceAll(message, "\r\n", ""), "\n") {
 		t.Error("a bare newline survived into the message")
 	}
-	if !strings.Contains(message, "\r\n..hidden\r\n") {
-		t.Errorf("a leading dot was not stuffed:\n%q", message)
+	if !strings.Contains(message, "\r\n.hidden\r\n") {
+		t.Errorf("a leading dot was changed before SMTP transport:\n%q", message)
 	}
 	if !strings.Contains(message, "line four") {
 		t.Error("the last line was lost")
+	}
+}
+
+func TestSendPreservesLeadingDots(t *testing.T) {
+	server := newFakeSMTP(t)
+	host, port := server.addr()
+	sender := NewSMTP(Config{Host: host, Port: port, From: "a@example.org", Mode: TLSNone})
+	body := ".first\n.\n..third\nlast\n"
+	if err := sender.Send(context.Background(), Message{To: "b@example.org", Subject: "Dots", Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	_, receivedBody, ok := strings.Cut(server.wait(t).data, "\n\n")
+	if !ok || receivedBody != body {
+		t.Fatalf("received body = %q, want %q", receivedBody, body)
+	}
+}
+
+func TestStartTLSRefusesUnencryptedRelay(t *testing.T) {
+	server := newFakeSMTP(t)
+	host, port := server.addr()
+	sender := NewSMTP(Config{Host: host, Port: port, From: "a@example.org", Mode: TLSStartTLS})
+	if err := sender.Send(context.Background(), Message{To: "b@example.org", Body: "reset secret"}); err == nil {
+		t.Fatal("STARTTLS mode delivered a reset secret over plaintext")
+	}
+	select {
+	case <-server.messages:
+		t.Fatal("message reached an unencrypted relay")
+	default:
+	}
+}
+
+func TestSendBoundsStalledConnections(t *testing.T) {
+	for _, mode := range []TLSMode{TLSNone, TLSImplicit} {
+		for _, cancelAfterConnect := range []bool{false, true} {
+			name := string(mode) + "/timeout"
+			if cancelAfterConnect {
+				name = string(mode) + "/cancel"
+			}
+			t.Run(name, func(t *testing.T) {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer listener.Close()
+				accepted := make(chan net.Conn, 1)
+				go func() {
+					conn, err := listener.Accept()
+					if err == nil {
+						accepted <- conn
+					}
+				}()
+				address := listener.Addr().(*net.TCPAddr)
+				timeout := 50 * time.Millisecond
+				if cancelAfterConnect {
+					timeout = time.Minute
+				}
+				sender := NewSMTP(Config{Host: "127.0.0.1", Port: address.Port, From: "a@example.org", Mode: mode, Timeout: timeout})
+				// A longer caller deadline must not disable the sender's timeout.
+				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				defer cancel()
+				done := make(chan error, 1)
+				go func() { done <- sender.Send(ctx, Message{To: "b@example.org", Body: "secret"}) }()
+				select {
+				case conn := <-accepted:
+					defer conn.Close()
+				case <-time.After(time.Second):
+					t.Fatal("sender did not connect")
+				}
+				if cancelAfterConnect {
+					cancel()
+				}
+				select {
+				case err := <-done:
+					if err == nil {
+						t.Fatal("stalled send succeeded")
+					}
+				case <-time.After(time.Second):
+					t.Fatal("send ignored its timeout or cancellation while waiting for the relay")
+				}
+			})
+		}
 	}
 }
 

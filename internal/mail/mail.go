@@ -84,6 +84,8 @@ func (s *SMTP) Enabled() bool { return true }
 
 // Send delivers one message.
 func (s *SMTP) Send(ctx context.Context, msg Message) error {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -92,6 +94,15 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	// Cover the greeting as well as the SMTP exchange. Cancelling a context
+	// without a deadline must also interrupt an already connected relay.
+	deadline, _ := ctx.Deadline()
+	if err := conn.SetDeadline(deadline); err != nil {
+		return fmt.Errorf("smtp: set deadline: %w", err)
+	}
+	stop := context.AfterFunc(ctx, func() { conn.Close() })
+	defer stop()
 
 	client, err := smtp.NewClient(conn, s.cfg.Host)
 	if err != nil {
@@ -101,23 +112,16 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 	// Quit closes the connection; Close is a safety net for the error paths.
 	defer client.Close()
 
-	if deadline, ok := ctx.Deadline(); ok {
-		_ = conn.SetDeadline(deadline)
-	} else {
-		_ = conn.SetDeadline(time.Now().Add(s.timeout))
-	}
-
 	if s.cfg.Mode == TLSStartTLS {
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{
-				ServerName: s.cfg.Host,
-				MinVersion: tls.VersionTLS12,
-			}); err != nil {
-				return fmt.Errorf("smtp: starttls: %w", err)
-			}
+		if ok, _ := client.Extension("STARTTLS"); !ok {
+			return fmt.Errorf("smtp: relay does not support required STARTTLS")
 		}
-		// A relay that does not advertise STARTTLS is used as-is, which is the
-		// norm for a local relay on the loopback interface.
+		if err := client.StartTLS(&tls.Config{
+			ServerName: s.cfg.Host,
+			MinVersion: tls.VersionTLS12,
+		}); err != nil {
+			return fmt.Errorf("smtp: starttls: %w", err)
+		}
 	}
 
 	if s.cfg.Username != "" {
@@ -241,18 +245,11 @@ func sanitiseHeader(value string) string {
 	return strings.TrimSpace(value)
 }
 
-// normaliseBody applies the CRLF line endings the wire format requires and
-// dot-stuffs lines that would otherwise look like the end of the message.
+// normaliseBody applies CRLF line endings. smtp.Client.Data handles dot
+// stuffing on the wire; doing it here too would change the delivered body.
 func normaliseBody(body string) string {
 	body = strings.ReplaceAll(body, "\r\n", "\n")
 	body = strings.ReplaceAll(body, "\r", "\n")
 
-	lines := strings.Split(body, "\n")
-	for i, line := range lines {
-		if strings.HasPrefix(line, ".") {
-			lines[i] = "." + line
-		}
-	}
-
-	return strings.Join(lines, "\r\n")
+	return strings.ReplaceAll(body, "\n", "\r\n")
 }
