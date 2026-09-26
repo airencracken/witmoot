@@ -3,6 +3,7 @@ package forum
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -99,7 +100,7 @@ func (s *Store) HasAvatar(ctx context.Context, userID int64) (bool, error) {
 // avatar serves a member's picture. It follows the same audience gate as the
 // board, so a Private or Personal instance does not hand avatars to visitors.
 func (a *App) avatar(w http.ResponseWriter, r *http.Request) {
-	content, updatedAt, err := a.store.Avatar(r.Context(), pathID(r))
+	content, _, err := a.store.Avatar(r.Context(), pathID(r))
 	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
 		return
@@ -109,7 +110,7 @@ func (a *App) avatar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not load the avatar", http.StatusInternalServerError)
 		return
 	}
-	etag := `"` + strconv.FormatInt(updatedAt, 10) + `"`
+	etag := fmt.Sprintf(`"%x"`, sha256.Sum256(content))
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=0, must-revalidate")
 	w.Header().Set("ETag", etag)
