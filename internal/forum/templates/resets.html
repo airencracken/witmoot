@@ -41,7 +41,7 @@
 	<p class="eyebrow">A fresh start</p><h1>Choose a new password.</h1>
 	{{if .ResetUser}}<p class="muted">For <strong>{{.ResetUser}}</strong>.</p>{{end}}
 	{{template "error" .}}
-	{{if .Error}}<p class="account-note"><a href="/login">Back to sign in</a></p>{{else}}
+	{{if .ResetUser}}
 	<form action="/reset/{{.ResetToken}}" method="post" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
 		<label for="password">New password</label><input id="password" type="password" name="password" autocomplete="new-password" minlength="12" aria-describedby="password-help" required>
@@ -49,6 +49,7 @@
 		<label for="confirm_password">Confirm new password</label><input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required>
 		<button class="full-width" type="submit">Save and sign in</button>
 	</form>
+	{{else}}<p class="account-note"><a href="/login">Back to sign in</a></p>
 	{{end}}
 </section>
 {{end}}

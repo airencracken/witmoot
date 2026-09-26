@@ -46,15 +46,23 @@ func (s *Store) CreateAuthToken(ctx context.Context, userID int64, purpose Token
 // Marking it used and reading the owner happen in one transaction, so a token
 // cannot be redeemed twice even if two requests arrive together.
 func (s *Store) ConsumeAuthToken(ctx context.Context, tokenHash string, purpose TokenPurpose, at time.Time) (User, error) {
-	var userID int64
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return User{}, err
 	}
 	defer tx.Rollback()
+	u, err := consumeAuthToken(ctx, tx, tokenHash, purpose, at)
+	if err != nil {
+		return User{}, err
+	}
+	return u, tx.Commit()
+}
+
+func consumeAuthToken(ctx context.Context, tx *sql.Tx, tokenHash string, purpose TokenPurpose, at time.Time) (User, error) {
+	var userID int64
 	var usedAt sql.NullInt64
 	var expiresAt int64
-	err = tx.QueryRowContext(ctx, "SELECT user_id, used_at, expires_at FROM auth_tokens WHERE token_hash = ? AND purpose = ?", tokenHash, string(purpose)).Scan(&userID, &usedAt, &expiresAt)
+	err := tx.QueryRowContext(ctx, "SELECT user_id, used_at, expires_at FROM auth_tokens WHERE token_hash = ? AND purpose = ?", tokenHash, string(purpose)).Scan(&userID, &usedAt, &expiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, errAuthToken
 	}
@@ -79,7 +87,7 @@ func (s *Store) ConsumeAuthToken(ctx context.Context, tokenHash string, purpose 
 	if err := tx.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email FROM users WHERE id = ?", userID).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email); err != nil {
 		return User{}, err
 	}
-	return u, tx.Commit()
+	return u, nil
 }
 
 // AuthTokenValid reports whether a token could still be redeemed, without
@@ -112,9 +120,40 @@ func (s *Store) DeleteExpiredAuthTokens(ctx context.Context, at time.Time) (int6
 	return result.RowsAffected()
 }
 
-// SetPassword replaces an account's password hash.
+// SetPassword replaces an account's password and revokes its sessions and reset
+// links together. A failure leaves all three unchanged.
 func (s *Store) SetPassword(ctx context.Context, userID int64, passwordHash string) error {
-	result, err := s.db.ExecContext(ctx, "UPDATE users SET password_hash = ? WHERE id = ?", passwordHash, userID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := setPassword(ctx, tx, userID, passwordHash); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ResetPassword consumes a reset link and updates credentials atomically. The
+// caller must validate and hash the password before starting this operation.
+func (s *Store) ResetPassword(ctx context.Context, tokenHash, passwordHash string, at time.Time) (User, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, err
+	}
+	defer tx.Rollback()
+	u, err := consumeAuthToken(ctx, tx, tokenHash, TokenPasswordReset, at)
+	if err != nil {
+		return User{}, err
+	}
+	if err := setPassword(ctx, tx, u.ID, passwordHash); err != nil {
+		return User{}, err
+	}
+	return u, tx.Commit()
+}
+
+func setPassword(ctx context.Context, tx *sql.Tx, userID int64, passwordHash string) error {
+	result, err := tx.ExecContext(ctx, "UPDATE users SET password_hash = ? WHERE id = ?", passwordHash, userID)
 	if err != nil {
 		return err
 	}
@@ -125,7 +164,11 @@ func (s *Store) SetPassword(ctx context.Context, userID int64, passwordHash stri
 	if rows == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+	if _, err := tx.ExecContext(ctx, "DELETE FROM sessions WHERE user_id = ?", userID); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, "DELETE FROM auth_tokens WHERE user_id = ? AND purpose = ?", userID, string(TokenPasswordReset))
+	return err
 }
 
 // DeleteSessionsForUser signs every device out. A password change should not

@@ -55,6 +55,9 @@ func TestSetPasswordCommandEndsSessions(t *testing.T) {
 	if err := store.NewSession(ctx, "session", user.ID, time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.CreateAuthToken(ctx, user.ID, forum.TokenPasswordReset, "reset-hash", time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +84,9 @@ func TestSetPasswordCommandEndsSessions(t *testing.T) {
 	}
 	if session, err := store.Session(ctx, "session"); session != nil || err != nil {
 		t.Fatalf("session survived a forced reset: %v %v", session, err)
+	}
+	if _, err := store.AuthTokenValid(ctx, "reset-hash", forum.TokenPasswordReset, time.Now()); err == nil {
+		t.Fatal("reset link survived a forced password change")
 	}
 }
 
