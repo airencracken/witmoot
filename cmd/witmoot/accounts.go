@@ -97,9 +97,6 @@ func setPasswordWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if err := store.SetPassword(ctx, user.ID, hash); err != nil {
 		return err
 	}
-	if err := store.DeleteSessionsForUser(ctx, user.ID); err != nil {
-		return err
-	}
 	_, err = fmt.Fprintf(stdout, "Password updated for %q. Any signed-in sessions were ended.\n", user.Username)
 	return err
 }

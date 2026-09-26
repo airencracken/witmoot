@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -95,8 +96,16 @@ func TestResetPasswordRejectsWeakInputBeforeSpendingTheLink(t *testing.T) {
 	member := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
 	member.request("GET", "/reset/"+token, nil, nil)
 	// A short password and a mismatched confirmation are refused.
-	requireStatus(t, member.post("/reset/"+token, url.Values{"password": {"short"}, "confirm_password": {"short"}}), 422)
-	requireStatus(t, member.post("/reset/"+token, url.Values{"password": {"a long enough password"}, "confirm_password": {"a different long password"}}), 422)
+	for _, form := range []url.Values{
+		{"password": {"short"}, "confirm_password": {"short"}},
+		{"password": {"a long enough password"}, "confirm_password": {"a different long password"}},
+	} {
+		w := member.post("/reset/"+token, form)
+		requireStatus(t, w, 422)
+		if !strings.Contains(w.Body.String(), `action="/reset/`+token+`"`) || !strings.Contains(w.Body.String(), `name="confirm_password"`) {
+			t.Fatal("a validation error removed the form instead of allowing a correction")
+		}
+	}
 	// The link is still usable after those failures.
 	requireStatus(t, member.post("/reset/"+token, url.Values{"password": {"a long enough password"}, "confirm_password": {"a long enough password"}}), 303)
 }
@@ -212,7 +221,11 @@ func TestResetLinkForUnknownAccountIsNotFound(t *testing.T) {
 func TestMalformedResetLinkIsRejected(t *testing.T) {
 	_, client := newTestApp(t, false)
 	for _, path := range []string{"/reset/short", "/reset/" + strings.Repeat("z", 64)} {
-		requireStatus(t, client.request("GET", path, nil, nil), 400)
+		w := client.request("GET", path, nil, nil)
+		requireStatus(t, w, 400)
+		if strings.Contains(w.Body.String(), `name="confirm_password"`) {
+			t.Fatal("an invalid reset link rendered a password form")
+		}
 	}
 }
 
@@ -235,5 +248,57 @@ func TestValidEmail(t *testing.T) {
 		if got := validEmail(tc.email); got != tc.ok {
 			t.Errorf("validEmail(%q) = %v, want %v", tc.email, got, tc.ok)
 		}
+	}
+}
+
+func TestPasswordChangeRevokesOutstandingResetLink(t *testing.T) {
+	app, client := newTestApp(t, false)
+	userID := signInTest(t, app, client, false)
+	ctx := context.Background()
+	token := randomToken()
+	if err := app.store.CreateAuthToken(ctx, userID, TokenPasswordReset, tokenHash(token), time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, client.post("/account/password", url.Values{
+		"current_password": {"a long test password"},
+		"password":         {"a brand new password"},
+		"confirm_password": {"a brand new password"},
+	}), http.StatusSeeOther)
+	if _, err := app.store.AuthTokenValid(ctx, tokenHash(token), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+		t.Fatalf("old reset link survived password change: %v", err)
+	}
+}
+
+func TestFailedResetPreservesLinkPasswordAndSessions(t *testing.T) {
+	for _, failure := range []string{
+		"BEFORE UPDATE OF password_hash ON users",
+		"BEFORE DELETE ON sessions",
+	} {
+		t.Run(failure, func(t *testing.T) {
+			app, client := newTestApp(t, false)
+			userID := signInTest(t, app, client, false)
+			ctx := context.Background()
+			token := randomToken()
+			if err := app.store.CreateAuthToken(ctx, userID, TokenPasswordReset, tokenHash(token), time.Now().Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := app.store.db.Exec("CREATE TRIGGER fail_reset " + failure + " BEGIN SELECT RAISE(ABORT, 'injected failure'); END"); err != nil {
+				t.Fatal(err)
+			}
+			form := url.Values{"password": {"a brand new password"}, "confirm_password": {"a brand new password"}}
+			requireStatus(t, client.post("/reset/"+token, form), http.StatusInternalServerError)
+			if _, err := app.store.AuthTokenValid(ctx, tokenHash(token), TokenPasswordReset, time.Now()); err != nil {
+				t.Errorf("failed reset spent the link: %v", err)
+			}
+			_, hash, err := app.store.Credentials(ctx, "alex")
+			if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte("a long test password")) != nil {
+				t.Errorf("failed reset changed the password: %v", err)
+			}
+			requireStatus(t, client.request("GET", "/account", nil, nil), http.StatusOK)
+			if _, err := app.store.db.Exec("DROP TRIGGER fail_reset"); err != nil {
+				t.Fatal(err)
+			}
+			requireStatus(t, client.post("/reset/"+token, form), http.StatusSeeOther)
+		})
 	}
 }

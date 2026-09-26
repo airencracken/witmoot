@@ -94,9 +94,6 @@ func TestSetPasswordEndsSessionsAndMembersReportPending(t *testing.T) {
 	if err != nil || hash != "new-hash" {
 		t.Fatalf("password not replaced: %q %v", hash, err)
 	}
-	if err := s.DeleteSessionsForUser(ctx, owner); err != nil {
-		t.Fatal(err)
-	}
 	if session, err := s.Session(ctx, "session"); session != nil || err != nil {
 		t.Fatalf("session survived a password change: %v %v", session, err)
 	}
@@ -115,6 +112,98 @@ func TestSetPasswordEndsSessionsAndMembersReportPending(t *testing.T) {
 	members, err = s.Members(ctx)
 	if err != nil || !members[0].Pending {
 		t.Fatalf("members did not report a pending link: %+v %v", members, err)
+	}
+}
+
+func TestSetPasswordRollsBackWhenRevocationFails(t *testing.T) {
+	for _, table := range []string{"sessions", "auth_tokens"} {
+		t.Run(table, func(t *testing.T) {
+			s := testStore(t)
+			ctx := context.Background()
+			owner := testInvitationOwner(t, s, "owner")
+			_, oldHash, err := s.Credentials(ctx, "owner")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.NewSession(ctx, "session", owner, time.Now().Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, "token", time.Now().Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := s.db.Exec("CREATE TRIGGER fail_revoke BEFORE DELETE ON " + table + " BEGIN SELECT RAISE(ABORT, 'injected failure'); END"); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.SetPassword(ctx, owner, "new-hash"); err == nil {
+				t.Error("password change ignored revocation failure")
+			}
+			if _, hash, err := s.Credentials(ctx, "owner"); err != nil || hash != oldHash {
+				t.Errorf("failed password change was not rolled back: %v", err)
+			}
+			if session, err := s.Session(ctx, "session"); err != nil || session == nil {
+				t.Errorf("failed password change ended the session: %v", err)
+			}
+			if _, err := s.AuthTokenValid(ctx, "token", TokenPasswordReset, time.Now()); err != nil {
+				t.Errorf("failed password change revoked the link: %v", err)
+			}
+		})
+	}
+}
+
+func TestResetPasswordSingleUseAndAccountIsolation(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	owner := testInvitationOwner(t, s, "owner")
+	other := testInvitationOwner(t, s, "other")
+	for _, account := range []struct {
+		id   int64
+		name string
+	}{{owner, "owner"}, {other, "other"}} {
+		if err := s.NewSession(ctx, account.name, account.id, time.Now().Add(time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.CreateAuthToken(ctx, account.id, TokenPasswordReset, account.name, time.Now().Add(time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	type result struct {
+		hash string
+		err  error
+	}
+	results := make(chan result, 2)
+	start := make(chan struct{})
+	for _, hash := range []string{"first-hash", "second-hash"} {
+		go func() {
+			<-start
+			_, err := s.ResetPassword(ctx, "owner", hash, time.Now())
+			results <- result{hash, err}
+		}()
+	}
+	close(start)
+	winner := ""
+	for range 2 {
+		result := <-results
+		if result.err == nil {
+			if winner != "" {
+				t.Fatal("two concurrent resets redeemed the same token")
+			}
+			winner = result.hash
+		} else if !errors.Is(result.err, errAuthToken) {
+			t.Fatalf("unexpected reset error: %v", result.err)
+		}
+	}
+	_, hash, err := s.Credentials(ctx, "owner")
+	if err != nil || winner == "" || hash != winner {
+		t.Fatalf("password does not match the successful reset: %v", err)
+	}
+	if session, err := s.Session(ctx, "owner"); err != nil || session != nil {
+		t.Fatalf("reset did not revoke the owner's session: %v", err)
+	}
+	if session, err := s.Session(ctx, "other"); err != nil || session == nil {
+		t.Fatalf("reset affected another account's session: %v", err)
+	}
+	if _, err := s.AuthTokenValid(ctx, "other", TokenPasswordReset, time.Now()); err != nil {
+		t.Fatalf("reset revoked another account's link: %v", err)
 	}
 }
 

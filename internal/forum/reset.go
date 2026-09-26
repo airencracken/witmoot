@@ -85,10 +85,6 @@ func (a *App) changePassword(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	if err := a.store.DeleteSessionsForUser(r.Context(), user.ID); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
 	if err := a.startSession(w, r, user.ID); err != nil {
 		a.serverError(w, r, err)
 		return
@@ -137,9 +133,27 @@ func (a *App) resetForm(w http.ResponseWriter, r *http.Request) {
 // spent, so a rejected form can be corrected and resubmitted.
 func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
+	page := Page{View: "reset", Title: "Choose a new password", ResetToken: token}
 	renderErr := func(status int, message string) {
-		a.render(w, r, status, Page{View: "reset", Title: "Choose a new password", ResetToken: token, Error: message})
+		page.Error = message
+		a.render(w, r, status, page)
 	}
+	if !validToken(token) {
+		renderErr(400, errAuthToken.Error())
+		return
+	}
+	// Check before the expensive password hash, then recheck while consuming
+	// the token in the same transaction as the password and session changes.
+	user, err := a.store.AuthTokenValid(r.Context(), tokenHash(token), TokenPasswordReset, time.Now())
+	if err != nil {
+		if errors.Is(err, errAuthToken) {
+			renderErr(400, errAuthToken.Error())
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	page.ResetUser = user.Username
 	password, confirm := r.PostForm.Get("password"), r.PostForm.Get("confirm_password")
 	if message := ValidatePassword(password); message != "" {
 		renderErr(422, message)
@@ -149,29 +163,18 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 		renderErr(422, "The two passwords do not match.")
 		return
 	}
-	if !validToken(token) {
-		renderErr(400, errAuthToken.Error())
-		return
-	}
-	user, err := a.store.ConsumeAuthToken(r.Context(), tokenHash(token), TokenPasswordReset, time.Now())
-	if err != nil {
-		if errors.Is(err, errAuthToken) {
-			renderErr(400, errAuthToken.Error())
-			return
-		}
-		a.serverError(w, r, err)
-		return
-	}
 	hash, err := HashPassword(password)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	if err := a.store.SetPassword(r.Context(), user.ID, hash); err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if err := a.store.DeleteSessionsForUser(r.Context(), user.ID); err != nil {
+	user, err = a.store.ResetPassword(r.Context(), tokenHash(token), hash, time.Now())
+	if err != nil {
+		if errors.Is(err, errAuthToken) {
+			page.ResetUser = ""
+			renderErr(400, errAuthToken.Error())
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}

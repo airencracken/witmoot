@@ -334,9 +334,6 @@ func (m Model) startSetPassword() (tea.Model, tea.Cmd) {
 		if err := m.store.SetPassword(ctx, m.target.ID, hash); err != nil {
 			return err
 		}
-		if err := m.store.DeleteSessionsForUser(ctx, m.target.ID); err != nil {
-			return err
-		}
 		m.flash = fmt.Sprintf("Password updated for %s. Their sessions were ended.", m.target.Username)
 		return nil
 	}
