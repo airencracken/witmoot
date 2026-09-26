@@ -114,8 +114,9 @@ WITMOOT_SMTP_FROM="Witmoot <no-reply@example.org>"
 WITMOOT_SMTP_TLS="starttls"
 ```
 
-`starttls` is the default, `implicit` suits port 465, and `none` is for a trusted
-local relay. Leave `WITMOOT_SMTP_HOST` unset to disable sending; reset links
+`starttls` is the default and requires the relay to offer TLS; it refuses to
+send reset links over plaintext. `implicit` suits port 465, and `none` is for a
+trusted local relay. Leave `WITMOOT_SMTP_HOST` unset to disable sending; reset links
 still work when an owner copies them. Member addresses are optional and are set
 under **Account**.
 
