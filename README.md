@@ -394,6 +394,8 @@ The product direction lives in [docs/product.md](docs/product.md).
 
 ## License
 
+You can [support witmoot on Ko-fi](https://ko-fi.com/airencracken).
+
 Copyright (C) 2026 Marcus J. Hildum.
 
 Witmoot is licensed under the GNU Affero General Public License, version 3 or
