@@ -21,6 +21,7 @@ export async function checkGroups(browser, origin, password, javaScriptEnabled) 
 	}
 	try {
 		const owner = await signIn('alex');
+		await owner.getByText('Manage', { exact: true }).click();
 		await owner.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Manage groups', exact: true }).click();
 		await owner.getByRole('link', { name: 'Create a group', exact: true }).click();
 		const groupName = javaScriptEnabled ? 'Soup club with HTMX' : 'Soup club without scripts';

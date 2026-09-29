@@ -103,6 +103,7 @@ func New(store *forum.Store, opts Options) (Model, error) {
 			{Title: "Role", Width: 8},
 			{Title: "Email", Width: 26},
 			{Title: "Reset", Width: 14},
+			{Title: "Status", Width: 10},
 		}),
 		table.WithFocused(true),
 		table.WithHeight(12),
@@ -141,7 +142,11 @@ func (m *Model) reload() error {
 		if email == "" {
 			email = "—"
 		}
-		rows = append(rows, table.Row{fmt.Sprint(member.ID), member.Username, member.Role, email, reset})
+		status := "active"
+		if member.Suspended {
+			status = "suspended"
+		}
+		rows = append(rows, table.Row{fmt.Sprint(member.ID), member.Username, member.Role, email, reset, status})
 	}
 	m.table.SetRows(rows)
 	if cursor := m.table.Cursor(); cursor >= len(rows) && len(rows) > 0 {
@@ -231,8 +236,11 @@ func (m Model) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) memberActions() []item {
-	items := []item{{"Create a reset link", actionReset}}
-	if m.mailer().Enabled() && m.target.Email != "" {
+	var items []item
+	if !m.target.Suspended {
+		items = append(items, item{"Create a reset link", actionReset})
+	}
+	if !m.target.Suspended && m.mailer().Enabled() && m.target.Email != "" {
 		items = append(items, item{"Email a reset link", actionResetEmail})
 	}
 	if m.target.Pending {

@@ -61,7 +61,7 @@ func (s *Store) CreateInvitation(ctx context.Context, ownerID int64, hash, prefi
 	}
 	result, err := s.db.ExecContext(ctx, `INSERT INTO invitations(token_hash, prefix, label, created_by, created_at, max_uses, expires_at)
 		SELECT ?, ?, ?, u.id, ?, ?, ? FROM settings s JOIN users u ON u.id = ?
-		WHERE s.id = 1 AND s.mode != 'personal' AND (u.role = 'owner' OR u.can_invite = 1)`, hash, prefix, opts.Label, time.Now().Unix(), opts.MaxUses, expires, ownerID)
+		WHERE s.id = 1 AND s.mode != 'personal' AND u.suspended = 0 AND (u.role = 'owner' OR u.can_invite = 1)`, hash, prefix, opts.Label, time.Now().Unix(), opts.MaxUses, expires, ownerID)
 	if err != nil {
 		return 0, err
 	}

@@ -202,6 +202,10 @@ func (a *App) members(w http.ResponseWriter, r *http.Request) {
 		notice = "The reset link was cancelled. It can no longer be used."
 	case "avatar-removed":
 		notice = "The avatar was removed."
+	case "suspend":
+		notice = "The member was suspended and signed out."
+	case "restore":
+		notice = "The member can sign in again."
 	}
 	a.renderMembers(w, r, 200, Page{Notice: notice})
 }
@@ -216,7 +220,7 @@ func (a *App) createResetLink(w http.ResponseWriter, r *http.Request) {
 	}
 	token := randomToken()
 	if err := a.store.CreateAuthToken(r.Context(), target.ID, TokenPasswordReset, tokenHash(token), time.Now().Add(resetLinkTTL)); err != nil {
-		a.serverError(w, r, err)
+		a.storeError(w, r, err)
 		return
 	}
 	p := Page{ResetLink: a.resetURL(r, token), ResetFor: target.Username}

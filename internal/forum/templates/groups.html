@@ -19,7 +19,7 @@
 	<div class="form-footer"><a href="/groups">Back to groups</a><button type="submit">{{if .Group.ID}}Save group{{else}}Create group{{end}}</button></div>
 </form>
 {{if .Group.ID}}
-<section class="group-report" aria-labelledby="group-access-heading"><h2 id="group-access-heading">Current board access</h2><p class="muted">Based on saved memberships and permissions. Individual overrides take priority over every group grant. Otherwise, Read and post wins across groups. Effective board access also reflects site access rules and archived boards; each conversation's audience still applies.</p>
+<section class="group-report" aria-labelledby="group-access-heading"><h2 id="group-access-heading">Current board access</h2><p class="muted">Based on saved memberships and permissions. Individual overrides take priority over every group grant. Otherwise, Read and post wins across groups. Effective board access also reflects site access rules, suspended accounts, and archived boards; each conversation's audience still applies.</p>
 {{if eq .Mode "personal"}}<p class="paper">This site is in Personal mode. Only owners can access boards.</p>{{end}}
 {{range .GroupBoards}}<article class="paper group-board" data-board-id="{{.Board.ID}}"><h3><a href="/boards/{{.Board.ID}}/settings">{{.Board.Name}}</a></h3><p>Group grant: <strong>{{access .Access}}</strong>{{if .Board.Archived}} · Archived, read only{{end}}</p>
 {{if not .Board.Restricted}}<p class="muted">This board uses site access rules. Group grants and individual overrides apply only when it uses Selected members only.</p>{{end}}

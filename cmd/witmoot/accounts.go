@@ -172,7 +172,7 @@ func listUsersWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 		return err
 	}
 	table := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-	if _, err := fmt.Fprintln(table, "ID\tUSERNAME\tROLE\tEMAIL"); err != nil {
+	if _, err := fmt.Fprintln(table, "ID\tUSERNAME\tROLE\tEMAIL\tSTATUS"); err != nil {
 		return err
 	}
 	for _, member := range members {
@@ -180,7 +180,11 @@ func listUsersWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 		if email == "" {
 			email = "—"
 		}
-		if _, err := fmt.Fprintf(table, "%d\t%s\t%s\t%s\n", member.ID, member.Username, member.Role, email); err != nil {
+		status := "active"
+		if member.Suspended {
+			status = "suspended"
+		}
+		if _, err := fmt.Fprintf(table, "%d\t%s\t%s\t%s\t%s\n", member.ID, member.Username, member.Role, email, status); err != nil {
 			return err
 		}
 	}

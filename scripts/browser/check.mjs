@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { checkThemes } from './themes.mjs';
 import { checkBoards } from './boards.mjs';
 import { checkGroups } from './groups.mjs';
+import { checkCommunity } from './community.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -236,6 +237,9 @@ try {
 	await startServer();
 	await checkGroups(browser, origin, password, true);
 	await checkGroups(browser, origin, password, false);
+	await startServer();
+	await checkCommunity(browser, origin, password, true);
+	await checkCommunity(browser, origin, password, false);
 	assert.deepEqual(problems, [], 'Browser script or CSP errors');
 } finally {
 	if (browser) await browser.close();

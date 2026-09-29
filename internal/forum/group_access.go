@@ -120,7 +120,7 @@ func groupBoardMembers(ctx context.Context, tx *sql.Tx, groupID int64, boards []
 	rows, err := tx.QueryContext(ctx, `WITH reader AS (
 		SELECT u.id, u.role = 'owner' AS owner FROM users u JOIN group_members gm ON gm.user_id = u.id WHERE gm.group_id = ?
 	), `+boardPermissions+` SELECT p.id, u.username, coalesce(bm.access, 'inherit'),
-		CASE WHEN settings.mode = 'personal' AND u.role != 'owner' THEN 'none'
+		CASE WHEN u.suspended OR (settings.mode = 'personal' AND u.role != 'owner') THEN 'none'
 		WHEN p.archived AND p.access != 'none' THEN 'read' ELSE p.access END
 		FROM board_permissions p JOIN board_groups bg ON bg.board_id = p.id AND bg.group_id = ?
 		JOIN users u ON u.id = p.user_id CROSS JOIN settings

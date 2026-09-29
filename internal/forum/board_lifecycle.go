@@ -27,6 +27,9 @@ func (s *Store) BoardContents(ctx context.Context, boardID int64) (BoardContents
 }
 
 func requireOwner(ctx context.Context, q rowQuerier, userID int64) error {
+	if err := requireActive(ctx, q, userID); err != nil {
+		return err
+	}
 	var role string
 	if err := q.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", userID).Scan(&role); err != nil {
 		return err

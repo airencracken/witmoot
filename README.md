@@ -119,6 +119,27 @@ board and imvault can share a host without competing for the same port.
 
 ## Your place, your house rules
 
+Open **Manage** in the header for boards, groups, members, and site settings.
+Under **Settings**, publish house rules and a way to contact the owners.
+**House rules & owners** in the footer is available before sign-in and lists
+owner usernames, never their private account email addresses. Only enter contact
+details you want to make public.
+
+Under **Members**, an owner can suspend a member or restore access. Suspension
+signs them out on every device and revokes their reset links and unused
+invitations. It keeps their contributions and board/group permissions. Restoring
+access lets them sign in again; old sessions, links, and invitations stay revoked.
+Owners cannot be suspended. Public pages remain available without signing in.
+
+Owners can **Remove** a message after reviewing its text and confirming. Removal
+permanently replaces the text with a placeholder and deletes its shared image
+links. Replies and message numbers keep their place; Imvault originals are kept.
+Removing the opening message can also replace the conversation title. Removed
+messages cannot be edited or restored, and fresh exports contain the placeholder
+with `removed: true`. Existing downloads and backups are not changed.
+**View owner activity** on Members records who suspended/restored a member or
+removed a message. This history is visible only to owners.
+
 Use **Manage boards** as an owner to create boards, rename them, and choose
 **Selected members only** for a private space. **Manage groups** lets owners
 create named groups, edit their memberships, and rename or delete them. In board
@@ -133,7 +154,7 @@ overrides when upgrading; new members start with Use groups and no memberships.
 
 Each group's management page shows its board grants, highlights individual
 overrides, and lists effective access for each member. This includes site access
-rules and archive status; each conversation's audience still applies. Deleting a
+rules, suspension, and archive status; each conversation's audience still applies. Deleting a
 group requires its exact name as confirmation and removes only its memberships
 and grants. Accounts, conversations, other groups, and individual overrides remain.
 
@@ -334,7 +355,8 @@ are core work still to do. See the
 [data portability requirements](docs/data-portability.md), informed by imvault's
 existing account exports.
 
-Member removal, post deletion, and moderation are not implemented yet.
+Permanent account removal and self-service account deletion are not implemented.
+Owners can suspend members and permanently remove individual messages.
 Account recovery covers member-initiated
 password changes, owner-issued reset links, and the local `set-password`
 command; there is no self-service email reset, and mail stays off until a relay
@@ -352,13 +374,18 @@ becomes a still PNG, and an owner can remove any member's avatar.
 ```bash
 make help    # available commands and installation options
 make check   # formatting, JavaScript tests (Node required), vet, and race tests
+make test-mutations # deliberate defects in community controls (Python 3 required)
 make build   # standalone binary; no cgo required
 ```
 
 Tests cover all three modes, audience filtering, migration from the original
 private schema, persisted settings, stale forms and registration policy,
 invitation races and rollback, session expiry, CSRF, role checks, escaping,
-search literals, pagination, and failed writes.
+search literals, pagination, and failed writes. Community tests exercise
+suspension, session/reset/invitation revocation, permission preservation,
+confirmation conflicts, message/image erasure, export contracts, schema upgrades,
+generated action sequences, and rollback at every write. Ten deliberate
+mutations verify that these regressions detect broken controls.
 Image tests cover the API contract, encrypted connections, all three attachment
 paths, audience checks, input limits, upstream failures, and upload cleanup.
 Packaging tests exercise staged installs, preserved configuration, service
@@ -377,7 +404,9 @@ make test-browser
 
 These checks start an isolated temporary instance and exercise the full flow with
 HTMX enabled and JavaScript disabled, including changing modes in Settings,
-public browsing, open registration, Personal access restrictions, mobile layout,
+public browsing, open registration, Personal access restrictions, house rules,
+message removal, suspension/restoration, keyboard access to the owner menu,
+mobile account navigation, both themes at four widths,
 and browser security policy checks. They fail if browser tooling is missing. Optional screenshots:
 `WITMOOT_SCREENSHOT_DIR=/tmp/witmoot-screenshots make test-browser`.
 

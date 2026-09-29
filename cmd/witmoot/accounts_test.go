@@ -202,6 +202,13 @@ func TestListUsersCommand(t *testing.T) {
 	if err := store.SetEmail(context.Background(), jules.ID, "jules@example.org"); err != nil {
 		t.Fatal(err)
 	}
+	owner, _, err := store.Credentials(context.Background(), "alex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ChangeMember(context.Background(), owner.ID, jules.ID, 0, "suspend", "jules"); err != nil {
+		t.Fatal(err)
+	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +217,7 @@ func TestListUsersCommand(t *testing.T) {
 	if err := runCommand([]string{"list-users"}, strings.NewReader(""), &output); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"ID", "USERNAME", "ROLE", "EMAIL", "alex", "owner", "jules", "member", "jules@example.org"} {
+	for _, want := range []string{"ID", "USERNAME", "ROLE", "EMAIL", "STATUS", "alex", "owner", "jules", "member", "jules@example.org", "suspended", "active"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("list-users omits %q:\n%s", want, &output)
 		}

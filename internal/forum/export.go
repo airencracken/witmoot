@@ -77,6 +77,7 @@ type exportPost struct {
 	Revision    int64              `json:"revision"`
 	URL         string             `json:"url"`
 	Attachments []exportAttachment `json:"attachments,omitempty"`
+	Removed     bool               `json:"removed,omitempty"`
 }
 
 type exportAttachment struct {
@@ -94,6 +95,7 @@ type exportView struct {
 const exportNote = "Your own messages only; other people's replies are not included. " +
 	"Shared images are listed by reference to the imvault preview that was posted. " +
 	"Fetch your originals from your imvault account export. " +
+	"Removed messages appear as placeholders, without their former text or image references. " +
 	"Passwords, sessions, and image connections are never included."
 
 // handleAccountExport streams a member's own contributions, plus a manifest
@@ -148,6 +150,7 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 			Body:      p.Body,
 			CreatedAt: time.Unix(p.CreatedAt, 0).UTC().Format(time.RFC3339),
 			Revision:  p.Revision,
+			Removed:   p.Removed,
 			URL:       fmt.Sprintf("%s/topics/%d?page=%d#post-%d", origin, p.TopicID, (p.Number-1)/int64(pageSize)+1, p.ID),
 		}
 		if p.EditedAt > 0 {

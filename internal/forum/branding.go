@@ -26,12 +26,14 @@ type SiteBranding struct {
 	SourceURL    string
 	WelcomeTitle string
 	WelcomeText  string
+	HouseRules   string
+	OwnerContact string
 }
 
 func (s *Store) LoadBranding(ctx context.Context, defaults SiteBranding) (SiteBranding, error) {
 	branding := defaults
-	err := s.db.QueryRowContext(ctx, `SELECT name, source_url, welcome_title, welcome_text
-		FROM instance_branding WHERE id = 1`).Scan(&branding.Name, &branding.SourceURL, &branding.WelcomeTitle, &branding.WelcomeText)
+	err := s.db.QueryRowContext(ctx, `SELECT name, source_url, welcome_title, welcome_text, house_rules, owner_contact
+		FROM instance_branding WHERE id = 1`).Scan(&branding.Name, &branding.SourceURL, &branding.WelcomeTitle, &branding.WelcomeText, &branding.HouseRules, &branding.OwnerContact)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaults, nil
 	}
@@ -70,6 +72,11 @@ func cleanBranding(branding SiteBranding) (SiteBranding, error) {
 	branding.SourceURL = strings.TrimSpace(branding.SourceURL)
 	branding.WelcomeTitle = strings.TrimSpace(branding.WelcomeTitle)
 	branding.WelcomeText = strings.TrimSpace(branding.WelcomeText)
+	branding.HouseRules = strings.TrimSpace(branding.HouseRules)
+	branding.OwnerContact = strings.TrimSpace(branding.OwnerContact)
+	if !brandTextValid(branding.HouseRules, 5000, true) || !brandTextValid(branding.OwnerContact, 500, true) {
+		return SiteBranding{}, errors.New("keep house rules under 5000 characters and owner contact details under 500")
+	}
 	if !brandTextValid(branding.Name, 80, false) || !brandTextValid(branding.WelcomeTitle, 120, false) || !brandTextValid(branding.WelcomeText, 2000, true) {
 		return SiteBranding{}, errors.New("keep the site name under 80 characters, welcome title under 120, and welcome text under 2000")
 	}
@@ -80,11 +87,12 @@ func cleanBranding(branding SiteBranding) (SiteBranding, error) {
 }
 
 func saveBranding(ctx context.Context, writer brandingWriter, branding SiteBranding) error {
-	_, err := writer.ExecContext(ctx, `INSERT INTO instance_branding(id, name, source_url, welcome_title, welcome_text)
-		VALUES (1, ?, ?, ?, ?)
+	_, err := writer.ExecContext(ctx, `INSERT INTO instance_branding(id, name, source_url, welcome_title, welcome_text, house_rules, owner_contact)
+		VALUES (1, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET name=excluded.name, source_url=excluded.source_url,
-		welcome_title=excluded.welcome_title, welcome_text=excluded.welcome_text`,
-		branding.Name, branding.SourceURL, branding.WelcomeTitle, branding.WelcomeText)
+		welcome_title=excluded.welcome_title, welcome_text=excluded.welcome_text,
+		house_rules=excluded.house_rules, owner_contact=excluded.owner_contact`,
+		branding.Name, branding.SourceURL, branding.WelcomeTitle, branding.WelcomeText, branding.HouseRules, branding.OwnerContact)
 	if err != nil {
 		return err
 	}

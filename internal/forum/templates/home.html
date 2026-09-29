@@ -1,7 +1,7 @@
 {{define "welcome"}}
 <section class="welcome-grid">
-	<div class="welcome-copy"><p class="eyebrow">A small place. Your people.</p><h1>{{.WelcomeTitle}}</h1><p class="lede">{{.WelcomeText}}</p><p>{{if eq .Mode "personal"}}{{.Name}} is a personal board for its owners. A quiet place for thoughts worth keeping.{{else}}{{.Name}} is a private gathering place for family and friends. Pull up a chair.{{end}}</p><a class="button" href="/login">Sign in <span aria-hidden="true">→</span></a><p class="muted invitation-note">{{if eq .Mode "personal"}}Owner sign-in only. This board is not accepting new members.{{else}}New here? Ask the owner for an invitation.{{end}}</p></div>
-	<aside class="welcome-note"><img class="mascot welcome-mascot" src="{{.MascotURL}}" alt="" width="240" height="240"><p class="eyebrow">Make yourself at home</p><h2>Our own<br>little corner.</h2><div class="note-rule"></div><p>{{.WelcomeText}}</p><span class="note-signature">See you around.</span></aside>
+	<div class="welcome-copy"><h1>{{.WelcomeTitle}}</h1><p class="lede">{{.WelcomeText}}</p><p>{{if eq .Mode "personal"}}{{.Name}} is a personal board for its owners. A quiet place for thoughts worth keeping.{{else}}{{.Name}} is a private gathering place for family and friends. Pull up a chair.{{end}}</p><a class="button" href="/login">Sign in <span aria-hidden="true">→</span></a><p class="muted invitation-note">{{if eq .Mode "personal"}}Owner sign-in only. This board is not accepting new members.{{else}}New here? Ask the owner for an invitation.{{end}}</p></div>
+	<aside class="welcome-note"><img class="mascot welcome-mascot" src="{{.MascotURL}}" alt="" width="240" height="240"><p class="eyebrow">Make yourself at home</p><h2>Our own<br>little corner.</h2><div class="note-rule"></div><p>Conversations stay here for when you have time to catch up.</p></aside>
 </section>
 {{end}}
 
