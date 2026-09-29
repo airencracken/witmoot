@@ -79,7 +79,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 	if !strings.HasPrefix(base, "http://127.0.0.1:") {
 		t.Fatalf("demo listener must be loopback: %q", base)
 	}
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := demoTestClient(t, nil)
 	if body := getPage(t, client, base+"/healthz", 200); strings.TrimSpace(body) != "ok" {
 		t.Fatalf("health response: %q", body)
 	}
@@ -97,7 +97,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			client := &http.Client{Jar: jar, Timeout: 5 * time.Second}
+			client := demoTestClient(t, jar)
 			if tc.name != "" {
 				login(t, client, base, tc.name)
 				status := http.StatusForbidden
@@ -155,6 +155,16 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Each reader owns its pool. A shared transport can speculatively open an
+// unused connection that remains in StateNew during the demo's shutdown.
+func demoTestClient(t *testing.T, jar http.CookieJar) *http.Client {
+	t.Helper()
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	client := &http.Client{Transport: transport, Jar: jar, Timeout: 5 * time.Second}
+	t.Cleanup(client.CloseIdleConnections)
+	return client
 }
 
 func login(t *testing.T, client *http.Client, base, username string) {
