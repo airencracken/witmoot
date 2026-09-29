@@ -103,7 +103,7 @@ try {
 		await page.goto(origin + '/login');
 		await page.getByLabel('Username', { exact: true }).fill('alex');
 		await page.getByLabel('Password', { exact: true }).fill(password);
-		await page.getByRole('button', { name: 'Come on in' }).click();
+		await page.getByRole('button', { name: 'Sign in' }).click();
 		await page.waitForURL(origin + '/');
 		assert.equal(await page.locator('.mascot').evaluate(img => img.complete && img.naturalWidth > 0), true);
 		await page.getByRole('link', { name: 'Images', exact: true }).click();

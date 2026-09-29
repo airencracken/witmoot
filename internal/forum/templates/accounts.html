@@ -1,13 +1,13 @@
 {{define "login"}}
 <section class="paper narrow account-card">
-	<p class="eyebrow">Your chair is still here</p><h1>Welcome back.</h1>
+	<p class="eyebrow">{{.Name}}</p><h1>Welcome back.</h1>
 	<p class="muted">{{if eq .Mode "personal"}}Sign in with an owner account to open your personal board.{{else}}Sign in to see what your people have been up to.{{end}}</p>
 	{{template "error" .}}
 	<form action="/login" method="post" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
 		<label for="username">Username</label><input id="username" name="username" autocomplete="username" maxlength="24" value="{{.Username}}" required>
 		<label for="password">Password</label><input id="password" type="password" name="password" autocomplete="current-password" required>
-		<button class="full-width" type="submit">Come on in</button>
+		<button class="full-width" type="submit">Sign in</button>
 	</form>
 	<p class="account-note">{{if eq .Mode "open"}}New here? <a href="/join">Join our board</a>.{{else if eq .Mode "personal"}}This board is for its owners. Joining and invitations are disabled.{{else}}Joining for the first time? Open the invitation link the owner shared with you.{{end}}</p>
 </section>
