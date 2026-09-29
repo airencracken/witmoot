@@ -242,9 +242,10 @@ shared among all owner accounts.
 WITMOOT_NAME='Our little corner' WITMOOT_ADDR=127.0.0.1:9000 make run
 ```
 
-The starter rooms are seeded once by the initial migration. Their names are
-currently fixed; room management is future work. The default data directory is
-created with owner-only access. An existing directory keeps its permissions.
+Five starter boards are seeded once. Owners can create and rename boards,
+choose who can read and post, and archive boards without deleting their
+conversations. The default data directory is created with owner-only access.
+An existing directory keeps its permissions.
 
 ## Invitations for your people
 
@@ -333,8 +334,8 @@ are core work still to do. See the
 [data portability requirements](docs/data-portability.md), informed by imvault's
 existing account exports.
 
-This is a first working foundation. Member removal, post deletion, and
-moderation are not implemented yet. Account recovery covers member-initiated
+Member removal, post deletion, and moderation are not implemented yet.
+Account recovery covers member-initiated
 password changes, owner-issued reset links, and the local `set-password`
 command; there is no self-service email reset, and mail stays off until a relay
 is configured. Do not use it as the sole copy of irreplaceable family material.

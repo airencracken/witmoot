@@ -20,7 +20,7 @@ export async function checkThemes(browser, origin) {
 
 		// Navigation replaces the body through HTMX, including the theme selector.
 		await page.evaluate(() => { window.themeNavigationMarker = true; });
-		await page.getByRole('link', { name: 'Come on in', exact: false }).first().click();
+		await page.getByRole('link', { name: 'Sign in', exact: false }).first().click();
 		await page.waitForURL(origin + '/login');
 		await picker.waitFor({ state: 'visible' });
 		assert.equal(await page.evaluate(() => window.themeNavigationMarker), true);

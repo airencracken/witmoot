@@ -13,7 +13,7 @@ export async function checkBoards(browser, origin, password, javaScriptEnabled) 
 		await page.goto(origin + '/login');
 		await page.getByLabel('Username', { exact: true }).fill(username);
 		await page.getByLabel('Password', { exact: true }).fill(password);
-		await page.getByRole('button', { name: 'Come on in' }).click();
+		await page.getByRole('button', { name: 'Sign in' }).click();
 		await page.waitForURL(origin + '/');
 		return page;
 	}

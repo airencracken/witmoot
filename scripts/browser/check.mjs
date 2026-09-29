@@ -55,10 +55,10 @@ async function flow(javaScriptEnabled) {
 	page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|Refused to/.test(message.text())) problems.push(message.text()); });
 	await page.goto(origin);
 	assert.match(await page.locator('h1').innerText(), /Good company/);
-	await page.getByRole('link', { name: 'Come on in', exact: false }).first().click();
+	await page.getByRole('link', { name: 'Sign in', exact: false }).first().click();
 	await page.getByLabel('Username', { exact: true }).fill('alex');
 	await page.getByLabel('Password', { exact: true }).fill(password);
-	await page.getByRole('button', { name: 'Come on in' }).click();
+	await page.getByRole('button', { name: 'Sign in' }).click();
 	await page.waitForURL(origin + '/');
 	assert.match(await page.locator('h1').innerText(), /Good to see you, alex/);
 	await page.getByRole('link', { name: 'The kitchen table', exact: true }).click();
@@ -155,7 +155,7 @@ async function modeFlow(javaScriptEnabled) {
 	await page.goto(origin + '/login');
 	await page.getByLabel('Username', { exact: true }).fill('alex');
 	await page.getByLabel('Password', { exact: true }).fill(password);
-	await page.getByRole('button', { name: 'Come on in' }).click();
+	await page.getByRole('button', { name: 'Sign in' }).click();
 	await page.waitForURL(origin + '/');
 	const guestContext = await browser.newContext({ javaScriptEnabled });
 	const guest = await guestContext.newPage();
