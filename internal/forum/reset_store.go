@@ -32,6 +32,9 @@ func (s *Store) CreateAuthToken(ctx context.Context, userID int64, purpose Token
 		return err
 	}
 	defer tx.Rollback()
+	if err := requireActive(ctx, tx, userID); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM auth_tokens WHERE user_id = ? AND purpose = ?", userID, string(purpose)); err != nil {
 		return err
 	}
@@ -72,6 +75,11 @@ func consumeAuthToken(ctx context.Context, tx *sql.Tx, tokenHash string, purpose
 	if usedAt.Valid || expiresAt <= at.Unix() {
 		return User{}, errAuthToken
 	}
+	if err := requireActive(ctx, tx, userID); errors.Is(err, errSuspended) {
+		return User{}, errAuthToken
+	} else if err != nil {
+		return User{}, err
+	}
 	result, err := tx.ExecContext(ctx, "UPDATE auth_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL", at.Unix(), tokenHash)
 	if err != nil {
 		return User{}, err
@@ -97,7 +105,7 @@ func (s *Store) AuthTokenValid(ctx context.Context, tokenHash string, purpose To
 	var u User
 	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email
 		FROM auth_tokens t JOIN users u ON u.id = t.user_id
-		WHERE t.token_hash = ? AND t.purpose = ? AND t.used_at IS NULL AND t.expires_at > ?`, tokenHash, string(purpose), at.Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
+		WHERE t.token_hash = ? AND t.purpose = ? AND t.used_at IS NULL AND t.expires_at > ? AND u.suspended = 0`, tokenHash, string(purpose), at.Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, errAuthToken
 	}
@@ -205,7 +213,7 @@ type MemberReset struct {
 func (s *Store) Members(ctx context.Context) ([]MemberReset, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email,
 		EXISTS(SELECT 1 FROM auth_tokens t WHERE t.user_id = u.id AND t.purpose = 'password_reset' AND t.used_at IS NULL AND t.expires_at > ?) AS pending,
-		EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = u.id) AS has_avatar
+		EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = u.id) AS has_avatar, u.suspended, u.suspension_revision
 		FROM users u ORDER BY u.role DESC, u.username COLLATE NOCASE`, time.Now().Unix())
 	if err != nil {
 		return nil, err
@@ -214,7 +222,7 @@ func (s *Store) Members(ctx context.Context) ([]MemberReset, error) {
 	var members []MemberReset
 	for rows.Next() {
 		var m MemberReset
-		if err := rows.Scan(&m.ID, &m.Username, &m.Role, &m.CreatedAt, &m.CanInvite, &m.InvitedBy, &m.InvitedByName, &m.InvitationID, &m.Email, &m.Pending, &m.HasAvatar); err != nil {
+		if err := rows.Scan(&m.ID, &m.Username, &m.Role, &m.CreatedAt, &m.CanInvite, &m.InvitedBy, &m.InvitedByName, &m.InvitationID, &m.Email, &m.Pending, &m.HasAvatar, &m.Suspended, &m.SuspensionRevision); err != nil {
 			return nil, err
 		}
 		members = append(members, m)

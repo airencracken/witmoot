@@ -92,6 +92,8 @@ func (a *App) settingsPage(r *http.Request, message string) Page {
 		page.SourceURL = r.PostForm.Get("source_url")
 		page.WelcomeTitle = r.PostForm.Get("welcome_title")
 		page.WelcomeText = r.PostForm.Get("welcome_text")
+		page.HouseRules = r.PostForm.Get("house_rules")
+		page.OwnerContact = r.PostForm.Get("owner_contact")
 	}
 	return page
 }
@@ -110,6 +112,7 @@ func (a *App) saveSettings(w http.ResponseWriter, r *http.Request) {
 		branding := SiteBranding{
 			Name: r.PostForm.Get("site_name"), SourceURL: r.PostForm.Get("source_url"),
 			WelcomeTitle: r.PostForm.Get("welcome_title"), WelcomeText: r.PostForm.Get("welcome_text"),
+			HouseRules: r.PostForm.Get("house_rules"), OwnerContact: r.PostForm.Get("owner_contact"),
 		}
 		if err := a.store.SaveInstanceSettings(r.Context(), mode, branding); err != nil {
 			a.render(w, r, 422, a.settingsPage(r, err.Error()))

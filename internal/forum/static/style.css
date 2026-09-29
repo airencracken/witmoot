@@ -26,8 +26,8 @@ button, input, select, textarea { font: inherit; }
 button, .button { display: inline-flex; align-items: center; justify-content: center; gap: 20px; padding: 11px 20px; border: 1px solid var(--green); border-radius: 7px; background: var(--green); color: var(--button-text); font-weight: 600; text-decoration: none; cursor: pointer; line-height: 1.5; }
 button:hover, .button:hover { color: var(--button-text); background: var(--green-dark); }
 button:disabled { cursor: wait; opacity: .65; }
-.button.secondary { background: transparent; color: var(--green); border-color: light-dark(#aebaaa, #61745b); }
-.button.secondary:hover { background: var(--soft); }
+.button.secondary, button.secondary { background: transparent; color: var(--green); border-color: light-dark(#aebaaa, #61745b); }
+.button.secondary:hover, button.secondary:hover { background: var(--soft); color: var(--green); }
 .button.small { padding: 8px 16px; }
 .danger, .button.danger { background: transparent; color: var(--rust); border-color: var(--rust); }
 .danger:hover, .button.danger:hover { background: var(--soft); color: var(--rust); }
@@ -203,7 +203,7 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 }
 @media (max-width: 450px) {
 	.site-header nav { gap: 13px; font-size: 12px; }
-	.signed-in { display: none; }
+	.signed-in { max-width: 100%; overflow-wrap: anywhere; }
 	.brand { font-size: 27px; }
 	.brand small { font-size: 10px; }
 	.board-row { gap: 12px; padding: 18px 14px; }
@@ -258,6 +258,17 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .post-images img { display: block; max-width: 100%; max-height: 500px; border-radius: 6px; }
 .post-images figcaption { font-size: .8rem; overflow-wrap: anywhere; margin-top: .4rem; color: var(--muted); }
 .invitation-record { padding: 1rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.invitation-record form { display: inline-flex; flex-wrap: wrap; gap: .5rem; margin: .3rem .5rem .3rem 0; }
+.community-settings { margin: 30px 0 !important; }
+.community-about { overflow-wrap: anywhere; }
+.community-about .post-body { margin-bottom: 1.5rem; }
+.member-status { color: var(--rust); font-size: .85em; }
+.removal-preview { max-height: 18rem; overflow: auto; margin: 1.5rem 0; padding: 1rem; border-left: 3px solid var(--line); background: var(--soft); }
+.removed-message { color: var(--muted); font-style: italic; }
+.owner-menu { position: relative; }
+.owner-menu summary { cursor: pointer; }
+.owner-links { position: absolute; z-index: 3; top: calc(100% + 12px); left: 0; min-width: 180px; padding: .5rem; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 6px 18px light-dark(#26322820, #00000040); }
+.site-header nav .owner-links a { display: block; padding: .6rem .75rem; }
 
 /* Board membership and edits. */
 .site-access { margin: 0; color: var(--muted); font-size: 12px; }

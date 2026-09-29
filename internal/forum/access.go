@@ -57,7 +57,8 @@ const boardPermissions = `group_access AS (
 ) `
 
 // All aggregate and detail reads start with this same audience filter.
-const visibleTopics = `WITH reader AS (SELECT ? AS id, ? AS owner), ` + boardPermissions + `,
+const visibleTopics = `WITH requested_reader AS (SELECT ? AS id, ? AS owner),
+reader AS (SELECT r.* FROM requested_reader r WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = r.id AND suspended = 1)), ` + boardPermissions + `,
 visible_boards AS (SELECT * FROM board_permissions WHERE access != 'none'), visible_topics AS (
 	SELECT t.* FROM topics t JOIN visible_boards b ON b.id = t.board_id CROSS JOIN reader r
 	WHERE t.audience = 'public' OR (r.id != 0 AND t.audience = 'members') OR r.owner
@@ -79,6 +80,9 @@ var (
 )
 
 func canWrite(ctx context.Context, q rowQuerier, authorID int64) (Mode, error) {
+	if err := requireActive(ctx, q, authorID); err != nil {
+		return "", err
+	}
 	mode, err := readMode(ctx, q)
 	if err != nil {
 		return "", err

@@ -23,6 +23,7 @@ export async function checkBoards(browser, origin, password, javaScriptEnabled) 
 		await owner.getByRole('radio', { name: /^Open/ }).check();
 		await owner.getByRole('button', { name: 'Save settings' }).click();
 		await owner.waitForURL(origin + '/settings?saved=1');
+		await owner.getByText('Manage', { exact: true }).click();
 		await owner.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Manage boards', exact: true }).click();
 		await owner.getByRole('link', { name: 'Create a board', exact: true }).click();
 		const name = javaScriptEnabled ? 'Quiet plans with HTMX' : 'Quiet plans without scripts';

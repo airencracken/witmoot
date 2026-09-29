@@ -1,6 +1,6 @@
 {{define "settings"}}
 {{template "crumb" .}}
-<div class="page-heading"><div><p class="eyebrow">Your place, your house rules</p><h1>Site settings</h1><p class="lede">A notebook, a gathering place, or an open door. Make it yours.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
+	<div class="page-heading"><div><h1>Site settings</h1><p class="lede">Set the welcome, membership, and house rules.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
 {{if .Saved}}<p class="save-notice" role="status">Your site settings are saved.</p>{{end}}
 {{template "error" .}}
 <form class="paper settings-form" action="/settings" method="post" hx-disabled-elt="find button[type='submit']">
@@ -11,6 +11,13 @@
 		<label for="source-url">Source link</label><input id="source-url" name="source_url" type="url" maxlength="512" value="{{.SourceURL}}" placeholder="Leave blank to hide the link"><p class="field-help">The link appears in the footer. Use an HTTP(S) URL; blank hides it.</p>
 		<label for="welcome-title">Welcome heading</label><input id="welcome-title" name="welcome_title" maxlength="120" value="{{.WelcomeTitle}}">
 		<label for="welcome-text">Welcome text</label><textarea id="welcome-text" name="welcome_text" rows="4" maxlength="2000">{{.WelcomeText}}</textarea>
+	</fieldset>
+	<fieldset class="community-settings">
+		<legend>House rules and owners</legend>
+		<p class="muted">Published on <a href="/about">House rules &amp; owners</a>, including before sign-in. Owner usernames are listed there; account email addresses are kept private.</p>
+		<label for="house-rules">House rules (optional)</label><textarea id="house-rules" name="house_rules" rows="6" maxlength="5000">{{.HouseRules}}</textarea>
+		<label for="owner-contact">How to contact the owners (optional)</label><textarea id="owner-contact" name="owner_contact" rows="3" maxlength="500">{{.OwnerContact}}</textarea>
+		<p class="field-help">Choose details you are happy to make public. Plain text and web links are supported.</p>
 	</fieldset>
 	<fieldset>
 		<legend>Who is this site for?</legend>

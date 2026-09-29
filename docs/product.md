@@ -36,7 +36,8 @@ anything someone might find objectionable.
   Keep hosting understandable, backups practical, and exports usable outside
   the application. Preserve the material and the relationships that give it
   meaning, so people can keep their contributions or move their community.
-  imvault already provides account exports; Witmoot needs to meet that standard.
+  Both imvault and Witmoot provide account exports. A portable whole-community
+  archive and import workflows remain to be built for Witmoot.
 - **Tools, not morality.** Provide moderation and governance mechanisms without
   dictating what every community must consider acceptable. Hosts and members
   establish their house rules; the software helps them administer their place.
@@ -47,7 +48,8 @@ same respect for attention and local control.
 
 The [data portability requirements](data-portability.md) describe what this
 means for Witmoot and a proposed imageboard. They are a working design, including
-the distinction between existing backup support and exports still to implement.
+the distinction between existing backups/member exports and a future portable
+community archive.
 
 ## Inspirations
 
@@ -103,17 +105,18 @@ or pressure to keep checking in.
 
 ## Where to go next
 
-1. Local governance and ownership: visible house rules and responsible hosts,
-   member removal, owner moderation, configurable rooms, and useful exports.
-   Member password changes, owner-issued reset links, and a local
-   `set-password` command are a first piece of account recovery; self-service
-   email recovery and account removal remain.
+Witmoot already has configurable boards, groups and individual permissions,
+member exports, published house rules and owner names, member suspension, and
+confirmed message removal. Owners have a private activity history. Password
+changes, owner-issued reset links, and `set-password` cover account recovery.
+
+1. Ownership and recovery: permanent account removal, self-service email
+   recovery, portable community archives, and imports.
 2. Shared memories: richer image descriptions and album browsing, while keeping
    sharing deliberate and access rules understandable.
 3. Gentle conveniences: bookmarks, unread markers, optional email digests, and
    easier backups.
 
-Separate groups inside one installation, per-conversation audience changes,
-complex permission matrices, and private messaging need explicit product
+Per-conversation audience changes and private messaging need explicit product
 decisions. This version does not imply those features or promise compatibility
 with phpBB or vBulletin data.

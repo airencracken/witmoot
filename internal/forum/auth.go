@@ -61,6 +61,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, 422, Page{View: "login", Title: "Welcome back", Username: name, Error: "That username and password did not match. Give it another try."})
 		return
 	}
+	if user.Suspended {
+		a.render(w, r, 403, Page{View: "login", Title: "Welcome back", Username: name, Error: errSuspended.Error()})
+		return
+	}
 	if state(r).Mode == ModePersonal && user.Role != "owner" {
 		a.render(w, r, 403, Page{View: "login", Title: "Welcome back", Username: name, Error: errPersonal.Error()})
 		return
@@ -114,7 +118,7 @@ func (a *App) join(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) signIn(w http.ResponseWriter, r *http.Request, userID int64) {
 	if err := a.startSession(w, r, userID); err != nil {
-		a.serverError(w, r, err)
+		a.storeError(w, r, err)
 		return
 	}
 	a.redirect(w, r, "/")

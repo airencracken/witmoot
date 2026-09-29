@@ -104,6 +104,10 @@ type Page struct {
 	ResetEmailed                                                bool
 	Members                                                     []MemberReset
 	HasAvatar                                                   bool
+	HouseRules, OwnerContact, CommunityAction                   string
+	Owners                                                      []string
+	Member                                                      User
+	Events                                                      []CommunityEvent
 }
 
 func New(store *Store, config Config) (*App, error) {
@@ -162,6 +166,8 @@ func New(store *Store, config Config) (*App, error) {
 		fmt.Fprintln(w, "ok")
 	})
 	mux.HandleFunc("GET /{$}", a.home)
+	mux.HandleFunc("GET /about", a.about)
+	mux.HandleFunc("GET /moderation", a.owner(a.moderation))
 	mux.HandleFunc("GET /login", a.loginForm)
 	mux.HandleFunc("POST /login", a.login)
 	mux.HandleFunc("GET /join", a.joinForm)
@@ -174,6 +180,8 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /topics/{id}/replies", a.private(a.reply))
 	mux.HandleFunc("GET /posts/{id}/edit", a.private(a.editPostForm))
 	mux.HandleFunc("POST /posts/{id}/edit", a.private(a.editPost))
+	mux.HandleFunc("GET /posts/{id}/remove", a.owner(a.removePostForm))
+	mux.HandleFunc("POST /posts/{id}/remove", a.owner(a.removePost))
 	mux.HandleFunc("GET /boards/manage", a.owner(a.manageBoards))
 	mux.HandleFunc("GET /groups", a.owner(a.manageGroups))
 	mux.HandleFunc("GET /groups/new", a.owner(a.groupSettings))
@@ -211,6 +219,10 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /reset/{token}", a.resetForm)
 	mux.HandleFunc("POST /reset/{token}", a.resetPassword)
 	mux.HandleFunc("GET /members", a.owner(a.members))
+	for _, action := range []string{"suspend", "restore"} {
+		mux.HandleFunc("GET /members/{id}/"+action, a.owner(a.memberActionForm(action)))
+		mux.HandleFunc("POST /members/{id}/"+action, a.owner(a.memberAction(action)))
+	}
 	mux.HandleFunc("POST /members/{id}/reset", a.owner(a.createResetLink))
 	mux.HandleFunc("POST /members/{id}/reset/revoke", a.owner(a.revokeResetLink))
 	mux.HandleFunc("POST /members/{id}/avatar/remove", a.owner(a.removeMemberAvatar))
@@ -352,6 +364,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 	if err == nil {
 		if p.View != "settings" || r.Method == http.MethodGet {
 			p.Name, p.SourceURL, p.WelcomeTitle, p.WelcomeText = brand.Name, brand.SourceURL, brand.WelcomeTitle, brand.WelcomeText
+			p.HouseRules, p.OwnerContact = brand.HouseRules, brand.OwnerContact
 		}
 		mascot, favicon, assetErr := a.store.BrandingAssetState(r.Context())
 		if assetErr == nil {
@@ -382,7 +395,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 	}
 	p.ComposeAudience = p.Board.Audience(p.Mode)
 	for i := range p.Posts {
-		p.Posts[i].CanEdit = p.CanPost && p.Posts[i].AuthorID == p.User.ID
+		p.Posts[i].CanEdit = p.CanPost && !p.Posts[i].Removed && p.Posts[i].AuthorID == p.User.ID
 	}
 	a.decorateImages(r, &p)
 	var buffer bytes.Buffer
@@ -406,7 +419,7 @@ func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	a.fail(w, r, 500, "Something went wrong. Please try again in a moment.")
 }
 func (a *App) storeError(w http.ResponseWriter, r *http.Request, err error) {
-	if errors.Is(err, errReadOnly) || errors.Is(err, errArchived) || errors.Is(err, errPersonal) || errors.Is(err, errOwner) {
+	if errors.Is(err, errReadOnly) || errors.Is(err, errArchived) || errors.Is(err, errPersonal) || errors.Is(err, errOwner) || communityError(err) {
 		a.fail(w, r, 403, err.Error())
 		return
 	}

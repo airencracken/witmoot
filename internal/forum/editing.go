@@ -17,7 +17,7 @@ func readPost(ctx context.Context, q rowQuerier, id int64, reader *User) (Post, 
 	var p Post
 	err := q.QueryRowContext(ctx, visibleTopics+`SELECT p.id, p.topic_id, p.author_id, p.body, p.edited_at, p.revision,
 		(SELECT count(*) FROM posts earlier WHERE earlier.topic_id = p.topic_id AND earlier.id <= p.id)
-		FROM posts p JOIN visible_topics t ON t.id = p.topic_id WHERE p.id = ?`, append(readerArgs(reader), id)...).Scan(&p.ID, &p.TopicID, &p.AuthorID, &p.Body, &p.EditedAt, &p.Revision, &p.Number)
+		FROM posts p JOIN visible_topics t ON t.id = p.topic_id WHERE p.id = ? AND p.removed = 0`, append(readerArgs(reader), id)...).Scan(&p.ID, &p.TopicID, &p.AuthorID, &p.Body, &p.EditedAt, &p.Revision, &p.Number)
 	return p, err
 }
 
@@ -31,6 +31,9 @@ func (s *Store) EditPost(ctx context.Context, id, authorID int64, body string, r
 		return Post{}, err
 	}
 	defer tx.Rollback()
+	if err := requireActive(ctx, tx, authorID); err != nil {
+		return Post{}, err
+	}
 	user := User{ID: authorID}
 	if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", authorID).Scan(&user.Role); err != nil {
 		return Post{}, err

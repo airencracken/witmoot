@@ -20,15 +20,17 @@ var migrations embed.FS
 type Store struct{ db *sql.DB }
 
 type User struct {
-	ID            int64
-	Username      string
-	Role          string
-	CreatedAt     int64
-	CanInvite     bool
-	InvitedBy     int64
-	InvitedByName string
-	InvitationID  int64
-	Email         string
+	ID                 int64
+	Username           string
+	Role               string
+	CreatedAt          int64
+	CanInvite          bool
+	InvitedBy          int64
+	InvitedByName      string
+	InvitationID       int64
+	Email              string
+	Suspended          bool
+	SuspensionRevision int64
 }
 
 type Board struct {
@@ -63,6 +65,7 @@ type Post struct {
 	TopicID, AuthorID, EditedAt, Revision int64
 	CanEdit                               bool
 	HasAvatar                             bool
+	Removed                               bool
 }
 
 type Stats struct{ Topics, Posts, Members int }
@@ -103,7 +106,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql", "013_community_care.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -176,7 +179,7 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 	}
 	if query != "" {
 		pattern := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(query) + "%"
-		where += ` AND (t.title LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM posts p WHERE p.topic_id = t.id AND p.body LIKE ? ESCAPE '\'))`
+		where += ` AND (t.title LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM posts p WHERE p.topic_id = t.id AND p.removed = 0 AND p.body LIKE ? ESCAPE '\'))`
 		args = append(args, pattern, pattern)
 	}
 	args = append(args, limit+1, offset)
@@ -207,7 +210,7 @@ func (s *Store) Topic(ctx context.Context, id int64, reader *User) (Topic, error
 }
 
 func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, reader *User) ([]Post, bool, error) {
-	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, u.username, p.created_at, u.created_at, p.author_id, p.topic_id, p.edited_at, p.revision, (SELECT EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = p.author_id)) FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
+	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, u.username, p.created_at, u.created_at, p.author_id, p.topic_id, p.edited_at, p.revision, (SELECT EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = p.author_id)), p.removed FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -215,7 +218,7 @@ func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, rea
 	var posts []Post
 	for rows.Next() {
 		var p Post
-		if err := rows.Scan(&p.ID, &p.Body, &p.Author, &p.CreatedAt, &p.JoinedAt, &p.AuthorID, &p.TopicID, &p.EditedAt, &p.Revision, &p.HasAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.Body, &p.Author, &p.CreatedAt, &p.JoinedAt, &p.AuthorID, &p.TopicID, &p.EditedAt, &p.Revision, &p.HasAvatar, &p.Removed); err != nil {
 			return nil, false, err
 		}
 		p.Number = offset + len(posts) + 1
@@ -329,20 +332,20 @@ func (s *Store) CreateUser(ctx context.Context, name, hash string) (int64, error
 func (s *Store) Credentials(ctx context.Context, name string) (User, string, error) {
 	var u User
 	var hash string
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, password_hash FROM users WHERE username = ?", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &hash)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision, password_hash FROM users WHERE username = ?", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision, &hash)
 	return u, hash, err
 }
 
 // UserByID returns one account without its credential material.
 func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email FROM users WHERE id = ?", id).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision FROM users WHERE id = ?", id).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision)
 	return u, err
 }
 
 func (s *Store) Session(ctx context.Context, hash string) (*User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`, hash, time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
+	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended = 0`, hash, time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -355,6 +358,9 @@ func (s *Store) NewSession(ctx context.Context, hash string, userID int64, expir
 		return err
 	}
 	defer tx.Rollback()
+	if err := requireActive(ctx, tx, userID); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM sessions WHERE expires_at <= ?", time.Now().Unix()); err != nil {
 		return err
 	}
@@ -392,7 +398,7 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 			CreatedBy int64
 			Creator   string
 		}
-		if err := tx.QueryRowContext(ctx, `SELECT i.id, i.created_by, u.username FROM invitations i JOIN users u ON u.id = i.created_by WHERE i.token_hash = ?`, inviteHash).Scan(&invite.ID, &invite.CreatedBy, &invite.Creator); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT i.id, i.created_by, u.username FROM invitations i JOIN users u ON u.id = i.created_by WHERE i.token_hash = ? AND u.suspended = 0`, inviteHash).Scan(&invite.ID, &invite.CreatedBy, &invite.Creator); err != nil {
 			return 0, errInvitation
 		}
 		result, err := tx.ExecContext(ctx, `UPDATE invitations SET uses = uses + 1 WHERE token_hash = ? AND revoked_at IS NULL

@@ -118,7 +118,7 @@ func attachImages(ctx context.Context, tx *sql.Tx, postID int64, images []Attach
 func (s *Store) Attachment(ctx context.Context, id int64, reader *User) (Attachment, error) {
 	var img Attachment
 	err := s.db.QueryRowContext(ctx, visibleTopics+`SELECT a.id, a.post_id, a.server, a.remote_id, a.credential_user_id, a.name, a.rendition FROM attachments a
-		JOIN posts p ON p.id = a.post_id JOIN visible_topics t ON t.id = p.topic_id WHERE a.id = ?`, append(readerArgs(reader), id)...).Scan(&img.ID, &img.PostID, &img.Server, &img.RemoteID, &img.CredentialUserID, &img.Name, &img.Rendition)
+		JOIN posts p ON p.id = a.post_id JOIN visible_topics t ON t.id = p.topic_id WHERE a.id = ? AND p.removed = 0`, append(readerArgs(reader), id)...).Scan(&img.ID, &img.PostID, &img.Server, &img.RemoteID, &img.CredentialUserID, &img.Name, &img.Rendition)
 	return img, err
 }
 

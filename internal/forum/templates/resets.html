@@ -57,8 +57,8 @@
 {{define "members"}}
 {{template "crumb" .}}
 <section class="paper narrow">
-	<p class="eyebrow">The people around the table</p><h1>Members.</h1>
-	<p>The list of everyone with an account here. If someone is locked out, make a one-time reset link for them to choose a new password.</p>
+	<h1>Members.</h1>
+	<p>Manage access and help people sign in. <a href="/moderation">View owner activity</a>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="save-notice" role="status">{{.Notice}}</p>{{end}}
 	{{if .ResetLink}}
@@ -72,15 +72,16 @@
 	{{end}}
 	{{range .Members}}<article class="invitation-record">
 		{{if .HasAvatar}}<img class="avatar" src="/avatars/{{.ID}}" alt="">{{else}}<span class="avatar" aria-hidden="true">{{initial .Username}}</span>{{end}}
-		<h3>{{.Username}}{{if eq .Role "owner"}} <span class="muted">· owner</span>{{end}}</h3>
+		<h3>{{.Username}}{{if eq .Role "owner"}} <span class="muted">· owner</span>{{else if .Suspended}} <span class="member-status">· suspended</span>{{end}}</h3>
 		<p class="muted">{{if .Email}}{{.Email}}{{else}}No email address on file{{end}}{{if .Pending}} · reset link waiting{{end}}</p>
-		<form action="/members/{{.ID}}/reset" method="post">
+		{{if not .Suspended}}<form action="/members/{{.ID}}/reset" method="post">
 			<input type="hidden" name="csrf" value="{{$.CSRF}}">
 			{{if and $.MailEnabled .Email}}<button type="submit" name="email" value="1" class="secondary">Email a reset link</button>{{end}}
 			<button type="submit" class="secondary">Create a reset link</button>
-		</form>
+		</form>{{end}}
 		{{if .Pending}}<form action="/members/{{.ID}}/reset/revoke" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Cancel reset link</button></form>{{end}}
 		{{if .HasAvatar}}<form action="/members/{{.ID}}/avatar/remove" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Remove avatar</button></form>{{end}}
+		{{if eq .Role "member"}}<p>{{if .Suspended}}<a href="/members/{{.ID}}/restore">Restore access</a>{{else}}<a href="/members/{{.ID}}/suspend">Suspend member</a>{{end}}</p>{{end}}
 	</article>{{else}}<p class="muted">There are no accounts yet.</p>{{end}}
 </section>
 {{end}}

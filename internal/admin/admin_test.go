@@ -111,6 +111,44 @@ func TestAdminRejectsAMismatchedPassword(t *testing.T) {
 	}
 }
 
+func TestAdminShowsSuspensionAndOffersNoResetLink(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	if err := store.CreateOwner(ctx, "owner", "hash"); err != nil {
+		t.Fatal(err)
+	}
+	owner, _, err := store.Credentials(ctx, "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := store.CreateUser(ctx, "jules", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ChangeMember(ctx, owner.ID, id, 0, "suspend", "jules"); err != nil {
+		t.Fatal(err)
+	}
+	m := testModel(t, store, Options{})
+	var found bool
+	for i, member := range m.members {
+		if member.ID == id {
+			found = true
+			if m.table.Rows()[i][5] != "suspended" {
+				t.Fatal("suspended account shown as active")
+			}
+			m.target = member
+			for _, choice := range m.memberActions() {
+				if choice.kind == actionReset || choice.kind == actionResetEmail {
+					t.Fatal("suspended account offered reset link")
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("suspended account missing from list")
+	}
+}
+
 func TestAdminIssuesAndCancelsAResetLink(t *testing.T) {
 	store := testStore(t)
 	if _, err := store.CreateUser(context.Background(), "jules", "hash"); err != nil {

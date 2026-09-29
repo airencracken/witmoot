@@ -10,6 +10,11 @@ member can download their own contributions as a Zip with `manifest.json` and an
 offline `archive.html`. A portable community archive and import workflows are not
 implemented yet. The imageboard is a proposal.
 
+Removed messages retain their position and context in a member export, with
+`removed: true` in the version 1 manifest. Their body is the removal placeholder;
+former text and shared image references are erased. Existing exports and operator
+backups are not rewritten by a later removal.
+
 ## The example already in imvault
 
 [imvault's account export](https://github.com/airencracken/imvault/blob/master/docs/accounts.md#exporting-an-account)

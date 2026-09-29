@@ -26,14 +26,16 @@
 				{{end}}
 				{{if .User}}
 				{{if eq .User.Role "owner"}}
+				<details class="owner-menu"><summary>Manage</summary><div class="owner-links">
 				<a href="/boards/manage">Manage boards</a>
 				<a href="/groups" {{if or (eq .View "groups") (eq .View "group-settings") (eq .View "group-delete")}}aria-current="page"{{end}}>Manage groups</a>
 				<a href="/members" {{if eq .View "members"}}aria-current="page"{{end}}>Members</a>
 				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
+				</div></details>
 				{{end}}
 				{{if and (ne .Mode "personal") (or (eq .User.Role "owner") .User.CanInvite)}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
 				{{if .ImagesEnabled}}<a href="/account/imvault">Images</a>{{end}}
-				<a href="/account" class="signed-in" {{if eq .View "account"}}aria-current="page"{{end}}>{{.User.Username}}</a>
+				<a href="/account" class="signed-in" aria-label="Your account" {{if eq .View "account"}}aria-current="page"{{end}}>{{.User.Username}}</a>
 				<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form>
 				{{else}}{{if eq .Mode "open"}}<a href="/join">Join our board</a>{{end}}<a href="/login" class="button small">Sign in</a>{{end}}
 				<label class="theme-picker" hidden>Theme
@@ -60,6 +62,10 @@
 		{{else if eq .View "reset"}}{{template "reset" .}}
 		{{else if eq .View "avatar-library"}}{{template "avatar-library" .}}
 		{{else if eq .View "members"}}{{template "members" .}}
+		{{else if eq .View "member-action"}}{{template "member-action" .}}
+		{{else if eq .View "remove-post"}}{{template "remove-post" .}}
+		{{else if eq .View "about"}}{{template "about" .}}
+		{{else if eq .View "moderation"}}{{template "moderation" .}}
 		{{else if eq .View "settings"}}{{template "settings" .}}
 		{{else if eq .View "boards"}}{{template "boards" .}}
 		{{else if eq .View "groups"}}{{template "groups" .}}
@@ -73,7 +79,7 @@
 		{{else if eq .View "library"}}{{template "library" .}}
 		{{else}}<section class="paper narrow"><p class="eyebrow">A small detour</p><h1>{{.Title}}</h1>{{template "error" .}}<a href="/">Back to our board</a></section>{{end}}
 	</main>
-	<footer class="site-footer"><span>{{.Name}}</span><span>{{if .SourceURL}}<a href="{{.SourceURL}}" rel="noopener">Source</a>{{end}}</span></footer>
+	<footer class="site-footer"><span>{{.Name}}</span><span><a href="/about">House rules &amp; owners</a>{{if .SourceURL}} · <a href="{{.SourceURL}}" rel="noopener">Source</a>{{end}}</span></footer>
 </body>
 </html>{{end}}
 

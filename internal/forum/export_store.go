@@ -30,6 +30,7 @@ type ContributionPost struct {
 	TopicTitle, BoardName, Body        string
 	CreatedAt, EditedAt                int64
 	Attachments                        []ContributionAttachment
+	Removed                            bool
 }
 
 // ContributionAttachment records a shared image by reference. Witmoot stores
@@ -92,7 +93,7 @@ func (s *Store) MemberContributions(ctx context.Context, userID int64) (Contribu
 	}
 	topics.Close()
 
-	posts, err := s.db.QueryContext(ctx, `SELECT p.id, p.topic_id, t.board_id, t.title, b.name, p.body, p.created_at, p.edited_at, p.revision,
+	posts, err := s.db.QueryContext(ctx, `SELECT p.id, p.topic_id, t.board_id, t.title, b.name, p.body, p.created_at, p.edited_at, p.revision, p.removed,
 		(SELECT count(*) FROM posts x WHERE x.topic_id = p.topic_id AND x.id <= p.id)
 		FROM posts p JOIN topics t ON t.id = p.topic_id JOIN boards b ON b.id = t.board_id
 		WHERE p.author_id = ? ORDER BY p.topic_id, p.id`, userID)
@@ -102,7 +103,7 @@ func (s *Store) MemberContributions(ctx context.Context, userID int64) (Contribu
 	index := make(map[int64]int) // post ID to slice position
 	for posts.Next() {
 		var p ContributionPost
-		if err := posts.Scan(&p.ID, &p.TopicID, &p.BoardID, &p.TopicTitle, &p.BoardName, &p.Body, &p.CreatedAt, &p.EditedAt, &p.Revision, &p.Number); err != nil {
+		if err := posts.Scan(&p.ID, &p.TopicID, &p.BoardID, &p.TopicTitle, &p.BoardName, &p.Body, &p.CreatedAt, &p.EditedAt, &p.Revision, &p.Removed, &p.Number); err != nil {
 			posts.Close()
 			return out, err
 		}

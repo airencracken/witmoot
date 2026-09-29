@@ -1,0 +1,59 @@
+{{define "about"}}
+<section class="paper narrow community-about">
+	<h1>About {{.Name}}</h1>
+	<p>{{.WelcomeText}}</p>
+	<h2>Who runs this board</h2>
+	<p>{{range $i, $name := .Owners}}{{if $i}}, {{end}}<strong>{{$name}}</strong>{{else}}No owner has been added yet.{{end}}</p>
+	{{if .OwnerContact}}<div class="post-body" hx-disable>{{template "body" .OwnerContact}}</div>{{else}}<p class="muted">Ask a site owner if you need help or want to raise a concern.</p>{{end}}
+	<h2>House rules</h2>
+	{{if .HouseRules}}<div class="post-body" hx-disable>{{template "body" .HouseRules}}</div>{{else}}<p class="muted">The owners have not published house rules yet.</p>{{end}}
+	{{if .User}}{{if eq .User.Role "owner"}}<p><a href="/settings">Edit rules and contact details</a></p>{{end}}{{end}}
+	<p><a href="/">Back to the board</a></p>
+</section>
+{{end}}
+
+{{define "member-action"}}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/members">Members</a><span aria-hidden="true">/</span><span>{{.Title}}</span></nav>
+<section class="paper narrow">
+	<h1>{{.Title}}</h1>
+	<p>For <strong>{{.Member.Username}}</strong>.</p>
+	{{if eq .CommunityAction "suspend"}}
+	<p>They will be signed out on every device and cannot sign in, read private conversations, or post. Their reset links and unused invitations will stop working.</p>
+	<p>Posts and board permissions stay here. You can restore access later. Public pages remain visible to anyone, including a suspended person browsing without signing in.</p>
+	{{else}}
+	<p>They can sign in again with their current password. Their posts and board permissions are unchanged. Old sessions, reset links, and invitations will stay revoked.</p>
+	{{end}}
+	{{template "error" .}}
+	<form action="/members/{{.Member.ID}}/{{.CommunityAction}}" method="post" hx-disabled-elt="find button[type='submit']">
+		{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Member.SuspensionRevision}}">
+		<label for="confirmation">Type {{.Member.Username}} to confirm</label><input id="confirmation" name="confirmation" autocomplete="off" required>
+		<div class="form-footer"><a href="/members">Cancel</a><button type="submit" {{if eq .CommunityAction "suspend"}}class="danger"{{end}}>{{.Title}}</button></div>
+	</form>
+</section>
+{{end}}
+
+{{define "remove-post"}}
+{{template "crumb" .}}
+<section class="paper narrow">
+	<h1>Remove message</h1>
+	<p>Message #{{.Post.Number}} in <strong>{{.Topic.Title}}</strong>.</p>
+	<blockquote class="removal-preview post-body" hx-disable>{{template "body" .Post.Body}}</blockquote>
+	<p>This permanently clears the message text and its shared image links. A placeholder keeps replies and message numbers in place. Originals in Imvault are kept. Existing downloads and backups are not changed.</p>
+	{{template "error" .}}
+	<form action="/posts/{{.Post.ID}}/remove" method="post" hx-disabled-elt="find button[type='submit']">
+		{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Post.Revision}}">
+		{{if eq .Post.Number 1}}<label class="access-choice"><input type="checkbox" name="replace_title" value="1"><span>Also replace the conversation title with “Conversation”</span></label>{{end}}
+		<label class="access-choice"><input type="checkbox" name="confirmation" value="1" required><span>I understand this message cannot be restored.</span></label>
+		<div class="form-footer"><a href="{{.Post.URL}}">Cancel</a><button type="submit" class="danger">Remove message</button></div>
+	</form>
+</section>
+{{end}}
+
+{{define "moderation"}}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/members">Members</a><span aria-hidden="true">/</span><span>Owner activity</span></nav>
+<section class="paper">
+	<h1>Owner activity</h1>
+	<p class="muted">The latest 100 suspensions, restorations, and message removals. Visible to owners only.</p>
+	{{range .Events}}<article class="invitation-record"><p><strong>{{.Actor}}</strong> · {{if eq .Action "suspend"}}Suspended {{.Subject}}{{else if eq .Action "restore"}}Restored access for {{.Subject}}{{else}}Removed {{.Subject}}{{end}}</p><time class="muted" datetime="{{iso .CreatedAt}}">{{stamp .CreatedAt}}</time></article>{{else}}<p>No owner actions recorded yet.</p>{{end}}
+</section>
+{{end}}
