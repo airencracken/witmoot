@@ -433,3 +433,5 @@ later (`AGPL-3.0-or-later`), like imvault. See [LICENSE](LICENSE).
 This program comes without any warranty.
 
 Third-party components retain their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).
+
+Optional Linux service confinement: [Bubblewrap setup and boundaries](docs/sandbox.md).

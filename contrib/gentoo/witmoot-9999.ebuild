@@ -17,11 +17,12 @@ LICENSE="AGPL-3+ 0BSD BSD BSD-2 MIT public-domain"
 SLOT="0"
 KEYWORDS=""
 PROPERTIES="live"
-IUSE="test"
+IUSE="bubblewrap test"
 RESTRICT="!test? ( test )"
 DOCS=( LICENSE README.md THIRD_PARTY.md )
 
 RDEPEND="
+	bubblewrap? ( sys-apps/bubblewrap[-suid] )
 	acct-group/witmoot
 	acct-user/witmoot
 	app-admin/logrotate

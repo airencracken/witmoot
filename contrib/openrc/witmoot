@@ -11,6 +11,7 @@ description="A little bulletin board for your people"
 
 # OpenRC sources conf.d before this script. Export the application's settings
 # explicitly so plain assignments in conf.d reach the daemon.
+export WITMOOT_SANDBOX_WRITE_DIR WITMOOT_SANDBOX_READ_FILE WITMOOT_BWRAP
 export WITMOOT_DATA_DIR WITMOOT_ADDR WITMOOT_NAME WITMOOT_BASE_URL
 export WITMOOT_SECURE_COOKIES WITMOOT_TRUSTED_PROXIES WITMOOT_IMVAULT_URL
 export WITMOOT_SMTP_HOST WITMOOT_SMTP_PORT WITMOOT_SMTP_USERNAME
@@ -34,6 +35,12 @@ depend() {
 }
 
 start_pre() {
+	case "${WITMOOT_SANDBOX:-false}" in
+		false) command_args="" ;;
+		true) command_args="sandbox" ;;
+		*) eerror "WITMOOT_SANDBOX must be true or false"; return 1 ;;
+	esac
+
 	for path in "$WITMOOT_DATA_DIR" "$WITMOOT_BIN" "$WITMOOT_LOG_FILE"; do
 		case "$path" in
 			/*) ;;
@@ -48,4 +55,5 @@ start_pre() {
 		checkpath --directory --mode 0755 "$log_dir" || return 1
 	fi
 	checkpath --file --mode 0640 --owner "$command_user" "$WITMOOT_LOG_FILE" || return 1
+
 }
