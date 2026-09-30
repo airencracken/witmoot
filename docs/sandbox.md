@@ -44,6 +44,8 @@ ExecStart=/usr/bin/witmoot sandbox
 RestrictNamespaces=user mnt pid ipc uts net
 ProtectKernelTunables=no
 ReadOnlyPaths=/sys
+RestrictSUIDSGID=no
+KillMode=mixed
 ```
 
 Use `/usr/local/bin/witmoot` for a default source installation. Keep the unit's
@@ -53,6 +55,10 @@ namespaces Bubblewrap needs; the override permits only the listed types.
 Bubblewrap process from mounting its own procfs. The override removes that
 conflict while keeping host sysfs read-only. Bubblewrap supplies its own private
 procfs with protected kernel-control paths for the confined server and tools.
+`RestrictSUIDSGID=no` permits the path-resolution syscalls used by newer
+Bubblewrap versions; `NoNewPrivileges=yes` continues to block setuid privilege
+gains. `KillMode=mixed` sends SIGTERM to the launcher first, so it can let the
+server shut down before systemd kills any remaining processes.
 Run `systemctl daemon-reload`, then restart the service. To disable whole-service
 Bubblewrap, remove these overrides and restore the packaged unit's restrictions.
 
