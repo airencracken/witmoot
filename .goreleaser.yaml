@@ -50,6 +50,8 @@ nfpms:
       - adduser
       - ca-certificates
       - init-system-helpers
+    suggests:
+      - bubblewrap
     contents:
       - src: .release/witmoot.service
         dst: /usr/lib/systemd/system/witmoot.service

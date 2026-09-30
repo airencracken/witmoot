@@ -266,3 +266,8 @@ the entire volume.
 
 The container configuration follows the [Compose service reference](https://docs.docker.com/reference/compose-file/services/);
 the native init script uses [OpenRC's standard service functions](https://github.com/OpenRC/openrc/blob/master/service-script-guide.md).
+
+## Optional Bubblewrap confinement
+
+See [Linux confinement](sandbox.md) for OpenRC settings, systemd overrides,
+custom paths and verification. Existing startup remains unchanged by default.

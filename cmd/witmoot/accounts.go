@@ -22,6 +22,7 @@ import (
 
 // commandSummary describes each command for its --help output.
 var commandSummary = map[string]string{
+	"sandbox":      "Start the server confined by Bubblewrap. Run as the service user.\nThe data directory must already exist; see docs/sandbox.md.",
 	"serve":        "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.",
 	"create-owner": "Create a new owner locally. Existing accounts are never promoted or changed.\nWITMOOT_DATA_DIR is read from the active service configuration unless set in the environment. Root invocations use the configured service user. Use a hidden terminal prompt or read from stdin.",
 	"set-password": "Replace an account's password and end its signed-in sessions.\nThis is the forced reset for someone who cannot use a one-time link. Root invocations use the configured service user.",

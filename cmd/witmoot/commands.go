@@ -18,6 +18,7 @@ const commandHelp = `witmoot - a little bulletin board for your people
 Usage: witmoot [COMMAND] [OPTIONS]
 
 Commands:
+  sandbox        Start the server confined by Bubblewrap (Linux).
   serve          Start the HTTP server (also the default with no arguments).
   create-owner   Provision a new owner using a hidden prompt or stdin.
   set-password   Replace an account's password and end its sessions.
@@ -66,6 +67,8 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 		return runServer()
 	}
 	switch args[0] {
+	case "sandbox":
+		return runSandbox(args[1:], stdout)
 	case "serve":
 		return serve(args[1:], stdout)
 	case "create-owner":

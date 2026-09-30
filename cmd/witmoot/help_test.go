@@ -19,7 +19,7 @@ func TestCLIHelpAndProxyConfigDoNotTouchData(t *testing.T) {
 	t.Setenv("WITMOOT_DATA_DIR", data)
 	t.Setenv("WITMOOT_SECURE_COOKIES", "invalid-on-purpose")
 	for _, args := range [][]string{
-		{"--help"}, {"-h"}, {"help"}, {"serve", "--help"}, {"help", "serve"},
+		{"--help"}, {"-h"}, {"help"}, {"serve", "--help"}, {"sandbox", "--help"}, {"help", "sandbox"}, {"help", "serve"},
 		{"create-owner", "--help"}, {"help", "create-owner"},
 		{"set-password", "--help"}, {"help", "set-password"},
 		{"reset-link", "--help"}, {"help", "reset-link"},
@@ -44,7 +44,7 @@ func TestCLIHelpAndProxyConfigDoNotTouchData(t *testing.T) {
 			t.Fatalf("wrong proxy config: %s", &output)
 		}
 	}
-	for _, args := range [][]string{{"wat"}, {"help", "wat"}, {"serve", "extra"}, {"--help", "extra"}, {"create-owner"}, {"create-owner", "--username", "alex", "--password-prompt", "--password-stdin"}, {"set-password"}, {"reset-link"}, {"list-users", "extra"}, {"admin", "extra"}} {
+	for _, args := range [][]string{{"sandbox", "extra"}, {"sandbox", "--unknown"}, {"wat"}, {"help", "wat"}, {"serve", "extra"}, {"--help", "extra"}, {"create-owner"}, {"create-owner", "--username", "alex", "--password-prompt", "--password-stdin"}, {"set-password"}, {"reset-link"}, {"list-users", "extra"}, {"admin", "extra"}} {
 		if err := runCommand(args, strings.NewReader(""), &bytes.Buffer{}); err == nil {
 			t.Fatalf("invalid arguments succeeded: %v", args)
 		}
