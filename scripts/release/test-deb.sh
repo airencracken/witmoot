@@ -88,7 +88,7 @@ if [ "${RELEASE_SANDBOX_TEST:-0}" = 1 ]; then
 	mkdir -p "/etc/systemd/system/$app.service.d" || exit 1
 	{
 		printf '%s\n' '[Service]' 'ExecStart=' "ExecStart=/usr/bin/$app sandbox" \
-		'RestrictNamespaces=user mnt pid ipc uts net'
+		'RestrictNamespaces=user mnt pid ipc uts net' 'ProtectKernelTunables=no' 'ReadOnlyPaths=/sys'
 	} > "/etc/systemd/system/$app.service.d/release-sandbox.conf" || exit 1
 	systemctl daemon-reload || exit 1
 	systemctl restart "$app" || fail 'Sandboxed service startup failed.'

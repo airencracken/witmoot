@@ -42,11 +42,17 @@ create a drop-in with `systemctl edit witmoot`:
 ExecStart=
 ExecStart=/usr/bin/witmoot sandbox
 RestrictNamespaces=user mnt pid ipc uts net
+ProtectKernelTunables=no
+ReadOnlyPaths=/sys
 ```
 
 Use `/usr/local/bin/witmoot` for a default source installation. Keep the unit's
 other hardening settings. Its default `RestrictNamespaces=yes` blocks the
 namespaces Bubblewrap needs; the override permits only the listed types.
+`ProtectKernelTunables=yes` masks parts of procfs, which prevents an unprivileged
+Bubblewrap process from mounting its own procfs. The override removes that
+conflict while keeping host sysfs read-only. Bubblewrap supplies its own private
+procfs with protected kernel-control paths for the confined server and tools.
 Run `systemctl daemon-reload`, then restart the service. To disable whole-service
 Bubblewrap, remove these overrides and restore the packaged unit's restrictions.
 
