@@ -19,6 +19,12 @@ MUTATIONS = [
     ("member confirmation", "internal/forum/community_store.go", "if confirmation != name {", "if false && confirmation != name {", "TestMemberActionsRequireOwnerConfirmationAndCurrentRevision"),
     ("message revision", "internal/forum/community_store.go", "if p.Revision != revision || replaceTitle && p.Number != 1 {", "if replaceTitle && p.Number != 1 {", "TestRemovalConfirmationCannotDeleteNewEditsOrReplaceReplyTitle"),
     ("attachment erasure", "internal/forum/community_store.go", "DELETE FROM attachments WHERE post_id = ?", "DELETE FROM attachments WHERE post_id = ? AND 0", "TestRemovalErasesTextImagesAndSearchButKeepsReplyContext"),
+    ("invite permission revocation", "internal/forum/invitation_store.go", "if !enabled {", "if false && !enabled {", "TestRemovingInvitePermissionRevokesOpenInvitations"),
+    ("invite permission atomicity", "internal/forum/invitation_store.go", "\tif !enabled {\n\t\tnow := time.Now().Unix()", "\tif err := tx.Commit(); err != nil {\n\t\treturn err\n\t}\n\tif !enabled {\n\t\tnow := time.Now().Unix()", "TestInvitePermissionRemovalIsAtomic"),
+    ("inviter permission at registration", "internal/forum/store.go", "AND u.suspended = 0 AND (u.role = 'owner' OR u.can_invite = 1)", "AND u.suspended = 0", "TestRegisterRequiresInviterPermission"),
+    ("IPv6 network budget", "internal/forum/security.go", 'netip.PrefixFrom(addr.WithZone(""), 64)', 'netip.PrefixFrom(addr.WithZone(""), 128)', "TestIPv6AddressesInOneNetworkShareABudget"),
+    ("limiter eviction", "internal/forum/security.go", "for l.order.Len() >= rateClients {\n\t\t\tl.remove(l.order.Front())\n\t\t}", "if l.order.Len() >= rateClients {\n\t\t\treturn false\n\t\t}", "TestFloodedLimiterStillAdmitsNewClients"),
+    ("successful sign-in refund", "internal/forum/auth.go", "\ta.limiter.refund(a.clientIP(r))\n", "", "TestSuccessfulSignInsDoNotSpendTheBudget"),
     ("removed message schema", "internal/forum/migrations/013_community_care.sql", "AND (removed = 0 OR body = 'This message was removed by a site owner.')", "", "TestCommunitySchemaUpgradeAndConstraints"),
 ]
 

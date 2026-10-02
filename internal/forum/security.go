@@ -1,9 +1,11 @@
 package forum
 
 import (
+	"container/list"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"net/netip"
 	"regexp"
 	"strings"
 	"sync"
@@ -75,36 +77,83 @@ func NewToken() string { return randomToken() }
 // TokenHash is the SHA-256 digest stored for a token.
 func TokenHash(token string) string { return tokenHash(token) }
 
+const (
+	rateWindow   = 15 * time.Minute
+	rateAttempts = 20
+	// rateClients bounds the limiter's memory. When it is full the oldest
+	// record is dropped, so a flood of addresses cannot lock out new visitors.
+	rateClients = 10000
+)
+
 type rateEntry struct {
-	Count int
-	Until time.Time
+	key   string
+	count int
+	until time.Time
 }
 
+// limiter budgets authentication attempts per client network. Records are
+// kept in creation order, which is also expiry order because every window has
+// the same length, so pruning and eviction never scan the whole table.
 type limiter struct {
 	mu      sync.Mutex
-	entries map[string]rateEntry
+	entries map[string]*list.Element
+	order   list.List
 }
 
-func (l *limiter) allow(host string) bool {
+func newLimiter() *limiter { return &limiter{entries: make(map[string]*list.Element)} }
+
+// rateKey groups IPv6 clients by /64, the smallest block normally assigned to
+// one site, so one host cannot claim a fresh budget per address.
+func rateKey(client string) string {
+	addr, err := netip.ParseAddr(client)
+	if err != nil {
+		return client
+	}
+	addr = addr.Unmap()
+	if addr.Is6() {
+		return netip.PrefixFrom(addr.WithZone(""), 64).Masked().String()
+	}
+	return addr.String()
+}
+
+// allow spends one attempt from the client's budget.
+func (l *limiter) allow(client string) bool {
+	key := rateKey(client)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := time.Now()
-	for k, v := range l.entries {
-		if !v.Until.After(now) {
-			delete(l.entries, k)
-		}
+	for front := l.order.Front(); front != nil && !front.Value.(*rateEntry).until.After(now); front = l.order.Front() {
+		l.remove(front)
 	}
-	e, ok := l.entries[host]
+	element, ok := l.entries[key]
 	if !ok {
-		if len(l.entries) >= 10000 {
-			return false
+		for l.order.Len() >= rateClients {
+			l.remove(l.order.Front())
 		}
-		e.Until = now.Add(15 * time.Minute)
+		element = l.order.PushBack(&rateEntry{key: key, until: now.Add(rateWindow)})
+		l.entries[key] = element
 	}
-	if e.Count >= 20 {
+	entry := element.Value.(*rateEntry)
+	if entry.count >= rateAttempts {
 		return false
 	}
-	e.Count++
-	l.entries[host] = e
+	entry.count++
 	return true
+}
+
+// refund returns an attempt that succeeded, so people who sign in often are
+// never locked out by their own correct passwords.
+func (l *limiter) refund(client string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if element, ok := l.entries[rateKey(client)]; ok {
+		if entry := element.Value.(*rateEntry); entry.count > 0 {
+			entry.count--
+		}
+	}
+}
+
+func (l *limiter) remove(element *list.Element) {
+	delete(l.entries, element.Value.(*rateEntry).key)
+	l.order.Remove(element)
 }
