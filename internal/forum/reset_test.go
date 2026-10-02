@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/airencracken/comfylib/smtp"
+	"github.com/airencracken/comfylib/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -53,21 +54,21 @@ func TestOwnerIssuesResetLinkAndMemberRedeems(t *testing.T) {
 	if len(match) != 2 {
 		t.Fatalf("no reset link in response: %s", w.Body.String())
 	}
-	token := match[1]
+	secret := match[1]
 
 	// Only the digest is stored.
 	var stored string
 	if err := app.store.db.QueryRow("SELECT token_hash FROM auth_tokens").Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored == token || stored != tokenHash(token) {
+	if stored == secret || stored != token.Hash(secret) {
 		t.Fatal("reset link should be stored only as a digest")
 	}
 
 	member := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
-	requireStatus(t, member.request("GET", "/reset/"+token, nil, nil), 200)
+	requireStatus(t, member.request("GET", "/reset/"+secret, nil, nil), 200)
 	form := url.Values{"password": {"a brand new password"}, "confirm_password": {"a brand new password"}}
-	requireStatus(t, member.post("/reset/"+token, form), 303)
+	requireStatus(t, member.post("/reset/"+secret, form), 303)
 
 	// Redeeming signs the member in.
 	requireStatus(t, member.request("GET", "/", nil, nil), 200)
@@ -79,7 +80,7 @@ func TestOwnerIssuesResetLinkAndMemberRedeems(t *testing.T) {
 
 	// The link cannot be used twice.
 	replay := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
-	w = replay.request("GET", "/reset/"+token, nil, nil)
+	w = replay.request("GET", "/reset/"+secret, nil, nil)
 	requireStatus(t, w, 400)
 	if !strings.Contains(w.Body.String(), "invalid or has expired") {
 		t.Fatal("spent link did not explain itself")
@@ -266,8 +267,8 @@ func TestPasswordChangeRevokesOutstandingResetLink(t *testing.T) {
 	app, client := newTestApp(t, false)
 	userID := signInTest(t, app, client, false)
 	ctx := context.Background()
-	token := randomToken()
-	if err := app.store.CreateAuthToken(ctx, userID, TokenPasswordReset, tokenHash(token), time.Now().Add(time.Hour)); err != nil {
+	secret := testToken()
+	if err := app.store.CreateAuthToken(ctx, userID, TokenPasswordReset, token.Hash(secret), time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	requireStatus(t, client.post("/account/password", url.Values{
@@ -275,7 +276,7 @@ func TestPasswordChangeRevokesOutstandingResetLink(t *testing.T) {
 		"password":         {"a brand new password"},
 		"confirm_password": {"a brand new password"},
 	}), http.StatusSeeOther)
-	if _, err := app.store.AuthTokenValid(ctx, tokenHash(token), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := app.store.AuthTokenValid(ctx, token.Hash(secret), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("old reset link survived password change: %v", err)
 	}
 }
@@ -289,16 +290,16 @@ func TestFailedResetPreservesLinkPasswordAndSessions(t *testing.T) {
 			app, client := newTestApp(t, false)
 			userID := signInTest(t, app, client, false)
 			ctx := context.Background()
-			token := randomToken()
-			if err := app.store.CreateAuthToken(ctx, userID, TokenPasswordReset, tokenHash(token), time.Now().Add(time.Hour)); err != nil {
+			secret := testToken()
+			if err := app.store.CreateAuthToken(ctx, userID, TokenPasswordReset, token.Hash(secret), time.Now().Add(time.Hour)); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := app.store.db.Exec("CREATE TRIGGER fail_reset " + failure + " BEGIN SELECT RAISE(ABORT, 'injected failure'); END"); err != nil {
 				t.Fatal(err)
 			}
 			form := url.Values{"password": {"a brand new password"}, "confirm_password": {"a brand new password"}}
-			requireStatus(t, client.post("/reset/"+token, form), http.StatusInternalServerError)
-			if _, err := app.store.AuthTokenValid(ctx, tokenHash(token), TokenPasswordReset, time.Now()); err != nil {
+			requireStatus(t, client.post("/reset/"+secret, form), http.StatusInternalServerError)
+			if _, err := app.store.AuthTokenValid(ctx, token.Hash(secret), TokenPasswordReset, time.Now()); err != nil {
 				t.Errorf("failed reset spent the link: %v", err)
 			}
 			_, hash, err := app.store.Credentials(ctx, "alex")
@@ -309,7 +310,7 @@ func TestFailedResetPreservesLinkPasswordAndSessions(t *testing.T) {
 			if _, err := app.store.db.Exec("DROP TRIGGER fail_reset"); err != nil {
 				t.Fatal(err)
 			}
-			requireStatus(t, client.post("/reset/"+token, form), http.StatusSeeOther)
+			requireStatus(t, client.post("/reset/"+secret, form), http.StatusSeeOther)
 		})
 	}
 }
@@ -320,7 +321,7 @@ func TestResetTokensNeverReachTheLogs(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 	app, client := newTestApp(t, false)
-	token := randomToken()
+	token := testToken()
 	if err := app.store.db.Close(); err != nil {
 		t.Fatal(err)
 	}

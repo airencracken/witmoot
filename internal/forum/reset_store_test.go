@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 func TestResetTokenLifecycleAndSingleUse(t *testing.T) {
@@ -13,8 +15,8 @@ func TestResetTokenLifecycleAndSingleUse(t *testing.T) {
 	ctx := context.Background()
 	owner := testInvitationOwner(t, s, "owner")
 
-	token := NewToken()
-	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, TokenHash(token), time.Now().Add(time.Hour)); err != nil {
+	secret := testToken()
+	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, token.Hash(secret), time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -23,36 +25,36 @@ func TestResetTokenLifecycleAndSingleUse(t *testing.T) {
 	if err := s.db.QueryRow("SELECT token_hash FROM auth_tokens").Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored == token || stored != TokenHash(token) {
+	if stored == secret || stored != token.Hash(secret) {
 		t.Fatal("reset token should be stored only as a digest")
 	}
 
 	// A valid link can be checked without spending it, which a double-loaded
 	// form depends on.
-	if user, err := s.AuthTokenValid(ctx, TokenHash(token), TokenPasswordReset, time.Now()); err != nil || user.ID != owner {
+	if user, err := s.AuthTokenValid(ctx, token.Hash(secret), TokenPasswordReset, time.Now()); err != nil || user.ID != owner {
 		t.Fatalf("valid token lookup: %+v %v", user, err)
 	}
-	user, err := s.ResetPassword(ctx, TokenHash(token), "new-hash", time.Now())
+	user, err := s.ResetPassword(ctx, token.Hash(secret), "new-hash", time.Now())
 	if err != nil || user.ID != owner {
 		t.Fatalf("consume: %+v %v", user, err)
 	}
-	if _, err := s.ResetPassword(ctx, TokenHash(token), "replayed-hash", time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.ResetPassword(ctx, token.Hash(secret), "replayed-hash", time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("replayed token accepted: %v", err)
 	}
-	if _, err := s.AuthTokenValid(ctx, TokenHash(token), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.AuthTokenValid(ctx, token.Hash(secret), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("spent token still valid: %v", err)
 	}
 
 	// A token for another purpose, an unknown digest and an expired one are all
 	// reported the same way.
-	if _, err := s.ResetPassword(ctx, NewToken(), "unknown-hash", time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.ResetPassword(ctx, testToken(), "unknown-hash", time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("unknown token accepted: %v", err)
 	}
-	expired := NewToken()
-	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, TokenHash(expired), time.Now().Add(-time.Minute)); err != nil {
+	expired := testToken()
+	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, token.Hash(expired), time.Now().Add(-time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.ResetPassword(ctx, TokenHash(expired), "expired-hash", time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.ResetPassword(ctx, token.Hash(expired), "expired-hash", time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("expired token accepted: %v", err)
 	}
 }
@@ -61,21 +63,21 @@ func TestOnlyNewestResetTokenWorks(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	owner := testInvitationOwner(t, s, "owner")
-	for _, token := range []string{"first", "second"} {
-		if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, TokenHash(token), time.Now().Add(time.Hour)); err != nil {
+	for _, secret := range []string{"first", "second"} {
+		if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, token.Hash(secret), time.Now().Add(time.Hour)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := s.AuthTokenValid(ctx, TokenHash("first"), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.AuthTokenValid(ctx, token.Hash("first"), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("older token should have been replaced: %v", err)
 	}
-	if _, err := s.AuthTokenValid(ctx, TokenHash("second"), TokenPasswordReset, time.Now()); err != nil {
+	if _, err := s.AuthTokenValid(ctx, token.Hash("second"), TokenPasswordReset, time.Now()); err != nil {
 		t.Fatalf("newest token rejected: %v", err)
 	}
 	if err := s.DeleteAuthTokensForUser(ctx, owner, TokenPasswordReset); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AuthTokenValid(ctx, TokenHash("second"), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.AuthTokenValid(ctx, token.Hash("second"), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("revoked token still valid: %v", err)
 	}
 }
@@ -106,7 +108,7 @@ func TestSetPasswordEndsSessionsAndMembersReportPending(t *testing.T) {
 	if err != nil || len(members) != 1 || members[0].Pending {
 		t.Fatalf("members before a token: %+v %v", members, err)
 	}
-	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, TokenHash("waiting"), time.Now().Add(time.Hour)); err != nil {
+	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, token.Hash("waiting"), time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	members, err = s.Members(ctx)

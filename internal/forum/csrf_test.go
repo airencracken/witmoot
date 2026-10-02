@@ -16,6 +16,8 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 func csrfCookie(t *testing.T, c *testClient) string {
@@ -67,7 +69,7 @@ func TestCSRFTokenIsBoundToTheSession(t *testing.T) {
 func TestPlantedCSRFCookieIsRefusedWhenSignedIn(t *testing.T) {
 	app, client := newTestApp(t, false)
 	signInTest(t, app, client, true)
-	planted := randomToken()
+	planted := testToken()
 	client.cookies[app.cookieName("csrf")] = &http.Cookie{Name: app.cookieName("csrf"), Value: planted}
 	w := client.request("POST", "/invites", url.Values{"csrf": {planted}, "uses": {"1"}, "days": {"7"}}, nil)
 	requireStatus(t, w, 403)
@@ -94,7 +96,7 @@ func TestEveryStateChangingMethodNeedsTheToken(t *testing.T) {
 			for _, path := range []string{"/settings", "/topics/1"} {
 				requireStatus(t, c.request(method, path, url.Values{}, nil), 403)
 				requireStatus(t, c.request(method, path, nil, nil), 403)
-				requireStatus(t, c.request(method, path, nil, map[string]string{"X-CSRF-Token": randomToken()}), 403)
+				requireStatus(t, c.request(method, path, nil, map[string]string{"X-CSRF-Token": testToken()}), 403)
 				w := c.request(method, path, nil, map[string]string{"X-CSRF-Token": token})
 				if w.Code == 403 {
 					t.Errorf("%s %s with a valid header token: 403", method, path)
@@ -138,9 +140,9 @@ func TestSignedOutFormsKeepDoubleSubmit(t *testing.T) {
 		return url.Values{"username": {"alex"}, "password": {"a long test password"}, "csrf": {csrf}}
 	}
 	requireStatus(t, client.request("POST", "/login", login(""), nil), 403)
-	requireStatus(t, client.request("POST", "/login", login(randomToken()), nil), 403)
+	requireStatus(t, client.request("POST", "/login", login(testToken()), nil), 403)
 	requireStatus(t, client.request("POST", "/login?csrf="+token, url.Values{"username": {"alex"}, "password": {"a long test password"}}, nil), 403)
-	requireStatus(t, client.request("POST", "/login", url.Values{"username": {"alex"}, "password": {"a long test password"}, "csrf": {randomToken(), token}}, nil), 403)
+	requireStatus(t, client.request("POST", "/login", url.Values{"username": {"alex"}, "password": {"a long test password"}, "csrf": {testToken(), token}}, nil), 403)
 	w := client.request("POST", "/login", login(token), nil)
 	requireStatus(t, w, 303)
 	session := client.cookies[app.cookieName("session")].Value
@@ -212,8 +214,8 @@ func TestMultipartFormsCarryTheTokenInTheirFirstPart(t *testing.T) {
 		{"with htmx", "Picnic with htmx", withToken(token, topic("Picnic with htmx")), htmx, 200},
 		{"with the header", "Picnic by header", topic("Picnic by header"), map[string]string{"X-CSRF-Token": token}, 303},
 		{"token last", "Picnic token last", append(topic("Picnic token last"), [2]string{"csrf", token}), nil, 403},
-		{"token twice", "Picnic token twice", withToken(randomToken(), withToken(token, topic("Picnic token twice"))), nil, 403},
-		{"wrong token", "Picnic wrong token", withToken(randomToken(), topic("Picnic wrong token")), nil, 403},
+		{"token twice", "Picnic token twice", withToken(testToken(), withToken(token, topic("Picnic token twice"))), nil, 403},
+		{"wrong token", "Picnic wrong token", withToken(testToken(), topic("Picnic wrong token")), nil, 403},
 		{"empty token", "Picnic empty token", withToken("", topic("Picnic empty token")), nil, 403},
 		{"uppercase token", "Picnic uppercase", withToken(strings.ToUpper(token), topic("Picnic uppercase")), nil, 403},
 		{"oversized token", "Picnic long token", withToken(token+strings.Repeat("0", 1<<12), topic("Picnic long token")), nil, 403},
@@ -269,7 +271,7 @@ func TestMultipartTokenCheckReadsOnlyTheFirstPart(t *testing.T) {
 	for name, body := range map[string]string{
 		"file first":      "--b\r\nContent-Disposition: form-data; name=\"images\"; filename=\"a.png\"\r\n\r\n" + large + "\r\n--b--\r\n",
 		"field first":     "--b\r\nContent-Disposition: form-data; name=\"body\"\r\n\r\n" + large + "\r\n--b--\r\n",
-		"wrong token":     "--b\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + randomToken() + "\r\n--b\r\nContent-Disposition: form-data; name=\"images\"; filename=\"a.png\"\r\n\r\n" + large + "\r\n--b--\r\n",
+		"wrong token":     "--b\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + testToken() + "\r\n--b\r\nContent-Disposition: form-data; name=\"images\"; filename=\"a.png\"\r\n\r\n" + large + "\r\n--b--\r\n",
 		"endless token":   "--b\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + large + "\r\n--b--\r\n",
 		"long preamble":   large + "\r\n--b\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + csrfCookie(t, client) + "\r\n--b--\r\n",
 		"endless headers": "--b\r\nX-Padding: " + large + "\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + csrfCookie(t, client) + "\r\n--b--\r\n",
@@ -340,7 +342,7 @@ func TestSessionTokensNeverValidateAcrossSessions(t *testing.T) {
 	derive := func(a, b [32]byte) bool {
 		x, y := hex.EncodeToString(a[:]), hex.EncodeToString(b[:])
 		tx := sessionCSRFToken(x)
-		if !validToken(tx) || tx == x || tx == tokenHash(x) || tx != sessionCSRFToken(x) {
+		if !validToken(tx) || tx == x || tx == token.Hash(x) || tx != sessionCSRFToken(x) {
 			return false
 		}
 		return x == y || tx != sessionCSRFToken(y)
@@ -367,7 +369,7 @@ func TestSessionTokensNeverValidateAcrossSessions(t *testing.T) {
 			return true
 		}
 		for _, session := range []string{x, y} {
-			if err := app.store.NewSession(ctx, tokenHash(session), ownerID, time.Now().Add(time.Hour)); err != nil {
+			if err := app.store.NewSession(ctx, token.Hash(session), ownerID, time.Now().Add(time.Hour)); err != nil {
 				t.Fatal(err)
 			}
 		}

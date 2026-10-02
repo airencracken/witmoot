@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/airencracken/comfylib/token"
 	"golang.org/x/crypto/bcrypt"
 
 	"witmoot/internal/forum"
@@ -105,7 +106,7 @@ func TestResetLinkCommandStoresAHashedUsableToken(t *testing.T) {
 	if len(match) != 2 {
 		t.Fatalf("no complete reset link: %s", &output)
 	}
-	token := match[1]
+	secret := match[1]
 
 	store, err := forum.OpenStore(filepath.Join(data, "witmoot.db"))
 	if err != nil {
@@ -113,11 +114,11 @@ func TestResetLinkCommandStoresAHashedUsableToken(t *testing.T) {
 	}
 	defer closeTest(t, store)
 	ctx := context.Background()
-	if _, err := store.AuthTokenValid(ctx, forum.TokenHash(token), forum.TokenPasswordReset, time.Now()); err != nil {
+	if _, err := store.AuthTokenValid(ctx, token.Hash(secret), forum.TokenPasswordReset, time.Now()); err != nil {
 		t.Fatalf("issued link is not usable: %v", err)
 	}
 	// The stored key is the digest, not the token a person was shown.
-	if _, err := store.AuthTokenValid(ctx, token, forum.TokenPasswordReset, time.Now()); err == nil {
+	if _, err := store.AuthTokenValid(ctx, secret, forum.TokenPasswordReset, time.Now()); err == nil {
 		t.Fatal("the raw token should not be a stored key")
 	}
 }

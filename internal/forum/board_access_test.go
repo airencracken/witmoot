@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 type accessFixture struct {
@@ -58,11 +60,11 @@ func sessionClient(t *testing.T, app *App, user *User) *testClient {
 	t.Helper()
 	c := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
 	if user != nil {
-		token := randomToken()
-		if err := app.store.NewSession(context.Background(), tokenHash(token), user.ID, time.Now().Add(time.Hour)); err != nil {
+		secret := testToken()
+		if err := app.store.NewSession(context.Background(), token.Hash(secret), user.ID, time.Now().Add(time.Hour)); err != nil {
 			t.Fatal(err)
 		}
-		c.cookies[app.cookieName("session")] = &http.Cookie{Name: app.cookieName("session"), Value: token}
+		c.cookies[app.cookieName("session")] = &http.Cookie{Name: app.cookieName("session"), Value: secret}
 	}
 	c.request("GET", "/", nil, nil)
 	return c

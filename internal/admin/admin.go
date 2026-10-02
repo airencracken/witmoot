@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/airencracken/comfylib/smtp"
+	"github.com/airencracken/comfylib/token"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -299,13 +300,13 @@ func (m Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) issueReset(email bool) (tea.Model, tea.Cmd) {
-	token := forum.NewToken()
-	if err := m.store.CreateAuthToken(context.Background(), m.target.ID, forum.TokenPasswordReset, forum.TokenHash(token), time.Now().Add(forum.ResetLinkTTL)); err != nil {
+	code, hash := token.New()
+	if err := m.store.CreateAuthToken(context.Background(), m.target.ID, forum.TokenPasswordReset, hash, time.Now().Add(forum.ResetLinkTTL)); err != nil {
 		m.err = err
 		return m, nil
 	}
 	m.err = nil
-	m.link = m.resetURL(token)
+	m.link = m.resetURL(code)
 	m.emailed = false
 	if email {
 		m.sendReset()

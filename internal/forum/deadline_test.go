@@ -56,7 +56,7 @@ func TestRequestBodyDeadlinesFollowTheRoute(t *testing.T) {
 	// A slow upload of the same pace is still read. It carries a valid
 	// signed-out token, so the whole form is parsed before the sign-in
 	// redirect; a form cut off part way would be refused as unreadable.
-	token := randomToken()
+	token := testToken()
 	body := "--b\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + token + "\r\n--b\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\n" + strings.Repeat("hello ", 100) + "\r\n--b--\r\n"
 	status, err = slowPost(t, address, "/account/avatar", "multipart/form-data; boundary=b", "witmoot_csrf="+token, body, time.Second)
 	if err != nil || !strings.Contains(status, fmt.Sprintf(" %d ", http.StatusSeeOther)) {

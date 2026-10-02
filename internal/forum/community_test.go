@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 func signedInCommunityMember(t *testing.T, a *App) (*testClient, int64) {
@@ -76,8 +78,8 @@ func TestSuspensionAndRestorationHTTP(t *testing.T) {
 	member, id := signedInCommunityMember(t, a)
 	ctx := context.Background()
 	oldSession := member.cookies[a.cookieName("session")].Value
-	token := randomToken()
-	if err := a.store.CreateAuthToken(ctx, id, TokenPasswordReset, tokenHash(token), time.Now().Add(time.Hour)); err != nil {
+	secret := testToken()
+	if err := a.store.CreateAuthToken(ctx, id, TokenPasswordReset, token.Hash(secret), time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	path := fmt.Sprintf("/members/%d/suspend", id)
@@ -98,7 +100,7 @@ func TestSuspensionAndRestorationHTTP(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "suspended") || !strings.Contains(w.Body.String(), "House rules &amp; owners") {
 		t.Fatal("suspended person cannot find owner details")
 	}
-	requireStatus(t, member.request("GET", "/reset/"+token, nil, nil), 400)
+	requireStatus(t, member.request("GET", "/reset/"+secret, nil, nil), 400)
 	requireStatus(t, owner.post(fmt.Sprintf("/members/%d/reset", id), nil), 403)
 	requireStatus(t, owner.request("GET", fmt.Sprintf("/members/%d/suspend", ownerID), nil, nil), 403)
 	w = owner.request("GET", "/members", nil, nil)
@@ -107,7 +109,7 @@ func TestSuspensionAndRestorationHTTP(t *testing.T) {
 	}
 	path = fmt.Sprintf("/members/%d/restore", id)
 	requireStatus(t, owner.post(path, url.Values{"revision": {"1"}, "confirmation": {"jules"}}), 303)
-	if session, err := a.store.Session(ctx, tokenHash(oldSession)); err != nil || session != nil {
+	if session, err := a.store.Session(ctx, token.Hash(oldSession)); err != nil || session != nil {
 		t.Fatal("old session returned")
 	}
 	requireStatus(t, member.post("/login", url.Values{"username": {"jules"}, "password": {"a long test password"}}), 303)

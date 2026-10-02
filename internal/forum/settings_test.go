@@ -15,6 +15,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 func TestOwnerCanSelectAccessModes(t *testing.T) {
@@ -269,8 +271,8 @@ func TestJoiningAcrossModesAndExistingInvitations(t *testing.T) {
 	app, owner := newTestApp(t, false)
 	ownerID := signInTest(t, app, owner, true)
 	member := memberClient(t, app, "jules")
-	invite := randomToken()
-	if err := testInvite(app.store, ownerID, tokenHash(invite)); err != nil {
+	invite := testToken()
+	if err := testInvite(app.store, ownerID, token.Hash(invite)); err != nil {
 		t.Fatal(err)
 	}
 	guest := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
