@@ -211,8 +211,8 @@ func (a *App) importAvatar(w http.ResponseWriter, r *http.Request) {
 
 // removeMemberAvatar lets an owner clear an avatar for moderation.
 func (a *App) removeMemberAvatar(w http.ResponseWriter, r *http.Request) {
-	if err := a.store.DeleteAvatar(r.Context(), pathID(r)); err != nil {
-		a.serverError(w, r, err)
+	if err := a.store.RemoveMemberAvatar(r.Context(), state(r).User.ID, pathID(r)); err != nil {
+		a.storeError(w, r, err)
 		return
 	}
 	a.redirect(w, r, "/members?saved=avatar-removed")

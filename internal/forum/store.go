@@ -101,6 +101,14 @@ func OpenStore(path string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
+// closeRows releases a result set once it has been read. Callers check
+// rows.Err for the outcome, so a failure here is only logged.
+func closeRows(rows *sql.Rows) {
+	if err := rows.Close(); err != nil {
+		slog.Error("close query results", "error", err)
+	}
+}
+
 // rollback ends a transaction that was not committed. After Commit it does
 // nothing; any other failure is logged because the caller's result is already
 // decided by then.
@@ -120,7 +128,7 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql", "013_community_care.sql"}
+	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql", "013_community_care.sql", "014_moderation_log.sql"}
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
