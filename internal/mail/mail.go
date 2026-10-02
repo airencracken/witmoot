@@ -2,17 +2,22 @@
 // which today means password reset links.
 //
 // Sending is optional. An instance with no relay configured keeps a Sender that
-// reports Enabled() == false and logs what it would have sent, so resets still
-// work through links an owner copies and hands over.
+// reports Enabled() == false and refuses to send, so resets still work through
+// links an owner copies and hands over. Nothing in this package logs a message
+// body: a reset link in a log is as good as the password it replaces.
 package mail
 
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
+	"errors"
 	"fmt"
-	"log/slog"
+	"mime"
 	"net"
+	"net/mail"
 	"net/smtp"
 	"strconv"
 	"strings"
@@ -177,27 +182,30 @@ func (s *SMTP) dial(ctx context.Context) (net.Conn, error) {
 	return tlsConn, nil
 }
 
-// Disabled is a Sender for instances with no relay configured. It logs what it
-// was asked to send so an operator can follow a reset link out of the logs.
-type Disabled struct {
-	Log *slog.Logger
-}
+// ErrDisabled is returned by a Sender for an instance without a relay.
+var ErrDisabled = errors.New("mail is not configured")
+
+// Disabled is a Sender for instances with no relay configured. It neither
+// sends nor records anything.
+type Disabled struct{}
 
 // Enabled reports false.
-func (d Disabled) Enabled() bool { return false }
+func (Disabled) Enabled() bool { return false }
 
-// Send logs the message instead of delivering it.
-func (d Disabled) Send(_ context.Context, msg Message) error {
-	log := d.Log
-	if log == nil {
-		log = slog.Default()
+// Send refuses the message without logging any part of it.
+func (Disabled) Send(context.Context, Message) error { return ErrDisabled }
+
+// ParseFrom validates a From value such as "Witmoot <no-reply@example.org>"
+// and returns it in canonical form, with a non-ASCII display name encoded.
+func ParseFrom(value string) (string, error) {
+	if strings.ContainsAny(value, "\r\n") {
+		return "", errors.New("the sender must be on one line")
 	}
-	log.Info("mail not configured; message not sent",
-		"to", msg.To,
-		"subject", msg.Subject,
-		"body", msg.Body,
-	)
-	return nil
+	address, err := mail.ParseAddress(value)
+	if err != nil {
+		return "", fmt.Errorf("the sender is not a valid address: %w", err)
+	}
+	return address.String(), nil
 }
 
 // envelopeSender extracts the address from a "Name <addr>" value.
@@ -213,14 +221,19 @@ func envelopeSender(from string) string {
 // buildMessage renders an RFC 5322 plain-text message.
 //
 // Header values are stripped of newlines: a display name or subject that came
-// from user input must not be able to inject extra headers.
+// from user input must not be able to inject extra headers. The subject is
+// RFC 2047 encoded when it is not plain ASCII.
 func buildMessage(from string, msg Message) []byte {
 	var buf bytes.Buffer
 
+	if canonical, err := ParseFrom(from); err == nil {
+		from = canonical
+	}
 	writeHeader(&buf, "From", from)
 	writeHeader(&buf, "To", msg.To)
-	writeHeader(&buf, "Subject", msg.Subject)
+	writeHeader(&buf, "Subject", mime.QEncoding.Encode("utf-8", sanitiseHeader(msg.Subject)))
 	writeHeader(&buf, "Date", time.Now().Format(time.RFC1123Z))
+	writeHeader(&buf, "Message-ID", messageID(from))
 	writeHeader(&buf, "MIME-Version", "1.0")
 	writeHeader(&buf, "Content-Type", `text/plain; charset="utf-8"`)
 	writeHeader(&buf, "Content-Transfer-Encoding", "8bit")
@@ -228,6 +241,18 @@ func buildMessage(from string, msg Message) []byte {
 
 	buf.WriteString(normaliseBody(msg.Body))
 	return buf.Bytes()
+}
+
+// messageID is a unique identifier in the sender's domain.
+func messageID(from string) string {
+	domain := "localhost"
+	if _, after, found := strings.Cut(envelopeSender(from), "@"); found && after != "" && !strings.ContainsAny(after, "<>@ \t") {
+		domain = after
+	}
+	random := make([]byte, 16)
+	// crypto/rand.Read terminates the process if the system RNG fails.
+	_, _ = rand.Read(random)
+	return "<" + hex.EncodeToString(random) + "@" + domain + ">"
 }
 
 func writeHeader(buf *bytes.Buffer, name, value string) {
