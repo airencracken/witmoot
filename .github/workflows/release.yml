@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# No implicit -e or pipefail: every command checks its own status.
+defaults:
+  run:
+    shell: bash --noprofile --norc {0}
+
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -31,7 +36,7 @@ jobs:
           sudo systemctl mask --runtime caddy.service nginx.service apache2.service || exit 1
           sudo apt-get install -y bubblewrap logrotate caddy nginx apache2 || exit 1
       - name: Allow test namespaces on the disposable runner
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || exit 1
       - name: Repository checks
         run: |
           make check || exit 1
@@ -58,7 +63,7 @@ jobs:
               ;;
           esac
       - name: Verify release contents
-        run: sh scripts/release/check-artifacts.sh
+        run: sh scripts/release/check-artifacts.sh || exit 1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-packages
