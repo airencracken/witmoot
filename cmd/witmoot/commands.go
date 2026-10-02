@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/airencracken/comfylib/proxyconfig"
 	"github.com/airencracken/comfylib/svcconfig"
 
 	"witmoot/contrib"
@@ -85,7 +86,7 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 	case "admin":
 		return runAdmin(args[1:], stdout)
 	case "proxy-config":
-		return proxyconfig.Run(args[1:], stdout)
+		return proxyconfig.Run(contrib.ProxySpec(), args[1:], stdout)
 	case "help":
 		if len(args) == 2 && (commandSummary[args[1]] != "" || args[1] == "proxy-config") {
 			return runCommand([]string{args[1], "--help"}, stdin, stdout)
