@@ -53,9 +53,5 @@ for arch in amd64 arm64; do
 done
 set -- dist/witmoot_*_source.tar.gz
 [ "$#" = 1 ] && [ -f "$1" ] || fail 'Missing source archive.'
-mkdir "$work/source" || exit 1
-tar -xzf "$1" -C "$work/source" --strip-components=1 || exit 1
-cmp go.mod "$work/source/go.mod" || fail 'Source archive does not match the build.'
-cmp .goreleaser.yaml "$work/source/.goreleaser.yaml" || fail 'Source archive is missing current release configuration.'
-test -f "$work/source/cmd/witmoot/main.go" || fail 'Source archive is incomplete.'
+sh scripts/release/check-source.sh "$1" || exit 1
 printf '%s release artifact checks passed.\n' witmoot
