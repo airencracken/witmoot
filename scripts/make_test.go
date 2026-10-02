@@ -79,7 +79,7 @@ func TestMakeCheckValidatesTheReleaseConfiguration(t *testing.T) {
 		t.Fatal("the workflow does not pin a GoReleaser version")
 	}
 	empty := t.TempDir()
-	want := "go run github.com/goreleaser/goreleaser/v2@" + pinned[1] + " check\n"
+	want := "GOWORK=off go run github.com/goreleaser/goreleaser/v2@" + pinned[1] + " check\n"
 	if out := makeDryRun(t, empty, "release-check"); out != want {
 		t.Fatalf("without GoReleaser installed, release-check runs %q, want %q", out, want)
 	}
@@ -91,10 +91,10 @@ func TestMakeCheckValidatesTheReleaseConfiguration(t *testing.T) {
 	if err := os.WriteFile(goreleaser, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if out := makeDryRun(t, tools, "release-check"); out != goreleaser+" check\n" {
+	if out := makeDryRun(t, tools, "release-check"); out != "GOWORK=off "+goreleaser+" check\n" {
 		t.Fatalf("with GoReleaser installed, release-check runs %q", out)
 	}
-	if out := makeDryRun(t, empty, "release-check", "GORELEASER=/opt/goreleaser"); out != "/opt/goreleaser check\n" {
+	if out := makeDryRun(t, empty, "release-check", "GORELEASER=/opt/goreleaser"); out != "GOWORK=off /opt/goreleaser check\n" {
 		t.Fatalf("GORELEASER is not honoured: %q", out)
 	}
 }

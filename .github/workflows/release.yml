@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+# Builds resolve comfylib through the module proxy, never a local workspace.
+env:
+  GOWORK: "off"
+
 # No implicit -e or pipefail: every command checks its own status.
 defaults:
   run:

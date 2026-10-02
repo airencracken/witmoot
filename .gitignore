@@ -9,3 +9,6 @@
 node_modules/
 .env
 .env.*
+# Local workspaces for developing beside comfylib; never committed.
+/go.work
+/go.work.sum
