@@ -114,7 +114,9 @@ Journal limits are managed by the host's journald configuration.
 ## Building and publishing
 
 GoReleaser **2.18.2** builds the same artifact set for both projects. With Go
-and GoReleaser installed:
+installed (the Makefile uses an installed `goreleaser`, or else runs the pinned
+release with `go run`, which needs network access and a Go new enough to build
+it):
 
 ```sh
 make release-check
@@ -124,9 +126,11 @@ sh scripts/release/check-artifacts.sh
 
 Snapshot builds stay in `dist/` and never publish. Artifact checks also need
 `dpkg-deb`, `readelf`, and standard shell tools; Debian/Ubuntu provide these in
-`dpkg` and `binutils`. Source archives come from Git, so commit changes before
-checking that an archive matches the working tree. Generated dependency notices
-and package files live in the ignored `.release/` directory.
+`dpkg` and `binutils`. Source archives come from Git, and the check compares
+every tracked file with its copy in the archive and refuses untracked extras,
+so commit changes before checking. Release and `make build` binaries are
+stamped with their version, which the service logs at startup. Generated
+dependency notices and package files live in the ignored `.release/` directory.
 
 The GitHub Actions workflow runs repository checks, builds both architectures,
 validates archive/package contents and checksums, and tests package lifecycles
