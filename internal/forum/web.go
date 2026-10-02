@@ -250,8 +250,34 @@ func (a *App) cookie(w http.ResponseWriter, name, value string, age int) {
 	http.SetCookie(w, &http.Cookie{Name: a.cookieName(name), Value: value, Path: "/", HttpOnly: true, Secure: a.config.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: age})
 }
 
+// Request bodies get a deadline that suits the route. Image uploads may carry
+// tens of megabytes over a slow connection, matching the five minutes the
+// example proxies allow; every other form is small and must arrive quickly.
+var (
+	formTimeout   = 30 * time.Second
+	uploadTimeout = 5 * time.Minute
+)
+
+// setDeadlines replaces the server-wide deadlines, which leave request reads
+// to the handler. Writers without deadline support, such as test recorders,
+// are left alone.
+func setDeadlines(w http.ResponseWriter, r *http.Request) {
+	read, write := formTimeout, 2*time.Minute
+	if contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); r.Method == http.MethodPost && contentType == "multipart/form-data" {
+		read, write = uploadTimeout, uploadTimeout+time.Minute
+	}
+	now := time.Now()
+	controller := http.NewResponseController(w)
+	for _, err := range []error{controller.SetReadDeadline(now.Add(read)), controller.SetWriteDeadline(now.Add(write))} {
+		if err != nil && !errors.Is(err, http.ErrNotSupported) {
+			slog.Debug("set request deadline", "path", r.URL.Path, "error", err)
+		}
+	}
+}
+
 func (a *App) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setDeadlines(w, r)
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")

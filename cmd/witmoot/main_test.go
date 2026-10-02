@@ -1,10 +1,12 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHelpDoesNotCreateDatabase(t *testing.T) {
@@ -60,5 +62,17 @@ func TestStartupRejectsInvalidDeploymentConfiguration(t *testing.T) {
 				t.Fatalf("invalid %s did not stop startup: %v", name, err)
 			}
 		})
+	}
+}
+
+// Uploads may take as long as the reverse proxies allow, so the server must not
+// impose a shorter whole-request deadline; the application sets one per route.
+func TestServerLeavesBodyDeadlinesToTheApplication(t *testing.T) {
+	server := newHTTPServer("127.0.0.1:0", http.NotFoundHandler())
+	if server.ReadTimeout != 0 || server.WriteTimeout != 0 {
+		t.Fatalf("server-wide deadlines cut off uploads: read %s write %s", server.ReadTimeout, server.WriteTimeout)
+	}
+	if server.ReadHeaderTimeout <= 0 || server.ReadHeaderTimeout > 10*time.Second || server.IdleTimeout <= 0 || server.MaxHeaderBytes <= 0 {
+		t.Fatalf("slow header and idle limits are missing: %+v", server)
 	}
 }
