@@ -2,10 +2,15 @@ package mail
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"io"
+	"log/slog"
+	"mime"
 	"net"
 	"net/textproto"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -192,7 +197,7 @@ func TestSendDeliversThroughARelay(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"From: Witmoot <no-reply@example.org>",
+		"From: \"Witmoot\" <no-reply@example.org>",
 		"To: alice@example.org",
 		"Subject: Reset your password",
 		"Content-Type: text/plain",
@@ -266,13 +271,21 @@ func TestSendHonoursContextCancellation(t *testing.T) {
 	}
 }
 
-func TestDisabledSenderReportsItself(t *testing.T) {
+func TestDisabledSenderRefusesWithoutLogging(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
 	sender := Disabled{}
 	if sender.Enabled() {
 		t.Error("a disabled sender must not claim to be enabled")
 	}
-	if err := sender.Send(context.Background(), Message{To: "a@example.org", Subject: "x"}); err != nil {
-		t.Errorf("a disabled sender should not error: %v", err)
+	err := sender.Send(context.Background(), Message{To: "a@example.org", Subject: "x", Body: "https://board.example.org/reset/live-token"})
+	if !errors.Is(err, ErrDisabled) {
+		t.Errorf("a disabled sender must refuse: %v", err)
+	}
+	if logs.Len() != 0 {
+		t.Fatalf("a disabled sender logged the message: %s", &logs)
 	}
 }
 
@@ -293,7 +306,7 @@ func TestHeadersCannotBeInjected(t *testing.T) {
 	// The property that matters is that no *header line* was introduced. The
 	// injected text may survive inside the original value, which is harmless.
 	allowed := map[string]bool{
-		"From": true, "To": true, "Subject": true, "Date": true,
+		"From": true, "To": true, "Subject": true, "Date": true, "Message-ID": true,
 		"MIME-Version": true, "Content-Type": true,
 		"Content-Transfer-Encoding": true,
 	}
@@ -441,3 +454,80 @@ func TestEnvelopeSenderExtractsTheAddress(t *testing.T) {
 
 // Ensure the fake server satisfies the parts of net.Conn we rely on.
 var _ io.Closer = (*net.TCPConn)(nil)
+
+func headerValue(t *testing.T, message, name string) string {
+	t.Helper()
+	head, _, _ := strings.Cut(message, "\r\n\r\n")
+	for _, line := range strings.Split(head, "\r\n") {
+		if value, ok := strings.CutPrefix(line, name+": "); ok {
+			return value
+		}
+	}
+	t.Fatalf("no %s header in %q", name, message)
+	return ""
+}
+
+func TestSubjectsAreEncodedForMail(t *testing.T) {
+	decoder := new(mime.WordDecoder)
+	for _, subject := range []string{
+		"Choose a new password for Café Crew",
+		"Neues Passwort für Bücherwurm — 日本語の掲示板",
+		"Reset\r\nBcc: attacker@example.org ünïcödé",
+		strings.Repeat("Ålesund ", 40),
+		"Plain ASCII subject",
+	} {
+		raw := string(buildMessage("Witmoot <no-reply@example.org>", Message{To: "a@example.org", Subject: subject, Body: "x"}))
+		header := headerValue(t, raw, "Subject")
+		for _, r := range header {
+			if r > 126 || r < 32 {
+				t.Fatalf("subject header carries raw byte %q: %q", r, header)
+			}
+		}
+		decoded, err := decoder.DecodeHeader(header)
+		if err != nil {
+			t.Fatalf("subject %q does not decode: %v", header, err)
+		}
+		want := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(subject, "\r", ""), "\n", " "))
+		if decoded != want {
+			t.Fatalf("subject round trip = %q, want %q", decoded, want)
+		}
+		if strings.Contains(raw, "\r\nBcc:") {
+			t.Fatal("subject injected a header")
+		}
+	}
+}
+
+func TestMessagesCarryAUniqueMessageID(t *testing.T) {
+	seen := map[string]bool{}
+	pattern := regexp.MustCompile(`^<[0-9a-f]{32}@example\.org>$`)
+	for range 50 {
+		id := headerValue(t, string(buildMessage(`"Board" <no-reply@example.org>`, Message{To: "a@example.org", Subject: "s", Body: "b"})), "Message-ID")
+		if !pattern.MatchString(id) || seen[id] {
+			t.Fatalf("message ID %q is malformed or repeated", id)
+		}
+		seen[id] = true
+	}
+	for _, from := range []string{"", "no address at all", "x@<evil>"} {
+		id := headerValue(t, string(buildMessage(from, Message{To: "a@example.org", Subject: "s", Body: "b"})), "Message-ID")
+		if !strings.HasSuffix(id, "@localhost>") {
+			t.Errorf("sender %q produced message ID %q", from, id)
+		}
+	}
+}
+
+func TestParseFromCanonicalisesAndRejectsHostileSenders(t *testing.T) {
+	for in, want := range map[string]string{
+		"no-reply@example.org":             "<no-reply@example.org>",
+		"Witmoot <no-reply@example.org>":   `"Witmoot" <no-reply@example.org>`,
+		"Café Crew <no-reply@example.org>": "=?utf-8?q?Caf=C3=A9_Crew?= <no-reply@example.org>",
+	} {
+		if got, err := ParseFrom(in); err != nil || got != want {
+			t.Errorf("ParseFrom(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	for _, in := range []string{"", "not an address", "Board <>", "a@b@c", "no-reply@example.org\r\nBcc: x@example.org", "Board <no-reply@example.org>\nX: y"} {
+		if got, err := ParseFrom(in); err == nil {
+			t.Errorf("ParseFrom(%q) accepted %q", in, got)
+		}
+	}
+}
