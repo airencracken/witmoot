@@ -1,5 +1,8 @@
 version: 2
 project_name: witmoot
+# Release builds use the pinned modules from the proxy, never a go.work.
+env:
+  - GOWORK=off
 before:
   hooks:
     - sh scripts/release/prepare.sh

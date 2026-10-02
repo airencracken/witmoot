@@ -61,10 +61,10 @@ clean: ## Remove generated binaries
 	rm -rf bin
 
 release-check: ## Validate the GoReleaser configuration
-	$(GORELEASER) check
+	GOWORK=off $(GORELEASER) check
 
 release-snapshot: release-check ## Build local archives and Debian packages without publishing
-	$(GORELEASER) release --snapshot --clean --skip=publish
+	GOWORK=off $(GORELEASER) release --snapshot --clean --skip=publish
 
 # Service targets install configuration only. Combine with "install" for the binary.
 install: build ## Install the binary and documentation
