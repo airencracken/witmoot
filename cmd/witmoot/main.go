@@ -66,7 +66,7 @@ func runServer() error {
 	if err != nil {
 		return err
 	}
-	server := &http.Server{Addr: env("WITMOOT_ADDR", "127.0.0.1:8080"), Handler: app, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 60 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
+	server := newHTTPServer(env("WITMOOT_ADDR", "127.0.0.1:8080"), app)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	done := make(chan error, 1)
@@ -82,6 +82,13 @@ func runServer() error {
 		defer cancel()
 		return server.Shutdown(shutdown)
 	}
+}
+
+// newHTTPServer leaves body read and response write deadlines to the
+// application, which sets them per request: uploads may take as long as the
+// reverse proxies allow, while ordinary forms stay tightly bounded.
+func newHTTPServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
 }
 
 func env(key, fallback string) string {
