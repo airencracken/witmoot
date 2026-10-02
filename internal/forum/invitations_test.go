@@ -34,7 +34,7 @@ func TestInvitationOptionsAndRevocation(t *testing.T) {
 		t.Fatalf("invitation list: %+v %v", list, err)
 	}
 	for n := 0; n < 2; n++ {
-		if err := s.RevokeInvitation(ctx, id); err != nil {
+		if err := s.RevokeInvitationByCreator(ctx, id, owner, true); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -45,7 +45,7 @@ func TestInvitationOptionsAndRevocation(t *testing.T) {
 	if list[0].Status() != "revoked" || list[0].Uses != 3 {
 		t.Fatal("revocation lost history")
 	}
-	if err := s.RevokeInvitation(ctx, id+1); !errors.Is(err, sql.ErrNoRows) {
+	if err := s.RevokeInvitationByCreator(ctx, id+1, owner, true); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("missing invitation: %v", err)
 	}
 	for n := 0; n < 21; n++ {

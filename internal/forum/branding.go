@@ -56,17 +56,6 @@ func (s *Store) LoadBranding(ctx context.Context, defaults SiteBranding) (SiteBr
 	return branding, nil
 }
 
-func (s *Store) SaveBranding(ctx context.Context, branding SiteBranding) error {
-	branding, err := cleanBranding(branding)
-	if err != nil {
-		return err
-	}
-	if err := saveBranding(ctx, s.db, branding); err != nil {
-		return fmt.Errorf("save site branding: %w", err)
-	}
-	return nil
-}
-
 type brandingWriter interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }

@@ -25,6 +25,13 @@ func testStore(t *testing.T) *Store {
 	return s
 }
 
+// testInvite issues a single-use invitation that expires in a week.
+func testInvite(s *Store, ownerID int64, hash string) error {
+	expires := time.Now().Add(7 * 24 * time.Hour)
+	_, err := s.CreateInvitation(context.Background(), ownerID, hash, "", InvitationOptions{MaxUses: 1, ExpiresAt: &expires})
+	return err
+}
+
 func testMember(t *testing.T, s *Store, name string) int64 {
 	t.Helper()
 	id, err := s.CreateUser(context.Background(), name, "test-hash")
@@ -92,7 +99,7 @@ func TestInvitationIsSingleUseAtomicAndExpiring(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	owner := testInvitationOwner(t, s, "owner")
-	if err := s.Invite(ctx, owner, "invitation"); err != nil {
+	if err := testInvite(s, owner, "invitation"); err != nil {
 		t.Fatal(err)
 	}
 	// A duplicate username must not spend a valid invitation.
@@ -124,7 +131,7 @@ func TestInvitationIsSingleUseAtomicAndExpiring(t *testing.T) {
 	if success != 1 || denied != 1 {
 		t.Fatalf("success=%d denied=%d", success, denied)
 	}
-	if err := s.Invite(ctx, owner, "expired"); err != nil {
+	if err := testInvite(s, owner, "expired"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.db.Exec("UPDATE invitations SET expires_at = ? WHERE token_hash = 'expired'", time.Now().Add(-time.Second).Unix()); err != nil {

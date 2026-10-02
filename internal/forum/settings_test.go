@@ -276,7 +276,7 @@ func TestJoiningAcrossModesAndExistingInvitations(t *testing.T) {
 	ownerID := signInTest(t, app, owner, true)
 	member := memberClient(t, app, "jules")
 	invite := randomToken()
-	if err := app.store.Invite(context.Background(), ownerID, tokenHash(invite)); err != nil {
+	if err := testInvite(app.store, ownerID, tokenHash(invite)); err != nil {
 		t.Fatal(err)
 	}
 	guest := &testClient{app: app, cookies: make(map[string]*http.Cookie)}

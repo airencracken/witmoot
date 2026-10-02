@@ -270,7 +270,7 @@ func setDeadlines(w http.ResponseWriter, r *http.Request) {
 	controller := http.NewResponseController(w)
 	for _, err := range []error{controller.SetReadDeadline(now.Add(read)), controller.SetWriteDeadline(now.Add(write))} {
 		if err != nil && !errors.Is(err, http.ErrNotSupported) {
-			slog.Debug("set request deadline", "path", r.URL.Path, "error", err)
+			slog.Debug("set request deadline", "path", loggedPath(r), "error", err)
 		}
 	}
 }
@@ -442,9 +442,19 @@ func (a *App) fail(w http.ResponseWriter, r *http.Request, status int, message s
 	a.render(w, r, status, Page{View: "error", Title: http.StatusText(status), Error: message})
 }
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	slog.Error("request failed", "path", r.URL.Path, "error", err)
+	slog.Error("request failed", "path", loggedPath(r), "error", err)
 	a.fail(w, r, 500, "Something went wrong. Please try again in a moment.")
 }
+
+// loggedPath is the request path with any reset token removed: a reset link in
+// a log is as good as the password it replaces.
+func loggedPath(r *http.Request) string {
+	if strings.HasPrefix(r.URL.Path, "/reset/") {
+		return "/reset/[token]"
+	}
+	return r.URL.Path
+}
+
 func (a *App) storeError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, errReadOnly) || errors.Is(err, errArchived) || errors.Is(err, errPersonal) || errors.Is(err, errOwner) || communityError(err) {
 		a.fail(w, r, 403, err.Error())
