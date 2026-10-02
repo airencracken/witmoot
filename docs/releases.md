@@ -9,7 +9,8 @@ Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 - `witmoot_VERSION_source.tar.gz`: the corresponding source.
 - `witmoot_VERSION_checksums.txt`: SHA-256 checksums for all five artifacts.
 
-See [the 0.9.0 release notes](release-notes/0.9.0.md) for owner controls, house rules, and interface refinements.
+See [the 0.9.0 release notes](release-notes/0.9.0.md) for optional Bubblewrap confinement, and
+[the 0.8.0 release notes](release-notes/0.8.0.md) for owner controls, house rules, and interface refinements.
 
 The Go compiler is only needed when building from source.
 HTTPS connections to imvault need your system's CA certificates.
