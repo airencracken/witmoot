@@ -21,6 +21,10 @@ import (
 
 const maxBrandImageBytes = 2 << 20
 
+// maxImagePixels bounds the memory any uploaded image may decode into, about
+// 16 MiB of RGBA, whether it becomes a mascot, a favicon or an avatar.
+const maxImagePixels = 2048 * 2048
+
 type SiteBranding struct {
 	Name         string
 	SourceURL    string
@@ -161,7 +165,7 @@ func normalizeBrandImage(data []byte) ([]byte, error) {
 		return nil, errors.New("choose an image no larger than 2 MiB")
 	}
 	config, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > 2048 || config.Height > 2048 || int64(config.Width)*int64(config.Height) > 4_194_304 {
+	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > 2048 || config.Height > 2048 || int64(config.Width)*int64(config.Height) > maxImagePixels {
 		return nil, errors.New("choose a valid image up to 2048 by 2048 pixels")
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))

@@ -38,8 +38,8 @@ func normalizeAvatarImage(data []byte) ([]byte, error) {
 		return nil, errors.New("choose an image no larger than 2 MiB")
 	}
 	config, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > maxAvatarDimension || config.Height > maxAvatarDimension {
-		return nil, errors.New("choose a valid image up to 4096 by 4096 pixels")
+	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > maxAvatarDimension || config.Height > maxAvatarDimension || int64(config.Width)*int64(config.Height) > maxImagePixels {
+		return nil, errors.New("choose a valid image of at most 4 megapixels, such as 2048 by 2048 pixels")
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
