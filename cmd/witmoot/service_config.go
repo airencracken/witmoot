@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,182 +58,197 @@ func defaultProvisioningConfigPaths() provisioningConfigPaths {
 	}
 }
 
+// serviceManagers records which service configuration the account commands
+// follow: the running manager's when it is installed, otherwise every
+// installed one.
+type serviceManagers struct{ openRC, systemd bool }
+
+func activeServiceManagers(paths provisioningConfigPaths) serviceManagers {
+	openRC := paths.openRCInstalled || paths.openRCConfig != "" && fileExists(paths.openRCConfig)
+	systemd := paths.systemdUnit != "" && fileExists(paths.systemdUnit)
+	switch {
+	case paths.openRCActive && openRC:
+		return serviceManagers{openRC: true}
+	case paths.systemdActive && systemd:
+		return serviceManagers{systemd: true}
+	}
+	return serviceManagers{openRC: openRC, systemd: systemd}
+}
+
+func (m serviceManagers) managed() bool { return m.openRC || m.systemd }
+
+// serviceSetting reads one setting as the installed service sees it, using
+// fallback when the configuration leaves it unset. With both managers
+// installed and neither running, they must agree; what names the setting in
+// that error.
+func serviceSetting(paths provisioningConfigPaths, key, fallback, what string) (string, error) {
+	managers := activeServiceManagers(paths)
+	var openRCValue, systemdValue string
+	if managers.openRC {
+		value, _, err := readShellConfigValue(paths.openRCConfig, key)
+		if err != nil {
+			return "", err
+		}
+		openRCValue = cmp.Or(value, fallback)
+	}
+	if managers.systemd {
+		value, _, err := readSystemdEnvironment(paths.systemdUnit, key)
+		if err != nil {
+			return "", err
+		}
+		systemdValue = cmp.Or(value, fallback)
+	}
+	if managers.openRC && managers.systemd && openRCValue != systemdValue {
+		return "", fmt.Errorf("OpenRC and systemd configure different %s (%q and %q); set %s explicitly or run under the active service manager", what, openRCValue, systemdValue, key)
+	}
+	if managers.openRC {
+		return openRCValue, nil
+	}
+	return systemdValue, nil
+}
+
 func resolveProvisioningDataDir(paths provisioningConfigPaths) (string, error) {
 	if value := os.Getenv("WITMOOT_DATA_DIR"); value != "" {
 		return value, nil
 	}
-	openRCInstalled := paths.openRCInstalled || paths.openRCConfig != "" && fileExists(paths.openRCConfig)
-	systemdInstalled := paths.systemdUnit != "" && fileExists(paths.systemdUnit)
-	if !openRCInstalled && !systemdInstalled {
+	if !activeServiceManagers(paths).managed() {
 		return "./data", nil
 	}
-	if paths.openRCActive && openRCInstalled {
-		return openRCProvisioningDataDir(paths)
+	value, err := serviceSetting(paths, "WITMOOT_DATA_DIR", paths.serviceDefault, "Witmoot data directories")
+	if err != nil {
+		return "", err
 	}
-	if paths.systemdActive && systemdInstalled {
-		return systemdProvisioningDataDir(paths)
+	if !filepath.IsAbs(value) {
+		return "", fmt.Errorf("the service's Witmoot data directory %q is not absolute; set WITMOOT_DATA_DIR explicitly", value)
 	}
-	if openRCInstalled && systemdInstalled {
-		openRCDir, err := openRCProvisioningDataDir(paths)
-		if err != nil {
-			return "", err
+	return filepath.Clean(value), nil
+}
+
+// provisioningSettings resolves the given settings for an account command the
+// way the running service sees them: the process environment first, then the
+// service configuration. Unset settings are left out.
+func provisioningSettings(paths provisioningConfigPaths, keys ...string) (map[string]string, error) {
+	settings := make(map[string]string, len(keys))
+	for _, key := range keys {
+		value := os.Getenv(key)
+		if value == "" && activeServiceManagers(paths).managed() {
+			var err error
+			if value, err = serviceSetting(paths, key, "", key+" values"); err != nil {
+				return nil, fmt.Errorf("%w; set %s in the environment to override the service configuration", err, key)
+			}
 		}
-		systemdDir, err := systemdProvisioningDataDir(paths)
-		if err != nil {
-			return "", err
+		if value != "" {
+			settings[key] = value
 		}
-		if filepath.Clean(openRCDir) != filepath.Clean(systemdDir) {
-			return "", fmt.Errorf("OpenRC and systemd configure different Witmoot data directories (%q and %q); set WITMOOT_DATA_DIR explicitly or run under the active service manager", openRCDir, systemdDir)
-		}
-		return openRCDir, nil
 	}
-	if openRCInstalled {
-		return openRCProvisioningDataDir(paths)
-	}
-	return systemdProvisioningDataDir(paths)
+	return settings, nil
 }
 
 func resolveProvisioningServiceAccount(paths provisioningConfigPaths) (string, string, bool, error) {
-	openRCInstalled := paths.openRCInstalled || paths.openRCConfig != "" && fileExists(paths.openRCConfig)
-	systemdInstalled := paths.systemdUnit != "" && fileExists(paths.systemdUnit)
-	if !openRCInstalled && !systemdInstalled {
+	managers := activeServiceManagers(paths)
+	if !managers.managed() {
 		return "", "", false, nil
 	}
-	if paths.openRCActive && openRCInstalled {
-		user, group, err := openRCServiceAccount(paths)
-		return user, group, true, err
-	}
-	if paths.systemdActive && systemdInstalled {
-		user, group, err := systemdServiceAccount(paths)
-		return user, group, true, err
-	}
-	if openRCInstalled && systemdInstalled {
-		openRCUser, openRCGroup, err := openRCServiceAccount(paths)
-		if err != nil {
+	var openRCUser, openRCGroup, systemdUser, systemdGroup string
+	var err error
+	if managers.openRC {
+		if openRCUser, openRCGroup, err = openRCServiceAccount(paths); err != nil {
 			return "", "", true, err
 		}
-		systemdUser, systemdGroup, err := systemdServiceAccount(paths)
-		if err != nil {
+	}
+	if managers.systemd {
+		if systemdUser, systemdGroup, err = systemdServiceAccount(paths); err != nil {
 			return "", "", true, err
 		}
-		if openRCUser != systemdUser || openRCGroup != systemdGroup {
-			return "", "", true, fmt.Errorf("OpenRC and systemd configure different Witmoot service accounts (%s:%s and %s:%s); run under the active service manager", openRCUser, openRCGroup, systemdUser, systemdGroup)
-		}
+	}
+	if managers.openRC && managers.systemd && (openRCUser != systemdUser || openRCGroup != systemdGroup) {
+		return "", "", true, fmt.Errorf("OpenRC and systemd configure different Witmoot service accounts (%s:%s and %s:%s); run under the active service manager", openRCUser, openRCGroup, systemdUser, systemdGroup)
+	}
+	if managers.openRC {
 		return openRCUser, openRCGroup, true, nil
 	}
-	if openRCInstalled {
-		user, group, err := openRCServiceAccount(paths)
-		return user, group, true, err
-	}
-	user, group, err := systemdServiceAccount(paths)
-	return user, group, true, err
+	return systemdUser, systemdGroup, true, nil
 }
 
 func openRCServiceAccount(paths provisioningConfigPaths) (string, string, error) {
-	user, userSet, err := readShellConfigValue(paths.openRCConfig, "WITMOOT_USER")
+	user, _, err := readShellConfigValue(paths.openRCConfig, "WITMOOT_USER")
 	if err != nil {
 		return "", "", err
 	}
-	group, groupSet, err := readShellConfigValue(paths.openRCConfig, "WITMOOT_GROUP")
+	group, _, err := readShellConfigValue(paths.openRCConfig, "WITMOOT_GROUP")
 	if err != nil {
 		return "", "", err
 	}
-	if !userSet || user == "" {
-		user = "witmoot"
-	}
-	if !groupSet || group == "" {
-		group = "witmoot"
-	}
-	return user, group, nil
+	return cmp.Or(user, "witmoot"), cmp.Or(group, "witmoot"), nil
 }
 
 func systemdServiceAccount(paths provisioningConfigPaths) (string, string, error) {
-	user, userSet, err := readSystemdServiceSetting(paths.systemdUnit, "User")
+	var user, group string
+	err := scanSystemdService(paths.systemdUnit, func(name, value, _ string, _ int) error {
+		switch name {
+		case "User":
+			user = strings.Trim(value, "\"'")
+		case "Group":
+			group = strings.Trim(value, "\"'")
+		}
+		return nil
+	})
 	if err != nil {
 		return "", "", err
 	}
-	group, groupSet, err := readSystemdServiceSetting(paths.systemdUnit, "Group")
-	if err != nil {
-		return "", "", err
-	}
-	if !userSet || user == "" {
-		user = "root"
-	}
-	if !groupSet {
-		group = ""
-	}
-	return user, group, nil
+	return cmp.Or(user, "root"), group, nil
 }
 
-func readSystemdServiceSetting(unitPath, key string) (string, bool, error) {
+// scanSystemdService calls visit for each setting in the [Service] sections of
+// a unit and its drop-ins, in the order systemd applies them.
+func scanSystemdService(unitPath string, visit func(name, value, path string, line int) error) error {
 	if unitPath == "" {
-		return "", false, nil
+		return nil
 	}
 	configPaths, err := systemdUnitConfigFiles(unitPath)
 	if err != nil {
-		return "", false, err
+		return err
 	}
-	var value string
-	found := false
 	for _, path := range configPaths {
-		file, err := os.Open(path)
-		if err != nil {
-			return "", false, fmt.Errorf("read systemd unit %s: %w", path, err)
-		}
-		inService := false
-		scanner := bufio.NewScanner(file)
-		for line := 1; scanner.Scan(); line++ {
-			text := strings.TrimSpace(scanner.Text())
-			if strings.HasPrefix(text, "[") && strings.HasSuffix(text, "]") {
-				inService = text == "[Service]"
-				continue
-			}
-			if !inService || text == "" || strings.HasPrefix(text, "#") || strings.HasPrefix(text, ";") {
-				continue
-			}
-			name, raw, ok := strings.Cut(text, "=")
-			if ok && strings.TrimSpace(name) == key {
-				value, found = strings.Trim(strings.TrimSpace(raw), "\"'"), true
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			file.Close()
-			return "", false, fmt.Errorf("read %s: %w", path, err)
-		}
-		if err := file.Close(); err != nil {
-			return "", false, fmt.Errorf("close %s: %w", path, err)
+		if err := scanSystemdFile(path, visit); err != nil {
+			return err
 		}
 	}
-	return value, found, nil
+	return nil
 }
 
-func openRCProvisioningDataDir(paths provisioningConfigPaths) (string, error) {
-	value, found, err := readShellConfigValue(paths.openRCConfig, "WITMOOT_DATA_DIR")
+func scanSystemdFile(path string, visit func(name, value, path string, line int) error) (err error) {
+	file, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("read systemd unit %s: %w", path, err)
 	}
-	if !found || value == "" {
-		value = paths.serviceDefault
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("close %s: %w", path, closeErr)
+		}
+	}()
+	inService := false
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 1024), 64*1024)
+	for line := 1; scanner.Scan(); line++ {
+		text := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(text, "[") && strings.HasSuffix(text, "]") {
+			inService = text == "[Service]"
+			continue
+		}
+		if !inService || text == "" || strings.HasPrefix(text, "#") || strings.HasPrefix(text, ";") {
+			continue
+		}
+		if name, value, ok := strings.Cut(text, "="); ok {
+			if err := visit(strings.TrimSpace(name), strings.TrimSpace(value), path, line); err != nil {
+				return err
+			}
+		}
 	}
-	return validateServiceDataDir(value, "OpenRC")
-}
-
-func systemdProvisioningDataDir(paths provisioningConfigPaths) (string, error) {
-	value, found, err := readSystemdDataDir(paths.systemdUnit, "WITMOOT_DATA_DIR")
-	if err != nil {
-		return "", err
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
 	}
-	if !found || value == "" {
-		value = paths.serviceDefault
-	}
-	return validateServiceDataDir(value, "systemd")
-}
-
-func validateServiceDataDir(value, manager string) (string, error) {
-	if !filepath.IsAbs(value) {
-		return "", fmt.Errorf("%s Witmoot data directory %q is not absolute; set WITMOOT_DATA_DIR explicitly", manager, value)
-	}
-	return value, nil
+	return nil
 }
 
 func readShellConfigValue(path, key string) (string, bool, error) {
@@ -272,92 +289,93 @@ func readShellConfigValue(path, key string) (string, bool, error) {
 	return value, found, nil
 }
 
-func readSystemdDataDir(unitPath, key string) (string, bool, error) {
-	if unitPath == "" {
-		return "", false, nil
-	}
+// readSystemdEnvironment reads key from a unit's Environment= settings and
+// EnvironmentFile= files, with later files taking precedence as in systemd.
+func readSystemdEnvironment(unitPath, key string) (string, bool, error) {
 	unitValues := make(map[string]string)
 	var environmentFiles []string
-	configPaths, err := systemdUnitConfigFiles(unitPath)
+	err := scanSystemdService(unitPath, func(name, raw, path string, line int) error {
+		switch name {
+		case "Environment":
+			if raw == "" {
+				clear(unitValues)
+				return nil
+			}
+			words, err := splitConfigWords(raw)
+			if err != nil {
+				return fmt.Errorf("parse systemd unit %s:%d: %w", path, line, err)
+			}
+			for _, word := range words {
+				if name, value, ok := strings.Cut(word, "="); ok {
+					unitValues[name] = value
+				}
+			}
+		case "EnvironmentFile":
+			if raw == "" {
+				environmentFiles = nil
+				return nil
+			}
+			environmentFiles = append(environmentFiles, raw)
+		}
+		return nil
+	})
 	if err != nil {
 		return "", false, err
 	}
-	for _, configPath := range configPaths {
-		file, err := os.Open(configPath)
-		if err != nil {
-			return "", false, fmt.Errorf("read systemd unit %s: %w", configPath, err)
-		}
-		inService := false
-		scanner := bufio.NewScanner(file)
-		scanner.Buffer(make([]byte, 1024), 64*1024)
-		for line := 1; scanner.Scan(); line++ {
-			text := strings.TrimSpace(scanner.Text())
-			if strings.HasPrefix(text, "[") && strings.HasSuffix(text, "]") {
-				inService = text == "[Service]"
-				continue
-			}
-			if !inService || text == "" || strings.HasPrefix(text, "#") || strings.HasPrefix(text, ";") {
-				continue
-			}
-			name, raw, ok := strings.Cut(text, "=")
-			if !ok {
-				continue
-			}
-			switch strings.TrimSpace(name) {
-			case "Environment":
-				if strings.TrimSpace(raw) == "" {
-					clear(unitValues)
-					continue
-				}
-				words, err := splitConfigWords(raw)
-				if err != nil {
-					file.Close()
-					return "", false, fmt.Errorf("parse systemd unit %s:%d: %w", configPath, line, err)
-				}
-				for _, word := range words {
-					name, value, ok := strings.Cut(word, "=")
-					if ok {
-						unitValues[name] = value
-					}
-				}
-			case "EnvironmentFile":
-				if strings.TrimSpace(raw) == "" {
-					environmentFiles = nil
-					continue
-				}
-				words, err := splitConfigWords(raw)
-				if err != nil {
-					file.Close()
-					return "", false, fmt.Errorf("parse systemd unit %s:%d: %w", configPath, line, err)
-				}
-				environmentFiles = append(environmentFiles, words...)
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			file.Close()
-			return "", false, fmt.Errorf("read %s: %w", configPath, err)
-		}
-		if err := file.Close(); err != nil {
-			return "", false, fmt.Errorf("close %s: %w", configPath, err)
-		}
-	}
 	value, found := unitValues[key]
 	for _, environmentFile := range environmentFiles {
-		optional := strings.HasPrefix(environmentFile, "-")
-		path := strings.TrimPrefix(environmentFile, "-")
-		if !filepath.IsAbs(path) {
-			return "", false, fmt.Errorf("systemd EnvironmentFile %q in %s is not an absolute path", path, unitPath)
-		}
-		fileValue, fileFound, err := readSystemdEnvironmentFile(path, key)
+		fileValue, fileFound, err := readSystemdEnvironmentFile(environmentFile, unitPath, key)
 		if err != nil {
-			if optional && errors.Is(err, os.ErrNotExist) {
-				continue
-			}
 			return "", false, err
 		}
 		if fileFound {
 			value, found = fileValue, true
 		}
+	}
+	return value, found, nil
+}
+
+// readSystemdEnvironmentFile reads one EnvironmentFile= setting. systemd takes
+// the whole value as one literal path, spaces included and without quotes,
+// optionally prefixed with "-" when the file may be missing.
+func readSystemdEnvironmentFile(setting, unitPath, key string) (string, bool, error) {
+	path, optional := strings.CutPrefix(setting, "-")
+	if !filepath.IsAbs(path) || strings.ContainsAny(path, "%\x00") {
+		return "", false, fmt.Errorf("systemd EnvironmentFile %q in %s is not a literal absolute path; set %s explicitly", setting, unitPath, key)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		if optional && errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("read systemd environment file %s: %w", path, err)
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Debug("close systemd environment file", "path", path, "error", err)
+		}
+	}()
+	var value string
+	found := false
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 1024), 64*1024)
+	for line := 1; scanner.Scan(); line++ {
+		text := strings.TrimSpace(scanner.Text())
+		if text == "" || strings.HasPrefix(text, "#") || strings.HasPrefix(text, ";") {
+			continue
+		}
+		name, raw, ok := strings.Cut(text, "=")
+		if !ok || strings.TrimSpace(name) != key {
+			continue
+		}
+		parsed, err := parseConfigValue(strings.TrimSpace(raw), false)
+		if err != nil {
+			return "", false, fmt.Errorf("parse %s:%d: %w", path, line, err)
+		}
+		value, found = parsed, true
+	}
+	if err := scanner.Err(); err != nil {
+		return "", false, fmt.Errorf("read %s: %w", path, err)
 	}
 	return value, found, nil
 }
@@ -400,37 +418,6 @@ func systemdUnitConfigFiles(unitPath string) ([]string, error) {
 		files = append(files, selected[name])
 	}
 	return files, nil
-}
-
-func readSystemdEnvironmentFile(path, key string) (string, bool, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", false, fmt.Errorf("read systemd environment file %s: %w", path, err)
-	}
-	defer file.Close()
-	var value string
-	found := false
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 1024), 64*1024)
-	for line := 1; scanner.Scan(); line++ {
-		text := strings.TrimSpace(scanner.Text())
-		if text == "" || strings.HasPrefix(text, "#") || strings.HasPrefix(text, ";") {
-			continue
-		}
-		name, raw, ok := strings.Cut(text, "=")
-		if !ok || strings.TrimSpace(name) != key {
-			continue
-		}
-		parsed, err := parseConfigValue(strings.TrimSpace(raw), false)
-		if err != nil {
-			return "", false, fmt.Errorf("parse %s:%d: %w", path, line, err)
-		}
-		value, found = parsed, true
-	}
-	if err := scanner.Err(); err != nil {
-		return "", false, fmt.Errorf("read %s: %w", path, err)
-	}
-	return value, found, nil
 }
 
 func parseConfigValue(raw string, shell bool) (string, error) {

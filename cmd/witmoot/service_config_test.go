@@ -99,3 +99,57 @@ func TestResolveProvisioningServiceAccount(t *testing.T) {
 		t.Fatalf("portable install identity = %q:%q managed=%t err=%v", user, group, managed, err)
 	}
 }
+
+func writeTestFile(t *testing.T, path, contents string) string {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// systemd reads EnvironmentFile= as one literal path, spaces and all.
+func TestSystemdEnvironmentFilePathsAreLiteral(t *testing.T) {
+	t.Setenv("WITMOOT_DATA_DIR", "")
+	root := t.TempDir()
+	want := filepath.Join(root, "board data")
+	for _, name := range []string{"witmoot env", "  leading and trailing  ", "quoted \"name\"", "semi;colon", "-dash", "日本語 設定"} {
+		t.Run(name, func(t *testing.T) {
+			envFile := writeTestFile(t, filepath.Join(root, name, "witmoot.env"), "WITMOOT_DATA_DIR='"+want+"'\n")
+			unit := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.service"), "[Service]\nEnvironmentFile=-"+envFile+"   \n")
+			got, err := resolveProvisioningDataDir(provisioningConfigPaths{systemdUnit: unit, systemdActive: true, serviceDefault: "/var/lib/witmoot"})
+			if err != nil || got != want {
+				t.Fatalf("resolve = %q, %v; want %q", got, err, want)
+			}
+		})
+	}
+}
+
+func TestSystemdEnvironmentFileRejectsHostilePaths(t *testing.T) {
+	t.Setenv("WITMOOT_DATA_DIR", "")
+	root := t.TempDir()
+	present := writeTestFile(t, filepath.Join(root, "present.env"), "WITMOOT_DATA_DIR=/srv/present\n")
+	for _, tc := range []struct{ setting, want string }{
+		{"relative/witmoot.env", "not a literal absolute path"},
+		{"-relative.env", "not a literal absolute path"},
+		{"%h/witmoot.env", "not a literal absolute path"},
+		{"/etc/%i.env", "not a literal absolute path"},
+		{`"` + present + `"`, "not a literal absolute path"},
+		{present + " " + present, "no such file"},
+		{filepath.Join(root, "missing.env"), "no such file"},
+	} {
+		unit := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.service"), "[Service]\nEnvironmentFile="+tc.setting+"\n")
+		if got, err := resolveProvisioningDataDir(provisioningConfigPaths{systemdUnit: unit, systemdActive: true, serviceDefault: "/var/lib/witmoot"}); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("EnvironmentFile=%s resolved to %q (%v); want an error containing %q", tc.setting, got, err, tc.want)
+		}
+	}
+	// An optional missing file is skipped, and a later empty setting resets
+	// the list the way systemd does.
+	unit := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.service"), "[Service]\nEnvironment=WITMOOT_DATA_DIR=/srv/unit\nEnvironmentFile=-"+filepath.Join(root, "missing.env")+"\nEnvironmentFile="+present+"\nEnvironmentFile=\n")
+	if got, err := resolveProvisioningDataDir(provisioningConfigPaths{systemdUnit: unit, systemdActive: true, serviceDefault: "/var/lib/witmoot"}); err != nil || got != "/srv/unit" {
+		t.Fatalf("resolve = %q, %v; want /srv/unit", got, err)
+	}
+}
