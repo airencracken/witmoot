@@ -332,8 +332,11 @@ disable HTMX history storage. Assets are served locally under a restrictive
 content security policy.
 
 Sign-in, open registration, and invitation redemption share a limit of 20 attempts per 15 minutes
-per client IP. The limiter is in memory and does not trust forwarded
-headers unless the peer is in `WITMOOT_TRUSTED_PROXIES`. Configure this behind
+per client IP, with IPv6 clients counted per /64 network. The limiter is in
+memory and does not trust forwarded headers unless the peer is in
+`WITMOOT_TRUSTED_PROXIES`. Without `WITMOOT_BASE_URL`, invitation and reset
+links use HTTPS when the request did, including when a trusted proxy reports
+it in `X-Forwarded-Proto`. Configure this behind
 Caddy so visitors have separate budgets; otherwise they share the proxy's
 budget. See [running beside imvault](docs/imvault.md#running-beside-imvault).
 

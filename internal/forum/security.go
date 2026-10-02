@@ -3,7 +3,6 @@ package forum
 import (
 	"container/list"
 	"errors"
-	"net/netip"
 	"regexp"
 	"strings"
 	"sync"
@@ -115,23 +114,9 @@ type limiter struct {
 
 func newLimiter() *limiter { return &limiter{entries: make(map[string]*list.Element)} }
 
-// rateKey groups IPv6 clients by /64, the smallest block normally assigned to
-// one site, so one host cannot claim a fresh budget per address.
-func rateKey(client string) string {
-	addr, err := netip.ParseAddr(client)
-	if err != nil {
-		return client
-	}
-	addr = addr.Unmap()
-	if addr.Is6() {
-		return netip.PrefixFrom(addr.WithZone(""), 64).Masked().String()
-	}
-	return addr.String()
-}
-
-// allow spends one attempt from the client's budget.
-func (l *limiter) allow(client string) bool {
-	key := rateKey(client)
+// allow spends one attempt from the budget of key, a client network from
+// App.rateKey.
+func (l *limiter) allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := time.Now()
@@ -156,10 +141,10 @@ func (l *limiter) allow(client string) bool {
 
 // refund returns an attempt that succeeded, so people who sign in often are
 // never locked out by their own correct passwords.
-func (l *limiter) refund(client string) {
+func (l *limiter) refund(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if element, ok := l.entries[rateKey(client)]; ok {
+	if element, ok := l.entries[key]; ok {
 		if entry := element.Value.(*rateEntry); entry.count > 0 {
 			entry.count--
 		}
