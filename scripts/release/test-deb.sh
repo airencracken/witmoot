@@ -55,17 +55,17 @@ grep -q "/usr/bin/$app" "/usr/lib/systemd/system/$app.service" || fail 'Service 
 for setting in StandardOutput=journal StandardError=journal SyslogIdentifier=$app; do
 	grep -qx "$setting" "/usr/lib/systemd/system/$app.service" || fail "Missing journal logging setting: $setting"
 done
-env "$upper"_DATA_DIR="$work/no-data" "/usr/bin/$app" --help > "$work/help" || fail 'Installed help failed.'
+env "${upper}_DATA_DIR=$work/no-data" "/usr/bin/$app" --help > "$work/help" || fail 'Installed help failed.'
 grep -q 'proxy-config' "$work/help" || fail 'Help omits the proxy helper.'
 for proxy in caddy nginx apache; do
-	env "$upper"_DATA_DIR="$work/no-data" "/usr/bin/$app" proxy-config "$proxy" --domain board.example.net > "$work/$proxy.conf" || fail "Installed $proxy helper failed."
+	env "${upper}_DATA_DIR=$work/no-data" "/usr/bin/$app" proxy-config "$proxy" --domain board.example.net > "$work/$proxy.conf" || fail "Installed $proxy helper failed."
 	grep -q 'board.example.net' "$work/$proxy.conf" || fail 'Generated proxy config has the wrong hostname.'
 done
 [ ! -e "$work/no-data" ] || fail 'Help or config generation created application data.'
 printf '\n# Local operator setting\n%s_ADDR=127.0.0.1:18082\n' "$upper" >> "$config" || exit 1
 cp "$config" "$work/config" || exit 1
 printf 'keep this board\n' > "$data/release-test-marker" || exit 1
-printf '%s\n' 'release-test-password' | runuser -u "$app" -- env "$upper"_DATA_DIR="$data" \
+printf '%s\n' 'release-test-password' | runuser -u "$app" -- env "${upper}_DATA_DIR=$data" \
 	"/usr/bin/$app" create-owner --username release_test --password-stdin || fail 'Owner provisioning failed.'
 
 if [ "$init" = yes ]; then
@@ -74,7 +74,7 @@ if [ "$init" = yes ]; then
 	[ "$(systemctl show -p StandardOutput --value "$app")" = journal ] || fail 'Service output is not journal-managed.'
 	[ "$(systemctl show -p StandardError --value "$app")" = journal ] || fail 'Service errors are not journal-managed.'
 else
-	runuser -u "$app" -- env "$upper"_DATA_DIR="$data" "$upper"_ADDR=127.0.0.1:18082 \
+	runuser -u "$app" -- env "${upper}_DATA_DIR=$data" "${upper}_ADDR=127.0.0.1:18082" \
 		"/usr/bin/$app" > "$work/server.log" 2>&1 &
 	daemon_pid=$!
 fi
@@ -97,7 +97,7 @@ if [ "${RELEASE_SANDBOX_TEST:-0}" = 1 ]; then
 	systemctl restart "$app" || fail 'Sandboxed service startup failed.'
 	health
 	journalctl -u "$app" --after-cursor "$cursor" --no-pager -n 40 > "$work/sandbox-journal" || exit 1
-	grep -Eq 'imvault listening|Witmoot is ready' "$work/sandbox-journal" || fail 'Sandboxed server logs did not reach journald.'
+	grep -q 'Witmoot is ready' "$work/sandbox-journal" || fail 'Sandboxed server logs did not reach journald.'
 	systemctl stop "$app" || fail 'Sandboxed service did not stop.'
 	[ "$(systemctl show -p Result --value "$app")" = success ] || fail 'Sandboxed shutdown was not graceful.'
 	rm "/etc/systemd/system/$app.service.d/release-sandbox.conf" || exit 1
@@ -108,7 +108,9 @@ if [ "${RELEASE_SANDBOX_TEST:-0}" = 1 ]; then
 	health
 fi
 
-if [ "$init" = yes ]; then old_pid=$(systemctl show -p MainPID --value "$app"); fi
+if [ "$init" = yes ]; then
+	old_pid=$(systemctl show -p MainPID --value "$app") || exit 1
+fi
 
 # Exercise an actual newer package with a changed upstream conffile.
 dpkg-deb --raw-extract "$package" "$work/upgrade" || exit 1
@@ -117,7 +119,7 @@ sed -i "s/^Version:.*/Version: $version+upgrade-test/" "$work/upgrade/DEBIAN/con
 printf '\n# New upstream configuration default\n' >> "$work/upgrade$config" || exit 1
 (
 	cd "$work/upgrade" || exit 1
-	find etc usr -type f -exec md5sum '{}' + > DEBIAN/md5sums
+	find etc usr -type f -exec md5sum '{}' + > DEBIAN/md5sums || exit 1
 ) || exit 1
 dpkg-deb --root-owner-group --build "$work/upgrade" "$work/upgrade.deb" || exit 1
 dpkg --force-confdef --force-confold -i "$work/upgrade.deb" || fail 'Package upgrade failed.'
