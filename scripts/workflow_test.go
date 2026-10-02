@@ -44,3 +44,21 @@ func TestWorkflowCommandsCheckTheirStatus(t *testing.T) {
 		}
 	}
 }
+
+// make check validates the release configuration, so GoReleaser is installed
+// first: building it from source needs a newer Go than the pinned toolchain.
+func TestWorkflowInstallsGoReleaserBeforeTheChecks(t *testing.T) {
+	workflow, err := os.ReadFile("../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(workflow)
+	install := strings.Index(text, "uses: goreleaser/goreleaser-action@")
+	checks := strings.Index(text, "make check || exit 1")
+	if install < 0 || checks < 0 || install > checks {
+		t.Fatalf("GoReleaser is installed at %d, after make check at %d", install, checks)
+	}
+	if !strings.Contains(text[install:checks], "install-only: true") {
+		t.Fatal("the GoReleaser step before the checks does not only install it")
+	}
+}

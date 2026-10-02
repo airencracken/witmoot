@@ -374,7 +374,7 @@ becomes a still PNG, and an owner can remove any member's avatar.
 
 ```bash
 make help    # available commands and installation options
-make check   # formatting, JavaScript tests (Node required), vet, and race tests
+make check   # formatting, JavaScript tests (Node required), vet, race tests, and release config
 make test-mutations # deliberate defects in community controls (Python 3 required)
 make build   # standalone binary; no cgo required
 ```

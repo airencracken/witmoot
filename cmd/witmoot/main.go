@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -21,6 +22,22 @@ import (
 	"witmoot/internal/forum"
 	"witmoot/internal/mail"
 )
+
+// version is set at build time with -ldflags "-X main.version=...", which the
+// Makefile and the release configuration both do.
+var version = ""
+
+// buildVersion reports what this binary is: the stamped version, else the
+// module version `go install` records, else "devel".
+func buildVersion() string {
+	if version != "" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return "devel"
+}
 
 func main() {
 	if handled, status, err := reexecProvisioningAsService(os.Args[1:]); handled {
@@ -76,7 +93,10 @@ func runServer() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	done := make(chan error, 1)
-	go func() { slog.Info("Witmoot is ready", "address", server.Addr); done <- server.ListenAndServe() }()
+	go func() {
+		slog.Info("Witmoot is ready", "version", buildVersion(), "address", server.Addr)
+		done <- server.ListenAndServe()
+	}()
 	select {
 	case err := <-done:
 		if errors.Is(err, http.ErrServerClosed) {

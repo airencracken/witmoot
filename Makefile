@@ -1,5 +1,8 @@
 PREFIX ?= /usr/local
-GORELEASER ?= goreleaser
+# Release CI pins GoReleaser v2.18.2; without a local install, run that release.
+GORELEASER ?= $(or $(shell command -v goreleaser 2>/dev/null),go run github.com/goreleaser/goreleaser/v2@v2.18.2)
+# Builds report this version at startup; release builds use the tag.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 DESTDIR ?=
 SYSCONFDIR ?= /etc
 UNITDIR ?= $(SYSCONFDIR)/systemd/system
@@ -42,7 +45,7 @@ test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 test-mutations: ## Verify community regressions reject deliberate defects (needs Python 3)
 	python3 scripts/test-community-mutations.py
 
-check: test-js ## Run JavaScript tests, vet, race tests, and formatting checks
+check: test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...
 	go test -race -count=1 ./...
 	@test -z "$$(gofmt -l cmd internal contrib scripts)" || { echo 'Run gofmt on Go sources'; exit 1; }
@@ -52,16 +55,16 @@ fmt: ## Format Go sources
 
 build: ## Build the server into bin/witmoot
 	mkdir -p bin
-	CGO_ENABLED=0 go build -buildvcs=false -trimpath -o bin/witmoot ./cmd/witmoot
+	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-X main.version=$(VERSION)" -o bin/witmoot ./cmd/witmoot
 
 clean: ## Remove generated binaries
 	rm -rf bin
 
 release-check: ## Validate the GoReleaser configuration
-	"$(GORELEASER)" check
+	$(GORELEASER) check
 
 release-snapshot: release-check ## Build local archives and Debian packages without publishing
-	"$(GORELEASER)" release --snapshot --clean --skip=publish
+	$(GORELEASER) release --snapshot --clean --skip=publish
 
 # Service targets install configuration only. Combine with "install" for the binary.
 install: build ## Install the binary and documentation

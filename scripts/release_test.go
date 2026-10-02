@@ -182,3 +182,22 @@ func remove(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 }
+
+// Release builds stamp the version. A template inside a YAML flow list is a
+// syntax error unless quoted, which broke a sibling project's release, so the
+// stamp is a quoted string in a block list and no flow list holds a template.
+func TestReleaseBuildsStampTheVersion(t *testing.T) {
+	config, err := os.ReadFile("../.goreleaser.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(config), "    ldflags:\n      - \"-s -w -X main.version={{ .Version }}\"\n") {
+		t.Fatal("release builds do not stamp main.version from a quoted block-list entry")
+	}
+	flow := regexp.MustCompile(`:\s*\[[^\]]*\{\{`)
+	for i, line := range strings.Split(string(config), "\n") {
+		if flow.MatchString(line) {
+			t.Errorf(".goreleaser.yaml line %d puts a template in a flow list: %s", i+1, line)
+		}
+	}
+}
