@@ -62,3 +62,37 @@ func TestWorkflowInstallsGoReleaserBeforeTheChecks(t *testing.T) {
 		t.Fatal("the GoReleaser step before the checks does not only install it")
 	}
 }
+
+// The module, the container build, CI, and the documentation agree on the Go
+// release, so the image is not built with a different Go than CI tests.
+func TestGoVersionIsConsistent(t *testing.T) {
+	read := func(path string) string {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	find := func(name, text, pattern string) string {
+		t.Helper()
+		match := regexp.MustCompile(pattern).FindStringSubmatch(text)
+		if match == nil {
+			t.Fatalf("%s does not name a Go version matching %s", name, pattern)
+		}
+		return match[1]
+	}
+	module := read("../go.mod")
+	want := find("go.mod", module, `(?m)^go (1\.\d+)\.\d+$`)
+	for name, got := range map[string]string{
+		"go.mod toolchain": find("go.mod", module, `(?m)^toolchain go(1\.\d+)\.\d+$`),
+		"Dockerfile":       find("Dockerfile", read("../Dockerfile"), `(?m)^FROM golang:(1\.\d+)(?:\.\d+)?-alpine\b`),
+		"release workflow": find("release.yml", read("../.github/workflows/release.yml"), `go-version: "(1\.\d+)\.x"`),
+		"README":           find("README.md", read("../README.md"), `Requires Go (1\.\d+) or later`),
+		"deployment guide": find("docs/deployment.md", read("../docs/deployment.md"), `Go (1\.\d+) or later`),
+	} {
+		if got != want {
+			t.Errorf("%s uses Go %s, but go.mod requires Go %s", name, got, want)
+		}
+	}
+}
