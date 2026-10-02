@@ -67,7 +67,7 @@
 		{{if .ResetEmailed}}<p>It was emailed to {{.ResetFor}}.</p>{{end}}
 		<label for="reset-link">Link for {{.ResetFor}}</label>
 		<input id="reset-link" type="text" readonly value="{{.ResetLink}}">
-		<p><a href="{{.ResetLink}}">Reset link</a> · It works once and expires in 24 hours. Copy it now; it cannot be shown again.</p>
+		<p><a href="{{.ResetLink}}">Reset link</a> · It works once and expires in {{resetExpiry}}. Copy it now; it cannot be shown again.</p>
 	</div>
 	{{end}}
 	{{range .Members}}<article class="invitation-record">
@@ -76,12 +76,12 @@
 		<p class="muted">{{if .Email}}{{.Email}}{{else}}No email address on file{{end}}{{if .Pending}} · reset link waiting{{end}}</p>
 		{{if not .Suspended}}<form action="/members/{{.ID}}/reset" method="post">
 			<input type="hidden" name="csrf" value="{{$.CSRF}}">
-			{{if and $.MailEnabled .Email}}<button type="submit" name="email" value="1" class="secondary">Email a reset link</button>{{end}}
-			<button type="submit" class="secondary">Create a reset link</button>
+			{{if and $.MailEnabled .Email}}<button type="submit" name="email" value="1" class="secondary" aria-label="Email a reset link to {{.Username}}">Email a reset link</button>{{end}}
+			<button type="submit" class="secondary" aria-label="Create a reset link for {{.Username}}">Create a reset link</button>
 		</form>{{end}}
-		{{if .Pending}}<form action="/members/{{.ID}}/reset/revoke" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Cancel reset link</button></form>{{end}}
-		{{if .HasAvatar}}<form action="/members/{{.ID}}/avatar/remove" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary">Remove avatar</button></form>{{end}}
-		{{if eq .Role "member"}}<p>{{if .Suspended}}<a href="/members/{{.ID}}/restore">Restore access</a>{{else}}<a href="/members/{{.ID}}/suspend">Suspend member</a>{{end}}</p>{{end}}
+		{{if .Pending}}<form action="/members/{{.ID}}/reset/revoke" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary" aria-label="Cancel reset link for {{.Username}}">Cancel reset link</button></form>{{end}}
+		{{if .HasAvatar}}<form action="/members/{{.ID}}/avatar/remove" method="post"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary" aria-label="Remove avatar for {{.Username}}">Remove avatar</button></form>{{end}}
+		{{if eq .Role "member"}}<p>{{if .Suspended}}<a href="/members/{{.ID}}/restore" aria-label="Restore access for {{.Username}}">Restore access</a>{{else}}<a href="/members/{{.ID}}/suspend" aria-label="Suspend member {{.Username}}">Suspend member</a>{{end}}</p>{{end}}
 	</article>{{else}}<p class="muted">There are no accounts yet.</p>{{end}}
 </section>
 {{end}}
