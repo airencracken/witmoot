@@ -41,7 +41,7 @@ Server configuration uses environment variables:
   WITMOOT_SMTP_PORT       Relay port (default: 587).
   WITMOOT_SMTP_USERNAME   Relay username, if it needs one.
   WITMOOT_SMTP_PASSWORD   Relay password, if it needs one.
-  WITMOOT_SMTP_FROM       From address, for example Witmoot <no-reply@example.org>.
+  WITMOOT_SMTP_FROM       From address (default: no-reply@ the WITMOOT_BASE_URL domain).
   WITMOOT_SMTP_TLS        starttls (default), implicit, or none.
   SSL_CERT_FILE           Optional PEM bundle of trusted CAs, also used in the sandbox.
 

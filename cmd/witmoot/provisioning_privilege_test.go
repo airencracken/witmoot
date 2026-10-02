@@ -5,9 +5,10 @@ import (
 	"testing"
 )
 
-func TestWithDataDirEnvironmentReplacesOnlyTheConfiguredKey(t *testing.T) {
-	got := withDataDirEnvironment([]string{"PATH=/bin", "WITMOOT_DATA_DIR=/wrong", "HOME=/root"}, "WITMOOT_DATA_DIR", "/var/lib/witmoot")
-	want := []string{"PATH=/bin", "HOME=/root", "WITMOOT_DATA_DIR=/var/lib/witmoot"}
+func TestWithEnvironmentReplacesOnlyTheConfiguredKeys(t *testing.T) {
+	got := withEnvironment([]string{"PATH=/bin", "WITMOOT_DATA_DIR=/wrong", "WITMOOT_DATA_DIR_EXTRA=kept", "HOME=/root", "WITMOOT_BASE_URL=https://old.example.org"},
+		map[string]string{"WITMOOT_DATA_DIR": "/var/lib/witmoot", "WITMOOT_BASE_URL": "https://board.example.org", "WITMOOT_SMTP_HOST": ""})
+	want := []string{"PATH=/bin", "WITMOOT_DATA_DIR_EXTRA=kept", "HOME=/root", "WITMOOT_BASE_URL=https://board.example.org", "WITMOOT_DATA_DIR=/var/lib/witmoot"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("environment = %#v, want %#v", got, want)
 	}

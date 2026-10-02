@@ -223,3 +223,23 @@ func TestListUsersCommand(t *testing.T) {
 		}
 	}
 }
+
+func TestResetLinkReadsTheBaseURLFromTheServiceConfiguration(t *testing.T) {
+	t.Setenv("WITMOOT_DATA_DIR", "")
+	t.Setenv("WITMOOT_BASE_URL", "")
+	data := filepath.Join(t.TempDir(), "service data")
+	provisionOwner(t, data, "alex", "a long test password")
+	config := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.confd"), "WITMOOT_DATA_DIR=\""+data+"\"\nWITMOOT_BASE_URL=https://board.example.org/\n")
+	paths := provisioningConfigPaths{openRCConfig: config, openRCInstalled: true, openRCActive: true, serviceDefault: "/var/lib/witmoot"}
+	var output bytes.Buffer
+	if err := resetLinkWithConfigPaths([]string{"--username", "alex"}, &output, paths); err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`\n  https://board\.example\.org/reset/[a-f0-9]{64}\n`).MatchString(output.String()) || strings.Contains(output.String(), "Set WITMOOT_BASE_URL") {
+		t.Fatalf("reset link ignored the service's base URL: %s", &output)
+	}
+	writeTestFile(t, config, "WITMOOT_DATA_DIR=\""+data+"\"\nWITMOOT_BASE_URL=https://board.example.org/path?x=1\n")
+	if err := resetLinkWithConfigPaths([]string{"--username", "alex"}, &bytes.Buffer{}, paths); err == nil || !strings.Contains(err.Error(), "WITMOOT_BASE_URL") {
+		t.Fatalf("invalid base URL accepted: %v", err)
+	}
+}
