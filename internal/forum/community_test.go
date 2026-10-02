@@ -52,7 +52,8 @@ func TestCommunityRoutesRequireOwnerAndCSRF(t *testing.T) {
 			requireStatus(t, outsider.post(path, nil), 303)
 			requireStatus(t, owner.request("POST", path, url.Values{"revision": {"0"}}, nil), 403)
 			requireStatus(t, owner.request("POST", path, url.Values{"csrf": {owner.cookies[a.cookieName("csrf")].Value}}, map[string]string{"Origin": "https://other.example", "Sec-Fetch-Site": "cross-site"}), 403)
-			requireStatus(t, owner.request("PUT", path, nil, nil), 405)
+			requireStatus(t, owner.request("PUT", path, nil, nil), 403)
+			requireStatus(t, owner.request("PUT", path, url.Values{"csrf": {owner.cookies[a.cookieName("csrf")].Value}}, nil), 405)
 		})
 	}
 	for _, c := range []*testClient{member, outsider} {

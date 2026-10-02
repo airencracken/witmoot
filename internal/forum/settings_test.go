@@ -140,13 +140,7 @@ func postBrandingMultipart(t *testing.T, client *testClient, fields url.Values, 
 	if cookie := client.cookies[client.app.cookieName("csrf")]; cookie != nil {
 		fields.Set("csrf", cookie.Value)
 	}
-	for key, values := range fields {
-		for _, value := range values {
-			if err := form.WriteField(key, value); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
+	writeFields(t, form, fields)
 	for key, content := range files {
 		part, err := form.CreateFormFile(key, key+".png")
 		if err != nil {

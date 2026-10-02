@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -314,8 +316,8 @@ func TestChangedRoutesExistWithTheirContracts(t *testing.T) {
 		{"POST", "/login", false, "PUT"},
 	} {
 		w := owner.request(route.wrongMethod, route.path, nil, nil)
-		if route.wrongMethod == "POST" {
-			w = owner.post(route.path, nil)
+		if isMutating(route.wrongMethod) {
+			w = owner.request(route.wrongMethod, route.path, nil, map[string]string{"X-CSRF-Token": owner.cookies[app.cookieName("csrf")].Value})
 		}
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("%s %s: %d, want 405", route.wrongMethod, route.path, w.Code)
@@ -440,6 +442,23 @@ func TestMissingRecordsAreNamedByTheirRoute(t *testing.T) {
 }
 
 // closeTest closes a test resource and reports a failure.
+// writeFields writes form fields the way the templates order them: the CSRF
+// token first, where the middleware looks for it, then the rest by name.
+func writeFields(t testing.TB, w *multipart.Writer, fields url.Values) {
+	t.Helper()
+	keys := slices.Sorted(maps.Keys(fields))
+	if i := slices.Index(keys, "csrf"); i > 0 {
+		keys = append([]string{"csrf"}, slices.Delete(keys, i, i+1)...)
+	}
+	for _, key := range keys {
+		for _, value := range fields[key] {
+			if err := w.WriteField(key, value); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
 func closeTest(t testing.TB, c io.Closer) {
 	t.Helper()
 	if err := c.Close(); err != nil {

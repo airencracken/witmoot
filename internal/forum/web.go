@@ -298,23 +298,20 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			return
 		}
 		state := requestState{Mode: mode}
-		if c, err := r.Cookie(a.cookieName("csrf")); err == nil && validToken(c.Value) {
-			state.CSRF = c.Value
-		}
-		if state.CSRF == "" {
-			state.CSRF = randomToken()
-			a.cookie(w, "csrf", state.CSRF, 86400)
-		}
+		session := ""
 		if c, err := r.Cookie(a.cookieName("session")); err == nil && validToken(c.Value) {
 			user, err := a.store.Session(r.Context(), tokenHash(c.Value))
 			if err != nil {
 				a.serverError(w, r, err)
 				return
 			}
-			state.User = user
+			if state.User = user; user != nil {
+				session = c.Value
+			}
 		}
+		state.CSRF = a.expectedCSRF(w, r, session)
 		r = r.WithContext(context.WithValue(r.Context(), stateKey{}, state))
-		if r.Method == http.MethodPost {
+		if isMutating(r.Method) {
 			// URL-encoded Unicode can use twelve bytes per character on the wire.
 			limit := int64(256 << 10)
 			contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
@@ -326,9 +323,18 @@ func (a *App) middleware(next http.Handler) http.Handler {
 				limit = maxImages*imvault.MaxImageBytes + (1 << 20)
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, limit)
-			var formErr error
+			provided, err := providedCSRF(r, multipart)
+			if err != nil {
+				a.fail(w, r, http.StatusBadRequest, "That form could not be read. Please try again.")
+				return
+			}
+			if subtle.ConstantTimeCompare([]byte(provided), []byte(state.CSRF)) != 1 {
+				a.fail(w, r, http.StatusForbidden, "This form has expired. Reload the page and try again.")
+				return
+			}
+			// Only a request that carries its token gets its upload read.
 			if multipart {
-				formErr = r.ParseMultipartForm(8 << 20)
+				formErr := r.ParseMultipartForm(8 << 20)
 				if r.MultipartForm != nil {
 					defer func() {
 						if err := r.MultipartForm.RemoveAll(); err != nil {
@@ -336,16 +342,10 @@ func (a *App) middleware(next http.Handler) http.Handler {
 						}
 					}()
 				}
-			} else {
-				formErr = r.ParseForm()
-			}
-			if formErr != nil {
-				a.fail(w, r, http.StatusBadRequest, "That form could not be read. Please try again.")
-				return
-			}
-			if subtle.ConstantTimeCompare([]byte(r.PostForm.Get("csrf")), []byte(state.CSRF)) != 1 {
-				a.fail(w, r, http.StatusForbidden, "This form has expired. Reload the page and try again.")
-				return
+				if formErr != nil {
+					a.fail(w, r, http.StatusBadRequest, "That form could not be read. Please try again.")
+					return
+				}
 			}
 		}
 		next.ServeHTTP(w, r)
