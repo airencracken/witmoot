@@ -6,6 +6,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,34 +16,71 @@ import (
 )
 
 // Base exposes runtime libraries, private temporary space and minimal devices.
-// Networking is retained only for servers. Children processing uploads get a
-// separate network namespace and die if their server disappears.
-func Base(network bool) ([]string, error) {
+// The server keeps the host network for HTTP, mail and image hosts.
+func Base() ([]string, error) {
 	args := []string{"--unshare-user", "--unshare-pid", "--unshare-ipc", "--unshare-uts", "--cap-drop", "ALL", "--new-session"}
-	if !network {
-		args = append(args, "--unshare-net", "--die-with-parent")
+	mounts, err := runtimeMounts([]string{"/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc/ld.so.cache", "/etc/alternatives"})
+	if err != nil {
+		return nil, err
 	}
-	for _, path := range []string{"/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc/ld.so.cache", "/etc/alternatives"} {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-		args = append(args, "--ro-bind", path, path)
-	}
+	args = append(args, mounts...)
 	args = append(args, "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--dir", "/app", "--dir", "/run")
 	return args, nil
 }
 
-// Check verifies that the requested namespaces actually work. The caller must
+// runtimeMounts binds each existing path read-only. On merged-/usr systems
+// /bin, /lib and similar paths are symlinks into /usr; they are recreated as
+// the same symlinks instead of separate mounts, provided they resolve inside a
+// path bound earlier. Anything else is bound as before.
+func runtimeMounts(paths []string) ([]string, error) {
+	var args, bound []string
+	for _, path := range paths {
+		real, err := filepath.EvalSymlinks(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 && within(real, bound) {
+			target, err := os.Readlink(path)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, "--symlink", target, path)
+			continue
+		}
+		args = append(args, "--ro-bind", path, path)
+		bound = append(bound, real)
+	}
+	return args, nil
+}
+
+func within(path string, roots []string) bool {
+	for _, root := range roots {
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// Check verifies that the requested namespaces actually work by running the
+// given command, normally the bound server binary, inside them. The caller must
 // treat an error as fatal, including when kernel or service policy forbids them.
-func Check(ctx context.Context, binary string, args []string, env []string) error {
+func Check(ctx context.Context, binary string, args []string, env []string, command ...string) error {
+	if len(command) == 0 {
+		return errors.New("sandbox check needs a command to run")
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, append(append([]string{}, args...), "--", "/usr/bin/true")...)
+	cmd := exec.CommandContext(ctx, binary, append(append(append([]string{}, args...), "--"), command...)...)
 	cmd.Env = env
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("Bubblewrap sandbox unavailable: %w: %s", err, strings.TrimSpace(string(output)))
+		return fmt.Errorf("bubblewrap sandbox unavailable: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 	return nil
 }
@@ -73,16 +111,15 @@ func Binary(path string) (string, error) {
 	return binary, nil
 }
 
-// Service builds a server policy. Extra mounts are explicit operator choices;
-// the default grants write access only to the existing data directory.
+// Service builds a server policy. The only host directory it can write is the
+// existing data directory.
 type Service struct {
 	Prefix, DataDir, Executable string
-	WriteDirs, ReadFiles        []string
 	Env                         []string
 }
 
 func (s Service) Policy() ([]string, []string, error) {
-	args, err := Base(true)
+	args, err := Base()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -90,30 +127,21 @@ func (s Service) Policy() ([]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, dir := range append([]string{data}, s.WriteDirs...) {
-		path, err := writableDir(dir)
-		if err != nil {
-			return nil, nil, err
-		}
-		args = append(args, "--bind", path, path)
-	}
-	for _, path := range append(systemFiles(), s.ReadFiles...) {
-		if !filepath.IsAbs(path) || strings.ContainsAny(path, "\x00\r\n") {
-			return nil, nil, fmt.Errorf("sandbox read file must be an absolute path: %q", path)
-		}
-		info, err := os.Stat(path)
-		if err != nil || !info.Mode().IsRegular() {
-			return nil, nil, fmt.Errorf("sandbox read file must exist and be regular: %q", path)
-		}
+	args = append(args, "--bind", data, data)
+	for _, path := range systemFiles() {
 		args = append(args, "--ro-bind", path, path)
 	}
-	// The CA directory is needed by SMTP, OIDC, S3 and Imvault clients.
+	// The CA directory is needed by the SMTP and Imvault clients.
 	if _, err := os.Stat("/etc/ssl/certs"); err == nil {
 		args = append(args, "--ro-bind", "/etc/ssl/certs", "/etc/ssl/certs")
 	}
 	args = append(args, "--ro-bind", s.Executable, "/app/server", "--chdir", data)
 	env := RuntimeEnv()
-	if bundle := certificateBundle(); bundle != "" {
+	bundle, err := certificateBundle(s.Env)
+	if err != nil {
+		return nil, nil, err
+	}
+	if bundle != "" {
 		args = append(args, "--ro-bind", bundle, "/app/ca-bundle.crt")
 		env = append(env, "SSL_CERT_FILE=/app/ca-bundle.crt")
 	}
@@ -159,15 +187,33 @@ func writableDir(path string) (string, error) {
 	return path, nil
 }
 
-// Binding a bundle to a stable name also handles distributions whose CA paths
-// are symlinks into directories which are otherwise hidden by the sandbox.
-func certificateBundle() string {
-	for _, path := range []string{"/etc/ssl/certs/ca-certificates.crt", "/etc/ssl/cert.pem", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/ca-bundle.pem"} {
-		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
-			return path
+// certificateBundle picks the CA bundle the server trusts. An SSL_CERT_FILE in
+// the service environment names a custom bundle, for example one including a
+// private CA for the mail relay; otherwise the system bundle is used. Binding
+// it to a stable name also handles distributions whose CA paths are symlinks
+// into directories which are otherwise hidden by the sandbox.
+func certificateBundle(environment []string) (string, error) {
+	custom := ""
+	for _, entry := range environment {
+		if value, ok := strings.CutPrefix(entry, "SSL_CERT_FILE="); ok {
+			custom = value
 		}
 	}
-	return ""
+	if custom != "" {
+		if !filepath.IsAbs(custom) || strings.ContainsAny(custom, "\x00\r\n") {
+			return "", fmt.Errorf("SSL_CERT_FILE must be an absolute path: %q", custom)
+		}
+		if info, err := os.Stat(custom); err != nil || !info.Mode().IsRegular() {
+			return "", fmt.Errorf("SSL_CERT_FILE must name an existing certificate file: %q", custom)
+		}
+		return custom, nil
+	}
+	for _, path := range []string{"/etc/ssl/certs/ca-certificates.crt", "/etc/ssl/cert.pem", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/ca-bundle.pem"} {
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return path, nil
+		}
+	}
+	return "", nil
 }
 
 func validateWriteMount(name string) error {

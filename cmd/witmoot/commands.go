@@ -43,6 +43,7 @@ Server configuration uses environment variables:
   WITMOOT_SMTP_PASSWORD   Relay password, if it needs one.
   WITMOOT_SMTP_FROM       From address, for example Witmoot <no-reply@example.org>.
   WITMOOT_SMTP_TLS        starttls (default), implicit, or none.
+  SSL_CERT_FILE           Optional PEM bundle of trusted CAs, also used in the sandbox.
 
 Native services and proxy examples use 127.0.0.1:8082 by default.
 Service settings: /etc/conf.d/witmoot (OpenRC), /etc/witmoot/witmoot.env (systemd).
