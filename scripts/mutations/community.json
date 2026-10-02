@@ -1,0 +1,218 @@
+[
+    {
+        "name": "active account guard",
+        "file": "internal/forum/community_store.go",
+        "before": "if suspended {",
+        "after": "if false && suspended {",
+        "package": "./internal/forum",
+        "run": "^TestSuspensionRevokesAccessAndRestorePreservesContributions$"
+    },
+    {
+        "name": "stale reader guard",
+        "file": "internal/forum/access.go",
+        "before": "WHERE id = r.id AND suspended = 1",
+        "after": "WHERE id = r.id AND suspended = 1 AND 0",
+        "package": "./internal/forum",
+        "run": "^TestSuspensionRevokesAccessAndRestorePreservesContributions$"
+    },
+    {
+        "name": "session revocation",
+        "file": "internal/forum/community_store.go",
+        "before": "DELETE FROM sessions WHERE user_id = ?",
+        "after": "DELETE FROM sessions WHERE user_id = ? AND 0",
+        "package": "./internal/forum",
+        "run": "^TestSuspensionRevokesAccessAndRestorePreservesContributions$"
+    },
+    {
+        "name": "reset revocation",
+        "file": "internal/forum/community_store.go",
+        "before": "DELETE FROM auth_tokens WHERE user_id = ?",
+        "after": "DELETE FROM auth_tokens WHERE user_id = ? AND 0",
+        "package": "./internal/forum",
+        "run": "^TestSuspensionRevokesAccessAndRestorePreservesContributions$"
+    },
+    {
+        "name": "invitation revocation",
+        "file": "internal/forum/community_store.go",
+        "before": "WHERE created_by = ?",
+        "after": "WHERE created_by = ? AND 0",
+        "package": "./internal/forum",
+        "run": "^TestSuspensionRevokesAccessAndRestorePreservesContributions$"
+    },
+    {
+        "name": "owner authorization",
+        "file": "internal/forum/board_lifecycle.go",
+        "before": "if role != \"owner\" {",
+        "after": "if false && role != \"owner\" {",
+        "package": "./internal/forum",
+        "run": "^TestMemberActionsRequireOwnerConfirmationAndCurrentRevision$"
+    },
+    {
+        "name": "member confirmation",
+        "file": "internal/forum/community_store.go",
+        "before": "if confirmation != name {",
+        "after": "if false && confirmation != name {",
+        "package": "./internal/forum",
+        "run": "^TestMemberActionsRequireOwnerConfirmationAndCurrentRevision$"
+    },
+    {
+        "name": "message revision",
+        "file": "internal/forum/community_store.go",
+        "before": "if p.Revision != revision || replaceTitle && p.Number != 1 {",
+        "after": "if replaceTitle && p.Number != 1 {",
+        "package": "./internal/forum",
+        "run": "^TestRemovalConfirmationCannotDeleteNewEditsOrReplaceReplyTitle$"
+    },
+    {
+        "name": "attachment erasure",
+        "file": "internal/forum/community_store.go",
+        "before": "DELETE FROM attachments WHERE post_id = ?",
+        "after": "DELETE FROM attachments WHERE post_id = ? AND 0",
+        "package": "./internal/forum",
+        "run": "^TestRemovalErasesTextImagesAndSearchButKeepsReplyContext$"
+    },
+    {
+        "name": "invite permission revocation",
+        "file": "internal/forum/invitation_store.go",
+        "before": "if !enabled {",
+        "after": "if false && !enabled {",
+        "package": "./internal/forum",
+        "run": "^TestRemovingInvitePermissionRevokesOpenInvitations$"
+    },
+    {
+        "name": "invite permission atomicity",
+        "file": "internal/forum/invitation_store.go",
+        "before": "\tif !enabled {\n\t\tnow := time.Now().Unix()",
+        "after": "\tif err := tx.Commit(); err != nil {\n\t\treturn err\n\t}\n\tif !enabled {\n\t\tnow := time.Now().Unix()",
+        "package": "./internal/forum",
+        "run": "^TestInvitePermissionRemovalIsAtomic$"
+    },
+    {
+        "name": "inviter permission at registration",
+        "file": "internal/forum/store.go",
+        "before": "AND u.suspended = 0 AND (u.role = 'owner' OR u.can_invite = 1)",
+        "after": "AND u.suspended = 0",
+        "package": "./internal/forum",
+        "run": "^TestRegisterRequiresInviterPermission$"
+    },
+    {
+        "name": "IPv6 network budget",
+        "file": "internal/forum/proxy.go",
+        "before": "return clientip.NetworkKey(a.clients().Client(r))",
+        "after": "return a.clients().Client(r).String()",
+        "package": "./internal/forum",
+        "run": "^(TestIPv6AddressesInOneNetworkShareABudget|TestSignInBudgetCoversTheWholeIPv6Network)$"
+    },
+    {
+        "name": "limiter eviction",
+        "file": "internal/forum/security.go",
+        "before": "for l.order.Len() >= rateClients {\n\t\t\tl.remove(l.order.Front())\n\t\t}",
+        "after": "if l.order.Len() >= rateClients {\n\t\t\treturn false\n\t\t}",
+        "package": "./internal/forum",
+        "run": "^TestFloodedLimiterStillAdmitsNewClients$"
+    },
+    {
+        "name": "successful sign-in refund",
+        "file": "internal/forum/auth.go",
+        "before": "\ta.limiter.refund(a.rateKey(r))\n",
+        "after": "",
+        "package": "./internal/forum",
+        "run": "^TestSuccessfulSignInsDoNotSpendTheBudget$"
+    },
+    {
+        "name": "immediate transactions",
+        "file": "internal/forum/store.go",
+        "before": "q.Add(\"_txlock\", \"immediate\")",
+        "after": "q.Add(\"_txlock\", \"deferred\")",
+        "package": "./internal/forum",
+        "run": "^TestTransactionsTakeTheWriteLockImmediately$"
+    },
+    {
+        "name": "export abort",
+        "file": "internal/forum/export.go",
+        "before": "panic(http.ErrAbortHandler)",
+        "after": "return",
+        "package": "./internal/forum",
+        "run": "^TestFailedExportAbortsInsteadOfEndingCleanly$"
+    },
+    {
+        "name": "export board names",
+        "file": "internal/forum/export_store.go",
+        "before": "CASE WHEN vb.id IS NULL THEN '' ELSE b.name END",
+        "after": "b.name",
+        "package": "./internal/forum",
+        "run": "^TestExportWithholdsNamesTheMemberCanNoLongerRead$"
+    },
+    {
+        "name": "title replacement record",
+        "file": "internal/forum/community_store.go",
+        "before": "TitleReplaced: replaceTitle}",
+        "after": "TitleReplaced: false}",
+        "package": "./internal/forum",
+        "run": "^TestOwnerActivityLinksRemovalsAndRecordsTitlesAndAvatars$"
+    },
+    {
+        "name": "avatar removal record",
+        "file": "internal/forum/community_store.go",
+        "before": "communityEvent{Action: \"remove-avatar\", Subject: name}); err != nil {\n\t\t\treturn err",
+        "after": "communityEvent{Action: \"remove-avatar\", Subject: name}); err != nil {\n\t\t\treturn nil",
+        "package": "./internal/forum",
+        "run": "^TestOwnerAvatarRemovalIsAtomic$"
+    },
+    {
+        "name": "session-bound CSRF",
+        "file": "internal/forum/csrf.go",
+        "before": "\tif session != \"\" {",
+        "after": "\tif false && session != \"\" {",
+        "package": "./internal/forum",
+        "run": "^TestSessionTokensNeverValidateAcrossSessions$"
+    },
+    {
+        "name": "signed-in CSRF session",
+        "file": "internal/forum/web.go",
+        "before": "\t\t\t\tsession = c.Value\n",
+        "after": "",
+        "package": "./internal/forum",
+        "run": "^TestPlantedCSRFCookieIsRefusedWhenSignedIn$"
+    },
+    {
+        "name": "sign-in CSRF binding",
+        "file": "internal/forum/auth.go",
+        "before": "a.cookie(w, \"csrf\", sessionCSRFToken(session), 86400)",
+        "after": "a.cookie(w, \"csrf\", sessionCSRFToken(hash), 86400)",
+        "package": "./internal/forum",
+        "run": "^TestSignedOutFormsKeepDoubleSubmit$"
+    },
+    {
+        "name": "state-changing methods",
+        "file": "internal/forum/web.go",
+        "before": "if isMutating(r.Method) {",
+        "after": "if r.Method == http.MethodPost {",
+        "package": "./internal/forum",
+        "run": "^TestEveryStateChangingMethodNeedsTheToken$"
+    },
+    {
+        "name": "bounded multipart peek",
+        "file": "internal/forum/csrf.go",
+        "before": "io.LimitReader(original, csrfPeekLimit)",
+        "after": "original",
+        "package": "./internal/forum",
+        "run": "^TestMultipartTokenCheckReadsOnlyTheFirstPart$"
+    },
+    {
+        "name": "multipart body restore",
+        "file": "internal/forum/csrf.go",
+        "before": "{io.MultiReader(bytes.NewReader(consumed.Bytes()), original), original}",
+        "after": "{original, original}",
+        "package": "./internal/forum",
+        "run": "^TestMultipartFormsCarryTheTokenInTheirFirstPart$"
+    },
+    {
+        "name": "removed message schema",
+        "file": "internal/forum/migrations/013_community_care.sql",
+        "before": "AND (removed = 0 OR body = 'This message was removed by a site owner.')",
+        "after": "",
+        "package": "./internal/forum",
+        "run": "^TestCommunitySchemaUpgradeAndConstraints$"
+    }
+]

@@ -1,0 +1,45 @@
+[
+    {
+        "name": "nested user namespaces",
+        "file": "cmd/witmoot/sandbox.go",
+        "before": "policy := sandbox.Service{Prefix: \"WITMOOT_\", DataDir: data, Executable: executable, Env: os.Environ()}",
+        "after": "policy := sandbox.Service{Prefix: \"WITMOOT_\", DataDir: data, Executable: executable, Env: os.Environ(), NestedSandbox: true}",
+        "package": "./cmd/witmoot",
+        "run": "^TestSandboxDisablesNestedUserNamespaces$"
+    },
+    {
+        "name": "service environment",
+        "file": "cmd/witmoot/sandbox.go",
+        "before": "Executable: executable, Env: os.Environ()}",
+        "after": "Executable: executable}",
+        "package": "./cmd/witmoot",
+        "run": "^TestSandboxBindsTheCustomCertificateBundle$"
+    },
+    {
+        "name": "check command",
+        "file": "cmd/witmoot/sandbox.go",
+        "before": "environment, \"/app/server\", \"--help\"); err != nil {",
+        "after": "environment, \"/usr/bin/true\"); err != nil {",
+        "package": "./cmd/witmoot",
+        "run": "^TestSandboxCheckRunsTheBoundServer$"
+    },
+    {
+        "name": "fail-open check",
+        "file": "cmd/witmoot/sandbox.go",
+        "before": "if err := sandbox.Check(context.Background(), binary, mounts, environment, \"/app/server\", \"--help\"); err != nil {",
+        "after": "if err := error(nil); err != nil {",
+        "package": "./cmd/witmoot",
+        "run": "^(TestSandboxCheckRunsTheBoundServer|TestRealSandboxedServerLifecycle)$",
+        "env": {
+            "COMFYWARE_SANDBOX_TEST": "1"
+        }
+    },
+    {
+        "name": "setuid launcher check",
+        "file": "cmd/witmoot/sandbox.go",
+        "before": "binary, err := sandbox.Binary(*bwrap)",
+        "after": "binary, err := *bwrap, error(nil)",
+        "package": "./cmd/witmoot",
+        "run": "^TestSandboxRejectsSetuidBubblewrap$"
+    }
+]

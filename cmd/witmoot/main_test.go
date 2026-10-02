@@ -139,3 +139,29 @@ func TestServerLeavesBodyDeadlinesToTheApplication(t *testing.T) {
 		t.Fatalf("slow header and idle limits are missing: %+v", server)
 	}
 }
+
+// A relay comfylib's sender cannot use stops the server and the admin view
+// alike, rather than failing on the first reset link.
+func TestUnusableRelayStopsStartupAndTheAdminView(t *testing.T) {
+	args := os.Args
+	os.Args = []string{"witmoot"}
+	t.Cleanup(func() { os.Args = args })
+	for _, key := range instanceSettings {
+		t.Setenv(key, "")
+	}
+	t.Setenv("WITMOOT_DATA_DIR", t.TempDir())
+	t.Setenv("WITMOOT_ADDR", "invalid-listen-address")
+	t.Setenv("WITMOOT_SECURE_COOKIES", "false")
+	t.Setenv("WITMOOT_IMVAULT_URL", "")
+	t.Setenv("WITMOOT_TRUSTED_PROXIES", "")
+	t.Setenv("WITMOOT_SMTP_FROM", "Board <no-reply@example.org>")
+	for _, host := range []string{"relay example.org", "relay.example.org/submit", "relay.example.org\r\nRCPT TO:<victim@example.org>"} {
+		t.Setenv("WITMOOT_SMTP_HOST", host)
+		if err := run(); err == nil || !strings.Contains(err.Error(), "relay host") {
+			t.Errorf("server started with relay host %q: %v", host, err)
+		}
+		if _, err := adminOptions(testServicePaths()); err == nil || !strings.Contains(err.Error(), "relay host") {
+			t.Errorf("admin view accepted relay host %q: %v", host, err)
+		}
+	}
+}
