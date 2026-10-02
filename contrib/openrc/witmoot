@@ -1,4 +1,6 @@
 #!/sbin/openrc-run
+# openrc-run reads the service variables below, and its shells provide local.
+# shellcheck shell=sh disable=SC2034,SC3043
 
 description="A little bulletin board for your people"
 
