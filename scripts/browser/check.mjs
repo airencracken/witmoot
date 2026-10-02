@@ -111,7 +111,7 @@ async function flow(javaScriptEnabled) {
 	await page.goto(origin + '/invites');
 	const invitation = page.locator('.invitation-record').filter({ has: page.getByRole('heading', { name: inviteLabel, exact: true }) });
 	assert.match(await invitation.innerText(), /1 of 2 used/);
-	await invitation.getByRole('button', { name: 'Revoke invitation', exact: true }).click();
+	await invitation.getByRole('button', { name: `Revoke invitation ${inviteLabel}`, exact: true }).click();
 	await page.waitForURL(origin + '/invites?saved=1');
 	assert.match(await invitation.innerText(), /revoked/);
 	const lateGuest = await browser.newContext({ javaScriptEnabled });
