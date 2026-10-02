@@ -28,6 +28,8 @@ MUTATIONS = [
     ("immediate transactions", "internal/forum/store.go", 'q.Add("_txlock", "immediate")', 'q.Add("_txlock", "deferred")', "TestTransactionsTakeTheWriteLockImmediately"),
     ("export abort", "internal/forum/export.go", "panic(http.ErrAbortHandler)", "return", "TestFailedExportAbortsInsteadOfEndingCleanly"),
     ("export board names", "internal/forum/export_store.go", "CASE WHEN vb.id IS NULL THEN '' ELSE b.name END", "b.name", "TestExportWithholdsNamesTheMemberCanNoLongerRead"),
+    ("title replacement record", "internal/forum/community_store.go", "TitleReplaced: replaceTitle}", "TitleReplaced: false}", "TestOwnerActivityLinksRemovalsAndRecordsTitlesAndAvatars"),
+    ("avatar removal record", "internal/forum/community_store.go", 'communityEvent{Action: "remove-avatar", Subject: name}); err != nil {\n\t\t\treturn err', 'communityEvent{Action: "remove-avatar", Subject: name}); err != nil {\n\t\t\treturn nil', "TestOwnerAvatarRemovalIsAtomic"),
     ("removed message schema", "internal/forum/migrations/013_community_care.sql", "AND (removed = 0 OR body = 'This message was removed by a site owner.')", "", "TestCommunitySchemaUpgradeAndConstraints"),
 ]
 

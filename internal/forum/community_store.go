@@ -15,6 +15,8 @@ var (
 	errMemberConfirmation = errors.New("type the member's username exactly to confirm")
 )
 
+// removedMessage replaces the text of a removed message. Migration 013 checks
+// for this exact text, so it cannot change without a migration.
 const removedMessage = "This message was removed by a site owner."
 
 func requireActive(ctx context.Context, q rowQuerier, userID int64) error {
@@ -68,7 +70,7 @@ func (s *Store) ChangeMember(ctx context.Context, ownerID, memberID, revision in
 			}
 		}
 	}
-	if err := recordCommunityEvent(ctx, tx, ownerID, action, name); err != nil {
+	if err := recordCommunityEvent(ctx, tx, ownerID, communityEvent{Action: action, Subject: name}); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -103,35 +105,85 @@ func (s *Store) RemovePost(ctx context.Context, ownerID, postID, revision int64,
 			return Post{}, err
 		}
 	}
-	if err := recordCommunityEvent(ctx, tx, ownerID, "remove-message", fmt.Sprintf("Message %d in conversation %d", postID, p.TopicID)); err != nil {
+	event := communityEvent{Action: "remove-message", Subject: fmt.Sprintf("message %d in conversation %d", postID, p.TopicID), PostID: postID, TitleReplaced: replaceTitle}
+	if err := recordCommunityEvent(ctx, tx, ownerID, event); err != nil {
 		return Post{}, err
 	}
 	p.Body, p.Removed, p.Revision = removedMessage, true, p.Revision+1
 	return p, tx.Commit()
 }
 
-func recordCommunityEvent(ctx context.Context, tx *sql.Tx, ownerID int64, action, subject string) error {
-	_, err := tx.ExecContext(ctx, `INSERT INTO community_events(actor_id, actor_name, action, subject, created_at)
-		SELECT id, username, ?, ?, ? FROM users WHERE id = ?`, action, subject, time.Now().Unix(), ownerID)
+// RemoveMemberAvatar clears an account's avatar for moderation and records it
+// in the owner activity log. It reports sql.ErrNoRows for an unknown account.
+func (s *Store) RemoveMemberAvatar(ctx context.Context, ownerID, memberID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer rollback(tx)
+	if err := requireOwner(ctx, tx, ownerID); err != nil {
+		return err
+	}
+	var name string
+	if err := tx.QueryRowContext(ctx, "SELECT username FROM users WHERE id = ?", memberID).Scan(&name); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, "DELETE FROM user_avatars WHERE user_id = ?", memberID)
+	if err != nil {
+		return err
+	}
+	if removed, err := result.RowsAffected(); err != nil {
+		return err
+	} else if removed > 0 {
+		if err := recordCommunityEvent(ctx, tx, ownerID, communityEvent{Action: "remove-avatar", Subject: name}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// communityEvent is one entry for the owner activity log.
+type communityEvent struct {
+	Action, Subject string
+	PostID          int64
+	TitleReplaced   bool
+}
+
+func recordCommunityEvent(ctx context.Context, tx *sql.Tx, ownerID int64, event communityEvent) error {
+	var postID any
+	if event.PostID != 0 {
+		postID = event.PostID
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO community_events(actor_id, actor_name, action, subject, post_id, title_replaced, created_at)
+		SELECT id, username, ?, ?, ?, ?, ? FROM users WHERE id = ?`, event.Action, event.Subject, postID, event.TitleReplaced, time.Now().Unix(), ownerID)
 	return err
 }
 
+// CommunityEvent is an owner action as the activity log shows it. URL links to
+// a removed message while it still exists.
 type CommunityEvent struct {
-	Actor, Action, Subject string
-	CreatedAt              int64
+	Actor, Action, Subject, URL string
+	TitleReplaced               bool
+	CreatedAt                   int64
 }
 
 func (s *Store) CommunityEvents(ctx context.Context) ([]CommunityEvent, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT actor_name, action, subject, created_at FROM community_events ORDER BY id DESC LIMIT 100")
+	rows, err := s.db.QueryContext(ctx, `SELECT e.actor_name, e.action, e.subject, e.title_replaced, e.created_at, coalesce(p.id, 0), coalesce(p.topic_id, 0),
+		coalesce((SELECT count(*) FROM posts earlier WHERE earlier.topic_id = p.topic_id AND earlier.id <= p.id), 0)
+		FROM community_events e LEFT JOIN posts p ON p.id = e.post_id ORDER BY e.id DESC LIMIT 100`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var events []CommunityEvent
 	for rows.Next() {
 		var e CommunityEvent
-		if err := rows.Scan(&e.Actor, &e.Action, &e.Subject, &e.CreatedAt); err != nil {
+		var post Post
+		if err := rows.Scan(&e.Actor, &e.Action, &e.Subject, &e.TitleReplaced, &e.CreatedAt, &post.ID, &post.TopicID, &post.Number); err != nil {
 			return nil, err
+		}
+		if post.ID != 0 {
+			e.URL = post.URL()
 		}
 		events = append(events, e)
 	}
@@ -143,7 +195,7 @@ func (s *Store) Owners(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var names []string
 	for rows.Next() {
 		var name string
