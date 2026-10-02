@@ -76,7 +76,7 @@ func (a *App) memberAction(action string) http.HandlerFunc {
 }
 
 func (a *App) removalPage(w http.ResponseWriter, r *http.Request) (Page, bool) {
-	p, err := readPost(r.Context(), a.store.db, pathID(r), state(r).User)
+	p, err := a.store.Post(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
 		return Page{}, false

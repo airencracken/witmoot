@@ -21,6 +21,11 @@ func readPost(ctx context.Context, q rowQuerier, id int64, reader *User) (Post, 
 	return p, err
 }
 
+// Post returns one message that is not removed, if reader can see it.
+func (s *Store) Post(ctx context.Context, id int64, reader *User) (Post, error) {
+	return readPost(ctx, s.db, id, reader)
+}
+
 func (s *Store) EditPost(ctx context.Context, id, authorID int64, body string, revision int64) (Post, error) {
 	body = strings.TrimSpace(body)
 	if !validText(body, 1, 20000) {
@@ -67,7 +72,7 @@ func (s *Store) EditPost(ctx context.Context, id, authorID int64, body string, r
 }
 
 func (a *App) editablePost(w http.ResponseWriter, r *http.Request) (Post, Topic, bool) {
-	p, err := readPost(r.Context(), a.store.db, pathID(r), state(r).User)
+	p, err := a.store.Post(r.Context(), pathID(r), state(r).User)
 	if err != nil {
 		a.storeError(w, r, err)
 		return p, Topic{}, false
