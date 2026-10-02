@@ -115,11 +115,8 @@ func TestCreateOwnerUsesOpenRCDataDirectoryWithoutEnvironment(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("WITMOOT_DATA_DIR=\""+dataDir+"\" # service data\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	paths := provisioningConfigPaths{
-		openRCConfig:    configPath,
-		openRCInstalled: true,
-		serviceDefault:  "/var/lib/witmoot",
-	}
+	paths := testServicePaths()
+	paths.OpenRCConfig, paths.OpenRCInstalled = configPath, true
 	if err := createOwnerWithConfigPaths([]string{"--username", "alex", "--password-stdin"}, strings.NewReader("long enough password"), &bytes.Buffer{}, paths); err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +142,8 @@ func TestCreateOwnerUsesSystemdEnvironmentFileAndHonorsExplicitEnvironment(t *te
 	if err := os.WriteFile(unitPath, []byte(unit), 0600); err != nil {
 		t.Fatal(err)
 	}
-	paths := provisioningConfigPaths{systemdUnit: unitPath, serviceDefault: "/var/lib/witmoot"}
+	paths := testServicePaths()
+	paths.SystemdUnit = unitPath
 	if err := createOwnerWithConfigPaths([]string{"--username", "alex", "--password-stdin"}, strings.NewReader("long enough password"), &bytes.Buffer{}, paths); err != nil {
 		t.Fatal(err)
 	}
@@ -171,15 +169,16 @@ func TestProvisioningDataDirRejectsAmbiguousAndExecutableOpenRCValues(t *testing
 	if err := os.WriteFile(unitPath, []byte("[Service]\nEnvironment=WITMOOT_DATA_DIR=/var/lib/systemd\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	paths := provisioningConfigPaths{openRCConfig: openRCPath, openRCInstalled: true, systemdUnit: unitPath, serviceDefault: "/var/lib/witmoot"}
-	if _, err := resolveProvisioningDataDir(paths); err == nil || !strings.Contains(err.Error(), "different Witmoot data directories") {
+	paths := testServicePaths()
+	paths.OpenRCConfig, paths.OpenRCInstalled, paths.SystemdUnit = openRCPath, true, unitPath
+	if _, err := paths.DataDir("WITMOOT_DATA_DIR"); err == nil || !strings.Contains(err.Error(), "different Witmoot data directories") {
 		t.Fatalf("ambiguous service configuration error = %v", err)
 	}
 	if err := os.WriteFile(openRCPath, []byte("WITMOOT_DATA_DIR=\"$(touch /tmp/not-run)\"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	paths.systemdUnit = ""
-	if _, err := resolveProvisioningDataDir(paths); err == nil || !strings.Contains(err.Error(), "shell expression") {
+	paths.SystemdUnit = ""
+	if _, err := paths.DataDir("WITMOOT_DATA_DIR"); err == nil || !strings.Contains(err.Error(), "shell expression") {
 		t.Fatalf("executable OpenRC value error = %v", err)
 	}
 }

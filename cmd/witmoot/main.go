@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/airencracken/comfylib/privdrop"
+
 	"witmoot/internal/forum"
 	"witmoot/internal/mail"
 )
@@ -40,7 +42,7 @@ func buildVersion() string {
 }
 
 func main() {
-	if handled, status, err := reexecProvisioningAsService(os.Args[1:]); handled {
+	if handled, status, err := privdrop.Reexec(provisioningRequest(os.Args[1:], servicePaths())); handled {
 		if err != nil {
 			slog.Error("witmoot stopped", "error", err)
 		}
