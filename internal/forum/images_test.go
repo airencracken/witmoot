@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/airencracken/comfylib/keyfile"
+
 	"witmoot/internal/imvault"
 )
 
@@ -381,28 +383,62 @@ func TestImageConnectionsAreEncryptedBoundAndRevocable(t *testing.T) {
 	}
 }
 
-func TestImageKeyPersistenceAndInvalidKeys(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "imvault.key")
-	first, err := LoadImageKey(path)
+func TestImagesNeedAnEncryptionKey(t *testing.T) {
+	for _, key := range [][]byte{nil, bytes.Repeat([]byte{1}, 31), bytes.Repeat([]byte{1}, 33)} {
+		if _, err := New(testStore(t), Config{ImvaultURL: "https://vault.example", ImageKey: key}); err == nil {
+			t.Fatalf("enabled with a %d-byte encryption key", len(key))
+		}
+	}
+}
+
+// testdata/imvault.key is a raw 32-byte key, and imvault-token.bin is a token
+// Witmoot sealed with it for user 7 on https://vault.example before it used
+// comfylib, with forum.LoadImageKey and encryptImageToken. A key file
+// loaded through comfylib must still open tokens stored before the switch.
+func TestImageKeyFixtureStillOpensStoredTokens(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/imvault.key")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := LoadImageKey(path)
-	if err != nil || !bytes.Equal(first, second) {
-		t.Fatal("key not persistent")
-	}
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatal("key permissions")
-	}
-	if err := os.WriteFile(path, []byte("broken"), 0600); err != nil {
+	sealed, err := os.ReadFile("testdata/imvault-token.bin")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LoadImageKey(path); err == nil {
-		t.Fatal("silently replaced broken key")
+	path := filepath.Join(t.TempDir(), "imvault.key")
+	if err := os.WriteFile(path, fixture, 0600); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := New(testStore(t), Config{ImvaultURL: "https://vault.example"}); err == nil {
-		t.Fatal("enabled without encryption key")
+	key, err := keyfile.LoadOrCreate(path, 32, keyfile.Raw)
+	if err != nil || !bytes.Equal(key, fixture) {
+		t.Fatalf("fixture key loaded as %x, %v", key, err)
+	}
+	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, fixture) {
+		t.Fatalf("loading rewrote the key file: %x %v", after, err)
+	}
+	a, _ := newTestApp(t, false)
+	a.config.ImageKey = key
+	a.vault, err = imvault.New("https://vault.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	var userID int64
+	for i := 0; userID < 7; i++ {
+		userID = testMember(t, a.store, fmt.Sprintf("member%d", i))
+	}
+	if userID != 7 {
+		t.Fatalf("the fixture was sealed for user 7, not %d", userID)
+	}
+	if err := a.store.ConnectImages(ctx, userID, Connection{Username: "jules", Server: a.vault.Base, Token: sealed}); err != nil {
+		t.Fatal(err)
+	}
+	if token, err := a.imageToken(ctx, userID); err != nil || token != "imv_fixture_token_from_witmoot_0_9" {
+		t.Fatalf("stored token = %q, %v", token, err)
+	}
+	// The key really is what opens it.
+	a.config.ImageKey = bytes.Repeat([]byte{42}, 32)
+	if _, err := a.imageToken(ctx, userID); err == nil {
+		t.Fatal("another key opened the stored token")
 	}
 }
 
