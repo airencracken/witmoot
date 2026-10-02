@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 )
 
 type testClient struct {
@@ -306,9 +305,8 @@ func TestLoginFailureAndRateLimiting(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "did not match") {
 		t.Fatal("missing login error")
 	}
-	app.limiter.mu.Lock()
-	app.limiter.entries["127.0.0.1"] = rateEntry{Count: 20, Until: time.Now().Add(time.Minute)}
-	app.limiter.mu.Unlock()
+	for app.limiter.allow("127.0.0.1") {
+	}
 	w = client.post("/login", url.Values{"username": {"nobody"}, "password": {"incorrect"}})
 	requireStatus(t, w, 429)
 	if w.Header().Get("Retry-After") != "900" {

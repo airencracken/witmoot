@@ -69,6 +69,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, 403, Page{View: "login", Title: "Welcome back", Username: name, Error: errPersonal.Error()})
 		return
 	}
+	a.limiter.refund(a.clientIP(r))
 	a.signIn(w, r, user.ID)
 }
 

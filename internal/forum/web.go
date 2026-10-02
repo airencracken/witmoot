@@ -47,7 +47,7 @@ type App struct {
 	config    Config
 	templates *template.Template
 	handler   http.Handler
-	limiter   limiter
+	limiter   *limiter
 	dummyHash string
 	vault     *imvault.Client
 	mailer    mail.Sender
@@ -145,7 +145,7 @@ func New(store *Store, config Config) (*App, error) {
 	if config.Mail.Host != "" {
 		mailer = mail.NewSMTP(config.Mail)
 	}
-	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: limiter{entries: make(map[string]rateEntry)}, mailer: mailer}
+	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: newLimiter(), mailer: mailer}
 	if config.ImvaultURL != "" {
 		if len(config.ImageKey) != 32 {
 			return nil, errors.New("imvault integration requires a 32-byte encryption key")
