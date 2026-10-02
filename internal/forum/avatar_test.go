@@ -245,3 +245,34 @@ func TestAvatarCacheChangesWhenImageChangesWithinOneSecond(t *testing.T) {
 	}
 	requireStatus(t, client.request("GET", path, nil, map[string]string{"If-None-Match": etag}), http.StatusNotModified)
 }
+
+func grayPNG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	var data bytes.Buffer
+	if err := png.Encode(&data, image.NewGray(image.Rect(0, 0, width, height))); err != nil {
+		t.Fatal(err)
+	}
+	return data.Bytes()
+}
+
+// Avatars and branding images share one decoded-pixel limit, so a small file
+// cannot expand into a much larger decode on either path.
+func TestAvatarsShareTheBrandingPixelLimit(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	user := testMember(t, store, "alex")
+	for _, size := range [][2]int{{4096, 4096}, {4096, 1025}, {2049, 2049}, {4097, 1}} {
+		data := grayPNG(t, size[0], size[1])
+		if err := store.SaveAvatar(ctx, user, data); err == nil {
+			t.Errorf("avatar of %dx%d accepted", size[0], size[1])
+		}
+		if _, err := normalizeBrandImage(data); err == nil {
+			t.Errorf("branding image of %dx%d accepted", size[0], size[1])
+		}
+	}
+	for _, size := range [][2]int{{2048, 2048}, {4096, 1024}, {1, 1}} {
+		if err := store.SaveAvatar(ctx, user, grayPNG(t, size[0], size[1])); err != nil {
+			t.Errorf("avatar of %dx%d rejected: %v", size[0], size[1], err)
+		}
+	}
+}
