@@ -90,7 +90,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		assert.match(await member.locator('main').innerText(), /reply that should stay/);
 		await owner.goto(origin + '/members');
 		const record = owner.locator('.invitation-record').filter({ has: owner.getByRole('heading', { name: username, exact: true }) });
-		await record.getByRole('link', { name: 'Suspend member', exact: true }).click();
+		await record.getByRole('link', { name: `Suspend member ${username}`, exact: true }).click();
 		await owner.getByLabel(`Type ${username} to confirm`, { exact: true }).fill(username);
 		await screenshot(owner, 'suspend-member');
 		await owner.getByRole('button', { name: 'Suspend member', exact: true }).click();
@@ -102,7 +102,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		assert.match(await member.getByRole('alert').innerText(), /account is suspended/);
 		await screenshot(owner, 'members');
 		const suspendedRecord = owner.locator('.invitation-record').filter({ has: owner.getByRole('heading', { name: new RegExp(`^${username}`) }) });
-		await suspendedRecord.getByRole('link', { name: 'Restore access', exact: true }).click();
+		await suspendedRecord.getByRole('link', { name: `Restore access for ${username}`, exact: true }).click();
 		await owner.getByLabel(`Type ${username} to confirm`, { exact: true }).fill(username);
 		await owner.getByRole('button', { name: 'Restore member access', exact: true }).click();
 		await owner.waitForURL(origin + '/members?saved=restore');
@@ -114,7 +114,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		await owner.getByRole('link', { name: 'Edit rules and contact details', exact: true }).waitFor();
 		await owner.goto(origin + '/moderation');
 		assert.match(await owner.locator('main').innerText(), new RegExp(`Suspended ${username}`));
-		assert.match(await owner.locator('main').innerText(), /Removed Message/);
+		assert.match(await owner.locator('main').innerText(), /Removed message \d+ in conversation \d+/);
 		await screenshot(owner, 'owner-activity');
 		assert.deepEqual(problems, [], 'Community flow script or CSP errors');
 		console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} mobile rules, account access, message removal, suspension, restoration, and owner activity`);
