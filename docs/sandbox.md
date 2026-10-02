@@ -64,11 +64,14 @@ Bubblewrap, remove these overrides and restore the packaged unit's restrictions.
 
 ## What the server can access
 
-The sandbox has read-only `/usr`, binary and library directories, the dynamic linker cache and library alternatives, system CA
-certificates, DNS/hosts configuration and local timezone information. It retains
-the host network for HTTP, mail and other configured services. It has its own
-process namespace, minimal devices, and temporary directory. Only its configured
-data directory is writable on the host by default. Other home directories,
+The sandbox has read-only `/usr`, binary and library directories, the dynamic
+linker cache and library alternatives, system CA certificates, DNS/hosts
+configuration and local timezone information. It retains the host network for
+HTTP, mail and other configured services. It has its own process namespace,
+minimal devices, and temporary directory. On merged-`/usr` systems, `/bin`,
+`/lib` and similar paths are recreated as the same symlinks into `/usr` rather
+than mounted separately. Only its configured data directory is writable on the
+host. Other home directories,
 `/etc/shadow`, host temporary files and host Unix sockets are absent.
 
 Application settings are passed in the environment, including credentials the
@@ -76,15 +79,20 @@ server needs. Unrelated environment variables and dynamic-loader settings are
 removed. Credentials are never put in Bubblewrap's command-line arguments.
 `/usr` remains visible: do not place private application credentials there.
 
-For a custom storage/database directory outside the data directory, explicitly
-add an existing writable mount with `sandbox --write-dir /srv/witmoot-objects`.
-For a custom certificate or key file, use `--read-file /path/to/file`. Both flags
-can be repeated. OpenRC supports one extra directory and file through
-`WITMOOT_SANDBOX_WRITE_DIR` and `WITMOOT_SANDBOX_READ_FILE`; these are literal
-paths, not shell arguments. Broad mounts such as `/`, `/var`, `/home`, and `/tmp`,
-and writable mounts over runtime/system directories, are refused, including
-symlinks pointing to them. `--bwrap /path/to/bwrap` selects a custom executable;
-`WITMOOT_BWRAP` supplies its default.
+Witmoot keeps its database and Imvault key in the data directory, so no other
+writable path is needed. To trust a private certificate authority, for example
+for an internal SMTP relay or Imvault host, set `SSL_CERT_FILE` to a PEM bundle
+in the service environment (`/etc/conf.d/witmoot` or `/etc/witmoot/witmoot.env`).
+The bundle should include any public CAs you still need; the system certificate
+directory remains available. The sandbox binds that file read-only and points
+the server at it. `SSL_CERT_DIR` is not passed into the sandbox.
+
+A data directory that is too broad or overlaps system directories, such as `/`,
+`/var`, `/home`, `/tmp` or `/usr`, is refused, including through symlinks.
+`--bwrap /path/to/bwrap` selects a custom executable; `WITMOOT_BWRAP` supplies
+its default. The `--write-dir` and `--read-file` options of earlier releases are
+gone: Witmoot never needed the extra directory, and a certificate file is now
+configured with `SSL_CERT_FILE`.
 
 A compromised server can still access its own data and use the network. This
 limits access to the rest of the host; it does not protect the database from the
@@ -95,6 +103,6 @@ limits.
 ## Verification
 
 `make test-sandbox` requires real Bubblewrap namespaces. It tests hidden host
-files, environment filtering, writable data, retained server networking and
-graceful shutdown. Setup failures fail the tests rather than skipping them.
+files, environment filtering, writable data, retained server networking, a
+custom CA bundle and graceful shutdown. Setup failures fail the tests rather than skipping them.
 `make test-sandbox-mutations` checks deliberate policy regressions.

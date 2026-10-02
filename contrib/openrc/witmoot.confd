@@ -18,5 +18,8 @@ WITMOOT_NAME="Witmoot"
 # WITMOOT_LOG_FILE="/var/log/witmoot.log"
 # If changing the log path, also edit /etc/logrotate.d/witmoot.
 
+# Trust a private CA, for example for the mail relay; also used by the sandbox.
+# SSL_CERT_FILE="/etc/witmoot/ca-bundle.pem"
+
 # Optional Linux confinement; see docs/sandbox.md.
 # WITMOOT_SANDBOX=true

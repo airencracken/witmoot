@@ -11,7 +11,7 @@ description="A little bulletin board for your people"
 
 # OpenRC sources conf.d before this script. Export the application's settings
 # explicitly so plain assignments in conf.d reach the daemon.
-export WITMOOT_SANDBOX_WRITE_DIR WITMOOT_SANDBOX_READ_FILE WITMOOT_BWRAP
+export WITMOOT_BWRAP SSL_CERT_FILE
 export WITMOOT_DATA_DIR WITMOOT_ADDR WITMOOT_NAME WITMOOT_SOURCE_URL WITMOOT_BASE_URL
 export WITMOOT_SECURE_COOKIES WITMOOT_TRUSTED_PROXIES WITMOOT_IMVAULT_URL
 export WITMOOT_SMTP_HOST WITMOOT_SMTP_PORT WITMOOT_SMTP_USERNAME
