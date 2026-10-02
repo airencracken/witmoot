@@ -287,6 +287,62 @@ func TestBadRoutesMethodsAndInput(t *testing.T) {
 	}
 }
 
+// Routes touched by the audit fixes keep their methods, their owner gates, and
+// their content types.
+func TestChangedRoutesExistWithTheirContracts(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	member := memberClient(t, app, "jules")
+	jules, _, err := app.store.Credentials(context.Background(), "jules")
+	if err != nil {
+		t.Fatal(err)
+	}
+	memberPath := func(format string) string { return fmt.Sprintf(format, jules.ID) }
+	for _, route := range []struct {
+		method, path string
+		ownerOnly    bool
+		wrongMethod  string
+	}{
+		{"GET", "/settings", true, "PUT"},
+		{"POST", "/settings", true, "DELETE"},
+		{"POST", "/settings/branding-assets", true, "GET"},
+		{"POST", memberPath("/invites/members/%d/permission"), true, "GET"},
+		{"POST", memberPath("/members/%d/avatar/remove"), true, "GET"},
+		{"GET", "/moderation", true, "POST"},
+		{"GET", "/members", true, "POST"},
+		{"GET", "/account/export", false, "POST"},
+		{"POST", "/login", false, "PUT"},
+	} {
+		w := owner.request(route.wrongMethod, route.path, nil, nil)
+		if route.wrongMethod == "POST" {
+			w = owner.post(route.path, nil)
+		}
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s %s: %d, want 405", route.wrongMethod, route.path, w.Code)
+		}
+		if route.ownerOnly {
+			var w *httptest.ResponseRecorder
+			if route.method == "GET" {
+				w = member.request("GET", route.path, nil, nil)
+			} else {
+				w = member.post(route.path, url.Values{"enabled": {"1"}, "mode": {"open"}})
+			}
+			if w.Code != http.StatusForbidden {
+				t.Errorf("member %s %s: %d, want 403", route.method, route.path, w.Code)
+			}
+		}
+	}
+	for path, contentType := range map[string]string{
+		"/settings": "text/html; charset=utf-8", "/moderation": "text/html; charset=utf-8",
+		"/account/export": "application/zip", "/healthz": "text/plain; charset=utf-8",
+	} {
+		w := owner.request("GET", path, nil, nil)
+		if w.Code != http.StatusOK || w.Header().Get("Content-Type") != contentType {
+			t.Errorf("GET %s: %d %q, want 200 %q", path, w.Code, w.Header().Get("Content-Type"), contentType)
+		}
+	}
+}
+
 func TestPasswordValidation(t *testing.T) {
 	for _, tc := range []struct {
 		name, password string
