@@ -81,6 +81,10 @@ func OpenStore(path string) (*Store, error) {
 	q.Add("_pragma", "foreign_keys(1)")
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "journal_mode(WAL)")
+	// Take the write lock when a transaction begins. A deferred transaction
+	// that reads first and then writes cannot wait for a busy database: SQLite
+	// fails it at the write instead of honouring busy_timeout.
+	q.Add("_txlock", "immediate")
 	u.RawQuery = q.Encode()
 	db, err := sql.Open("sqlite", u.String())
 	if err != nil {
