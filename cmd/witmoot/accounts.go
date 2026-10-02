@@ -17,6 +17,7 @@ import (
 
 	"github.com/airencracken/comfylib/smtp"
 	"github.com/airencracken/comfylib/svcconfig"
+	"github.com/airencracken/comfylib/token"
 	"golang.org/x/term"
 
 	"witmoot/internal/admin"
@@ -150,12 +151,12 @@ func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths svcconfig.P
 	if err != nil {
 		return err
 	}
-	token := forum.NewToken()
-	if err := store.CreateAuthToken(context.Background(), user.ID, forum.TokenPasswordReset, forum.TokenHash(token), time.Now().Add(*expires)); err != nil {
+	code, hash := token.New()
+	if err := store.CreateAuthToken(context.Background(), user.ID, forum.TokenPasswordReset, hash, time.Now().Add(*expires)); err != nil {
 		return err
 	}
-	path := base + "/reset/" + token
-	if _, err := fmt.Fprintf(stdout, "Reset link for %q (works once, expires in %s):\n  %s\n\nReset code, if the link is hard to share:\n  %s\n", user.Username, *expires, path, token); err != nil {
+	path := base + "/reset/" + code
+	if _, err := fmt.Fprintf(stdout, "Reset link for %q (works once, expires in %s):\n  %s\n\nReset code, if the link is hard to share:\n  %s\n", user.Username, *expires, path, code); err != nil {
 		return err
 	}
 	if base == "" {

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 // CanonicalBaseURL validates WITMOOT_BASE_URL and returns it without a
@@ -129,8 +131,8 @@ func (a *App) createInvite(w http.ResponseWriter, r *http.Request) {
 		a.renderInvites(w, r, 422, p)
 		return
 	}
-	token := randomToken()
-	if _, err := a.store.CreateInvitation(r.Context(), state(r).User.ID, tokenHash(token), token[:12], opts); err != nil {
+	code, hash := token.New()
+	if _, err := a.store.CreateInvitation(r.Context(), state(r).User.ID, hash, code[:12], opts); err != nil {
 		if errors.Is(err, errPersonal) {
 			a.fail(w, r, 403, err.Error())
 			return
@@ -138,7 +140,7 @@ func (a *App) createInvite(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	p.InviteCode, p.InviteLink = token, a.inviteURL(r, token)
+	p.InviteCode, p.InviteLink = code, a.inviteURL(r, code)
 	a.renderInvites(w, r, 200, p)
 }
 

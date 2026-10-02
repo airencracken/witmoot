@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 type testClient struct {
@@ -144,7 +146,7 @@ func TestInvitationsEndToEnd(t *testing.T) {
 	if err := app.store.db.QueryRow("SELECT token_hash FROM invitations").Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored == invite || stored != tokenHash(invite) {
+	if stored == invite || stored != token.Hash(invite) {
 		t.Fatal("invitation should be stored only as a hash")
 	}
 	friend := &testClient{app: app, cookies: make(map[string]*http.Cookie)}
@@ -238,7 +240,7 @@ func TestCookieSecurityAndLogout(t *testing.T) {
 	if err := app.store.db.QueryRow("SELECT token_hash FROM sessions").Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored != tokenHash(session.Value) {
+	if stored != token.Hash(session.Value) {
 		t.Fatal("raw session stored")
 	}
 	w := client.request("GET", "/", nil, nil)
@@ -488,4 +490,11 @@ func removeForm(t testing.TB, form *multipart.Form) {
 	if err := form.RemoveAll(); err != nil {
 		t.Error(err)
 	}
+}
+
+// testToken returns a fresh token in the format sessions, links and CSRF
+// cookies use.
+func testToken() string {
+	secret, _ := token.New()
+	return secret
 }

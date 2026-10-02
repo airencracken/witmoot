@@ -10,6 +10,8 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+
+	"github.com/airencracken/comfylib/token"
 )
 
 // csrfPeekLimit bounds how much of a multipart body is read to find the token.
@@ -28,16 +30,16 @@ func (a *App) expectedCSRF(w http.ResponseWriter, r *http.Request, session strin
 	if c, err := r.Cookie(a.cookieName("csrf")); err == nil && validToken(c.Value) {
 		current = c.Value
 	}
-	token := current
+	expected := current
 	if session != "" {
-		token = sessionCSRFToken(session)
-	} else if token == "" {
-		token = randomToken()
+		expected = sessionCSRFToken(session)
+	} else if expected == "" {
+		expected, _ = token.New()
 	}
-	if token != current {
-		a.cookie(w, "csrf", token, 86400)
+	if expected != current {
+		a.cookie(w, "csrf", expected, 86400)
 	}
-	return token
+	return expected
 }
 
 // sessionCSRFToken derives a session's CSRF token from its secret. The session

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/airencracken/comfylib/smtp"
+	"github.com/airencracken/comfylib/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -108,14 +109,14 @@ func (a *App) saveEmail(w http.ResponseWriter, r *http.Request) {
 
 // resetForm shows the new-password form for a valid link, without spending it.
 func (a *App) resetForm(w http.ResponseWriter, r *http.Request) {
-	token := r.PathValue("token")
-	page := Page{View: "reset", Title: "Choose a new password", ResetToken: token}
-	if !validToken(token) {
+	code := r.PathValue("token")
+	page := Page{View: "reset", Title: "Choose a new password", ResetToken: code}
+	if !validToken(code) {
 		page.Error = errAuthToken.Error()
 		a.render(w, r, 400, page)
 		return
 	}
-	user, err := a.store.AuthTokenValid(r.Context(), tokenHash(token), TokenPasswordReset, time.Now())
+	user, err := a.store.AuthTokenValid(r.Context(), token.Hash(code), TokenPasswordReset, time.Now())
 	if err != nil {
 		if errors.Is(err, errAuthToken) {
 			page.Error = errAuthToken.Error()
@@ -132,19 +133,19 @@ func (a *App) resetForm(w http.ResponseWriter, r *http.Request) {
 // resetPassword redeems a link. The password is validated before the token is
 // spent, so a rejected form can be corrected and resubmitted.
 func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
-	token := r.PathValue("token")
-	page := Page{View: "reset", Title: "Choose a new password", ResetToken: token}
+	code := r.PathValue("token")
+	page := Page{View: "reset", Title: "Choose a new password", ResetToken: code}
 	renderErr := func(status int, message string) {
 		page.Error = message
 		a.render(w, r, status, page)
 	}
-	if !validToken(token) {
+	if !validToken(code) {
 		renderErr(400, errAuthToken.Error())
 		return
 	}
 	// Check before the expensive password hash, then recheck while consuming
 	// the token in the same transaction as the password and session changes.
-	user, err := a.store.AuthTokenValid(r.Context(), tokenHash(token), TokenPasswordReset, time.Now())
+	user, err := a.store.AuthTokenValid(r.Context(), token.Hash(code), TokenPasswordReset, time.Now())
 	if err != nil {
 		if errors.Is(err, errAuthToken) {
 			renderErr(400, errAuthToken.Error())
@@ -168,7 +169,7 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	user, err = a.store.ResetPassword(r.Context(), tokenHash(token), hash, time.Now())
+	user, err = a.store.ResetPassword(r.Context(), token.Hash(code), hash, time.Now())
 	if err != nil {
 		if errors.Is(err, errAuthToken) {
 			page.ResetUser = ""
@@ -218,12 +219,12 @@ func (a *App) createResetLink(w http.ResponseWriter, r *http.Request) {
 		a.storeError(w, r, err)
 		return
 	}
-	token := randomToken()
-	if err := a.store.CreateAuthToken(r.Context(), target.ID, TokenPasswordReset, tokenHash(token), time.Now().Add(ResetLinkTTL)); err != nil {
+	code, hash := token.New()
+	if err := a.store.CreateAuthToken(r.Context(), target.ID, TokenPasswordReset, hash, time.Now().Add(ResetLinkTTL)); err != nil {
 		a.storeError(w, r, err)
 		return
 	}
-	p := Page{ResetLink: a.resetURL(r, token), ResetFor: target.Username}
+	p := Page{ResetLink: a.resetURL(r, code), ResetFor: target.Username}
 	if r.PostForm.Get("email") == "1" {
 		site := a.siteName(r)
 		switch {

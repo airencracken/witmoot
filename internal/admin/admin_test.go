@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/airencracken/comfylib/smtp"
+	"github.com/airencracken/comfylib/token"
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/crypto/bcrypt"
 
@@ -166,8 +167,8 @@ func TestAdminIssuesAndCancelsAResetLink(t *testing.T) {
 	if !strings.HasPrefix(m.link, "https://board.example.org/reset/") {
 		t.Fatalf("link is not complete: %q", m.link)
 	}
-	token := m.link[strings.LastIndex(m.link, "/")+1:]
-	if _, err := store.AuthTokenValid(context.Background(), forum.TokenHash(token), forum.TokenPasswordReset, time.Now()); err != nil {
+	secret := m.link[strings.LastIndex(m.link, "/")+1:]
+	if _, err := store.AuthTokenValid(context.Background(), token.Hash(secret), forum.TokenPasswordReset, time.Now()); err != nil {
 		t.Fatalf("issued link is not usable: %v", err)
 	}
 
@@ -325,12 +326,12 @@ func TestAdminEmailMatchesTheWebEmailAndRealExpiry(t *testing.T) {
 	if !strings.Contains(relay.sent[0].Body, expiry) || !strings.Contains(m.resultView(), expiry) {
 		t.Fatalf("stated expiry does not match the link lifetime %s", forum.ResetLinkTTL)
 	}
-	token := m.link[strings.LastIndex(m.link, "/")+1:]
-	user, err := store.AuthTokenValid(context.Background(), forum.TokenHash(token), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL-time.Minute))
+	secret := m.link[strings.LastIndex(m.link, "/")+1:]
+	user, err := store.AuthTokenValid(context.Background(), token.Hash(secret), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL-time.Minute))
 	if err != nil || user.Username != "jules" {
 		t.Fatalf("link expires before its stated lifetime: %v", err)
 	}
-	if _, err := store.AuthTokenValid(context.Background(), forum.TokenHash(token), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL+time.Minute)); err == nil {
+	if _, err := store.AuthTokenValid(context.Background(), token.Hash(secret), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL+time.Minute)); err == nil {
 		t.Fatal("link outlives its stated lifetime")
 	}
 }

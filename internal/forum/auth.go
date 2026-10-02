@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/airencracken/comfylib/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -98,7 +99,7 @@ func (a *App) join(w http.ResponseWriter, r *http.Request) {
 	}
 	inviteHash := ""
 	if invite != "" {
-		inviteHash = tokenHash(invite)
+		inviteHash = token.Hash(invite)
 	}
 	id, err := a.store.Register(r.Context(), name, hash, inviteHash)
 	if errors.Is(err, errPersonal) {
@@ -128,24 +129,25 @@ func (a *App) signIn(w http.ResponseWriter, r *http.Request, userID int64) {
 // startSession issues a fresh session and CSRF cookie without redirecting, so
 // a password change can sign the caller back in on the page it started from.
 func (a *App) startSession(w http.ResponseWriter, r *http.Request, userID int64) error {
-	token := randomToken()
+	session, hash := token.New()
 	const lifetime = 7 * 24 * time.Hour
-	if err := a.store.NewSession(r.Context(), tokenHash(token), userID, time.Now().Add(lifetime)); err != nil {
+	if err := a.store.NewSession(r.Context(), hash, userID, time.Now().Add(lifetime)); err != nil {
 		return err
 	}
-	a.cookie(w, "session", token, int(lifetime.Seconds()))
-	a.cookie(w, "csrf", sessionCSRFToken(token), 86400)
+	a.cookie(w, "session", session, int(lifetime.Seconds()))
+	a.cookie(w, "csrf", sessionCSRFToken(session), 86400)
 	return nil
 }
 
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(a.cookieName("session")); err == nil {
-		if err := a.store.DeleteSession(r.Context(), tokenHash(c.Value)); err != nil {
+		if err := a.store.DeleteSession(r.Context(), token.Hash(c.Value)); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
 	}
+	csrf, _ := token.New()
 	a.cookie(w, "session", "", -1)
-	a.cookie(w, "csrf", randomToken(), 86400)
+	a.cookie(w, "csrf", csrf, 86400)
 	a.redirect(w, r, "/")
 }

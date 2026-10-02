@@ -2,9 +2,6 @@ package forum
 
 import (
 	"container/list"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"net/netip"
 	"regexp"
@@ -92,25 +89,6 @@ func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hash), err
 }
-
-func randomToken() string {
-	b := make([]byte, 32)
-	// crypto/rand.Read terminates the process if the system RNG fails.
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
-func tokenHash(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(hash[:])
-}
-
-// NewToken returns a fresh 256-bit token as lowercase hex. It is the value
-// shown to a person or placed in a link; only its digest is ever stored.
-func NewToken() string { return randomToken() }
-
-// TokenHash is the SHA-256 digest stored for a token.
-func TokenHash(token string) string { return tokenHash(token) }
 
 const (
 	rateWindow   = 15 * time.Minute

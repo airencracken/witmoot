@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/airencracken/comfylib/smtp"
+	"github.com/airencracken/comfylib/token"
 
 	"witmoot/internal/imvault"
 )
@@ -143,7 +144,8 @@ func New(store *Store, config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	dummy, err := HashPassword(randomToken())
+	unguessable, _ := token.New()
+	dummy, err := HashPassword(unguessable)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +310,7 @@ func (a *App) middleware(next http.Handler) http.Handler {
 		state := requestState{Mode: mode}
 		session := ""
 		if c, err := r.Cookie(a.cookieName("session")); err == nil && validToken(c.Value) {
-			user, err := a.store.Session(r.Context(), tokenHash(c.Value))
+			user, err := a.store.Session(r.Context(), token.Hash(c.Value))
 			if err != nil {
 				a.serverError(w, r, err)
 				return
