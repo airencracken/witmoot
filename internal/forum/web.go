@@ -74,6 +74,7 @@ type Page struct {
 	LibraryLoaded                                               bool
 	Name, Title, View, CSRF, Error                              string
 	SourceURL, WelcomeTitle, WelcomeText, MascotURL, FaviconURL string
+	CustomMascot, BrandingDraft                                 bool
 	User                                                        *User
 	Mode                                                        Mode
 	CanRead, CanPost, Saved                                     bool
@@ -205,8 +206,8 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /invites", a.private(a.createInvite))
 	mux.HandleFunc("POST /invites/{id}/revoke", a.private(a.revokeInvite))
 	mux.HandleFunc("POST /invites/members/{id}/permission", a.owner(a.setInvitePermission))
-	mux.HandleFunc("GET /settings", a.signedIn(a.settings))
-	mux.HandleFunc("POST /settings", a.signedIn(a.saveSettings))
+	mux.HandleFunc("GET /settings", a.owner(a.settings))
+	mux.HandleFunc("POST /settings", a.owner(a.saveSettings))
 	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
 	mux.HandleFunc("GET /account", a.signedIn(a.account))
 	mux.HandleFunc("GET /account/export", a.signedIn(a.handleAccountExport))
@@ -362,7 +363,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 		WelcomeText:  "For the plans, the little updates, and the stories that deserve more than a passing message.",
 	})
 	if err == nil {
-		if p.View != "settings" || r.Method == http.MethodGet {
+		if !p.BrandingDraft {
 			p.Name, p.SourceURL, p.WelcomeTitle, p.WelcomeText = brand.Name, brand.SourceURL, brand.WelcomeTitle, brand.WelcomeText
 			p.HouseRules, p.OwnerContact = brand.HouseRules, brand.OwnerContact
 		}
@@ -370,7 +371,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 		if assetErr == nil {
 			p.MascotURL = "/static/moot-knight.png"
 			if mascot {
-				p.MascotURL = "/branding/mascot"
+				p.MascotURL, p.CustomMascot = "/branding/mascot", true
 			}
 			if favicon {
 				p.FaviconURL = "/branding/favicon"

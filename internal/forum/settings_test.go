@@ -380,3 +380,89 @@ func TestOpenSignupRechecksPolicyAtWrite(t *testing.T) {
 		}
 	}
 }
+
+func savedSettingsForm() url.Values {
+	return url.Values{"mode": {"private"}, "site_name": {"Fam"}, "source_url": {"https://example.org/src"},
+		"welcome_title": {"Hi all"}, "welcome_text": {"Welcome text"}, "house_rules": {"Be kind"}, "owner_contact": {"Call Alex"}}
+}
+
+func TestFailedImageUploadKeepsSavedSettingsInTheForm(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	requireStatus(t, owner.post("/settings", savedSettingsForm()), http.StatusSeeOther)
+	for name, files := range map[string]map[string][]byte{
+		"mascot":  {"mascot": []byte("not an image")},
+		"favicon": {"favicon": []byte("<svg onload=alert(1)>")},
+		"nothing": nil,
+	} {
+		w := postBrandingMultipart(t, owner, url.Values{}, files)
+		requireStatus(t, w, http.StatusUnprocessableEntity)
+		body := w.Body.String()
+		for _, want := range []string{`value="Fam"`, "https://example.org/src", `value="Hi all"`, "Welcome text", ">Be kind</textarea>", ">Call Alex</textarea>"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: settings form after a failed upload lost %q", name, want)
+			}
+		}
+	}
+	// Saving the form as rendered must not erase anything.
+	resolved, err := app.store.LoadBranding(context.Background(), SiteBranding{})
+	if err != nil || resolved.HouseRules != "Be kind" || resolved.OwnerContact != "Call Alex" {
+		t.Fatalf("branding changed: %+v %v", resolved, err)
+	}
+}
+
+func TestRejectedSettingsFormKeepsWhatWasTyped(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	requireStatus(t, owner.post("/settings", savedSettingsForm()), http.StatusSeeOther)
+	draft := savedSettingsForm()
+	draft.Set("house_rules", "New draft rules")
+	draft.Set("source_url", "javascript:alert(1)")
+	w := owner.post("/settings", draft)
+	requireStatus(t, w, http.StatusUnprocessableEntity)
+	if body := w.Body.String(); !strings.Contains(body, ">New draft rules</textarea>") || !strings.Contains(body, "javascript:alert(1)") {
+		t.Fatal("rejected settings replaced the typed draft with saved values")
+	}
+	draft.Set("mode", "bogus")
+	w = owner.post("/settings", draft)
+	requireStatus(t, w, http.StatusUnprocessableEntity)
+	if !strings.Contains(w.Body.String(), ">New draft rules</textarea>") {
+		t.Fatal("invalid mode discarded the typed draft")
+	}
+	// A mode-only form carries no branding, so it shows the saved values.
+	w = owner.post("/settings", url.Values{"mode": {"bogus"}})
+	requireStatus(t, w, http.StatusUnprocessableEntity)
+	if !strings.Contains(w.Body.String(), ">Be kind</textarea>") {
+		t.Fatal("mode-only rejection blanked the saved house rules")
+	}
+}
+
+func TestDefaultMascotChoiceOnlyWithCustomMascot(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	if strings.Contains(owner.request("GET", "/settings", nil, nil).Body.String(), "remove_mascot") {
+		t.Fatal("offered to restore the default mascot while it is already in use")
+	}
+	requireStatus(t, postBrandingMultipart(t, owner, url.Values{}, map[string][]byte{"mascot": pngBrandFixture(t)}), http.StatusSeeOther)
+	if !strings.Contains(owner.request("GET", "/settings", nil, nil).Body.String(), "remove_mascot") {
+		t.Fatal("custom mascot cannot be replaced with the default")
+	}
+}
+
+func TestSettingsRoutesUseTheOwnerGate(t *testing.T) {
+	app, member := newTestApp(t, false)
+	signInTest(t, app, member, false)
+	for _, w := range []*httptest.ResponseRecorder{
+		member.request("GET", "/settings", nil, nil),
+		member.post("/settings", url.Values{"mode": {"open"}, "site_name": {"Taken"}}),
+		postBrandingMultipart(t, member, url.Values{"remove_mascot": {"1"}}, nil),
+	} {
+		requireStatus(t, w, http.StatusForbidden)
+		if !strings.Contains(w.Body.String(), "Only site owners") && !strings.Contains(w.Body.String(), "only site owners") {
+			t.Fatalf("owner gate explained itself poorly: %s", w.Body.String())
+		}
+	}
+	if mode, err := app.store.Mode(context.Background()); err != nil || mode != ModePrivate {
+		t.Fatalf("member changed the mode: %s %v", mode, err)
+	}
+}

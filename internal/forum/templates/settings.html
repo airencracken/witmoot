@@ -51,7 +51,7 @@
 	<form action="/settings/branding-assets" method="post" enctype="multipart/form-data">
 		{{template "csrf" .}}
 		<label for="mascot">Mascot image</label><input id="mascot" name="mascot" type="file" accept="image/png,image/jpeg,image/gif">
-		{{if .MascotURL}}<label><input type="checkbox" name="remove_mascot" value="1"> Use the default mascot</label>{{end}}
+		{{if .CustomMascot}}<label><input type="checkbox" name="remove_mascot" value="1"> Use the default mascot</label>{{end}}
 		<label for="favicon">Favicon</label><input id="favicon" name="favicon" type="file" accept="image/png,image/jpeg,image/gif">
 		{{if .FaviconURL}}<label><input type="checkbox" name="remove_favicon" value="1"> Remove the custom favicon</label>{{end}}
 		<button type="submit">Save images</button>
