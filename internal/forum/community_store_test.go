@@ -248,7 +248,7 @@ func TestRemovalErasesTextImagesAndSearchButKeepsReplyContext(t *testing.T) {
 	if _, err := f.s.RemovePost(ctx, f.owner, f.post, 1, false); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("repeat removal: %v", err)
 	}
-	export, err := f.s.MemberContributions(ctx, f.member)
+	export, err := f.s.MemberContributions(ctx, &User{ID: f.member, Role: "member"})
 	if err != nil || len(export.Posts) != 2 || !export.Posts[0].Removed || export.Posts[0].Body != removedMessage || len(export.Posts[0].Attachments) != 0 || export.Posts[0].TopicTitle != "Conversation" {
 		t.Fatalf("export leaked erased content: %+v %v", export, err)
 	}

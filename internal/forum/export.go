@@ -96,6 +96,7 @@ const exportNote = "Your own messages only; other people's replies are not inclu
 	"Shared images are listed by reference to the imvault preview that was posted. " +
 	"Fetch your originals from your imvault account export. " +
 	"Removed messages appear as placeholders, without their former text or image references. " +
+	"Boards and conversations you can no longer read are listed without their names. " +
 	"Passwords, sessions, and image connections are never included."
 
 // handleAccountExport streams a member's own contributions, plus a manifest
@@ -105,7 +106,7 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 	user := state(r).User
 	ctx := r.Context()
 
-	contributions, err := a.store.MemberContributions(ctx, user.ID)
+	contributions, err := a.store.MemberContributions(ctx, user)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -132,7 +133,7 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 		Note: exportNote,
 	}
 	for _, b := range contributions.Boards {
-		manifest.Boards = append(manifest.Boards, exportBoard{ID: b.ID, Category: b.Category, Name: b.Name})
+		manifest.Boards = append(manifest.Boards, exportBoard(b))
 	}
 	for _, t := range contributions.Topics {
 		manifest.Topics = append(manifest.Topics, exportTopic{
@@ -157,10 +158,7 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 			post.EditedAt = time.Unix(p.EditedAt, 0).UTC().Format(time.RFC3339)
 		}
 		for _, attachment := range p.Attachments {
-			post.Attachments = append(post.Attachments, exportAttachment{
-				Name: attachment.Name, Rendition: attachment.Rendition,
-				Server: attachment.Server, RemoteID: attachment.RemoteID,
-			})
+			post.Attachments = append(post.Attachments, exportAttachment(attachment))
 		}
 		manifest.Posts = append(manifest.Posts, post)
 	}
@@ -169,29 +167,35 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, exportFilename(user.Username)))
 	w.Header().Set("Cache-Control", "no-store")
 
-	archive := zip.NewWriter(w)
-	defer archive.Close()
+	if err := a.writeExport(zip.NewWriter(w), manifest, avatar); err != nil {
+		// The status line has gone out, so the only honest signal left is a
+		// broken connection. Finishing the stream would hand the browser a
+		// truncated archive that looks like a complete download.
+		slog.Error("export failed", "user", user.ID, "error", err)
+		panic(http.ErrAbortHandler)
+	}
+	slog.Info("account exported", "user", user.ID, "posts", len(manifest.Posts))
+}
 
+// writeExport writes every archive entry and then the zip directory. Close is
+// part of the archive, so its error is as fatal as any other.
+func (a *App) writeExport(archive *zip.Writer, manifest exportManifest, avatar []byte) error {
 	if err := writeJSONEntry(archive, "manifest.json", manifest); err != nil {
-		slog.Error("export: write manifest", "user", user.ID, "error", err)
-		return
+		return fmt.Errorf("write manifest: %w", err)
 	}
 	if err := a.writeArchivePage(archive, manifest); err != nil {
-		slog.Error("export: write archive page", "user", user.ID, "error", err)
-		return
+		return fmt.Errorf("write archive page: %w", err)
 	}
 	if len(avatar) > 0 {
 		entry, err := archive.Create("avatar.png")
 		if err != nil {
-			slog.Error("export: write avatar", "user", user.ID, "error", err)
-			return
+			return fmt.Errorf("write avatar: %w", err)
 		}
 		if _, err := entry.Write(avatar); err != nil {
-			slog.Error("export: write avatar", "user", user.ID, "error", err)
-			return
+			return fmt.Errorf("write avatar: %w", err)
 		}
 	}
-	slog.Info("account exported", "user", user.ID, "posts", len(manifest.Posts))
+	return archive.Close()
 }
 
 // humanStamp renders an RFC3339 timestamp for the offline archive.

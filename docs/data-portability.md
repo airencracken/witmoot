@@ -15,6 +15,12 @@ Removed messages retain their position and context in a member export, with
 former text and shared image references are erased. Existing exports and operator
 backups are not rewritten by a later removal.
 
+A member who can no longer read a board or conversation still exports their own
+messages from it. The manifest keeps the board and conversation IDs but leaves
+their current names, titles, and later activity empty, and the archive page says
+the member can no longer read them. A download that fails partway is cut off
+rather than finished as a smaller, valid-looking archive.
+
 ## The example already in imvault
 
 [imvault's account export](https://github.com/airencracken/imvault/blob/master/docs/accounts.md#exporting-an-account)

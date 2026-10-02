@@ -38,12 +38,12 @@
 {{if .Manifest.Boards}}
 <section>
 	<h2>Boards</h2>
-	<ul>{{range .Manifest.Boards}}<li>{{.Category}} — {{.Name}}</li>{{end}}</ul>
+	<ul>{{range .Manifest.Boards}}<li>{{if .Name}}{{.Category}} — {{.Name}}{{else}}A board you can no longer read{{end}}</li>{{end}}</ul>
 </section>
 {{end}}
 {{range $topic := .Manifest.Topics}}
 <section class="topic">
-	<h2>{{$topic.Title}}</h2>
+	<h2>{{if $topic.Title}}{{$topic.Title}}{{else}}A conversation you can no longer read{{end}}</h2>
 	<p class="meta">{{audience $topic.Audience}} · {{$topic.Posts}} message{{if ne $topic.Posts 1}}s{{end}} · started {{human $topic.CreatedAt}}{{if $topic.URL}} · <a href="{{$topic.URL}}">read online</a>{{end}}</p>
 	{{range $post := $.Manifest.Posts}}{{if eq $post.TopicID $topic.ID}}
 	<article class="post">

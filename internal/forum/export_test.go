@@ -209,3 +209,102 @@ func TestAccountExportRequiresSignIn(t *testing.T) {
 		t.Fatalf("redirect = %q", w.Header().Get("Location"))
 	}
 }
+
+func TestExportWithholdsNamesTheMemberCanNoLongerRead(t *testing.T) {
+	f := privateBoardFixture(t)
+	ctx := context.Background()
+	writer := sessionClient(t, f.app, f.writer)
+	unpacked := func(entries map[string][]byte) []byte {
+		return append(entries["manifest.json"], entries["archive.html"]...)
+	}
+	entries, _, _ := readExport(t, writer)
+	if text := unpacked(entries); !bytes.Contains(text, []byte("Secret party plans")) || !bytes.Contains(text, []byte("Hidden planning room")) {
+		t.Fatal("a member with access lost the names in their export")
+	}
+	if _, _, err := f.app.store.Reply(ctx, f.topicID, f.owner.ID, "Owner reply after access changed"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := f.app.store.Board(ctx, f.boardID, f.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.store.SaveBoard(ctx, f.owner.ID, b, map[int64]string{f.reader.ID: "read"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.store.db.Exec("UPDATE boards SET name = 'Renamed secret room' WHERE id = ?", f.boardID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.store.db.Exec("UPDATE topics SET title = 'Renamed secret plans' WHERE id = ?", f.topicID); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, _, _ = readExport(t, writer)
+	for _, hidden := range []string{"Secret party plans", "Hidden planning room", "Renamed secret room", "Renamed secret plans", "Private corners", "Owner reply"} {
+		if bytes.Contains(unpacked(entries), []byte(hidden)) {
+			t.Errorf("export reveals %q after access was removed", hidden)
+		}
+	}
+	manifest := decodeManifest(t, entries)
+	if len(manifest.Posts) != 1 || manifest.Posts[0].Body != "Original message" || manifest.Posts[0].TopicTitle != "" || manifest.Posts[0].BoardName != "" {
+		t.Fatalf("the member's own words must stay, without current names: %+v", manifest.Posts)
+	}
+	if len(manifest.Topics) != 1 || manifest.Topics[0].Title != "" || manifest.Topics[0].Posts != 1 || manifest.Topics[0].UpdatedAt != manifest.Topics[0].CreatedAt {
+		t.Fatalf("hidden conversation reveals its activity: %+v", manifest.Topics)
+	}
+	if len(manifest.Boards) != 1 || manifest.Boards[0].Name != "" || manifest.Boards[0].Category != "" || manifest.Boards[0].ID != f.boardID {
+		t.Fatalf("hidden board reveals its name: %+v", manifest.Boards)
+	}
+	page := string(entries["archive.html"])
+	if !strings.Contains(page, "A conversation you can no longer read") || !strings.Contains(page, "A board you can no longer read") {
+		t.Fatal("archive page does not explain the missing names")
+	}
+}
+
+// failingWriter accepts a few bytes of the response and then fails, like a
+// connection that drops partway through a download.
+type failingWriter struct {
+	header  http.Header
+	status  int
+	limit   int
+	written int
+}
+
+func (w *failingWriter) Header() http.Header { return w.header }
+func (w *failingWriter) WriteHeader(status int) {
+	if w.status == 0 {
+		w.status = status
+	}
+}
+func (w *failingWriter) Write(p []byte) (int, error) {
+	w.WriteHeader(http.StatusOK)
+	if w.written+len(p) > w.limit {
+		return 0, io.ErrClosedPipe
+	}
+	w.written += len(p)
+	return len(p), nil
+}
+
+func TestFailedExportAbortsInsteadOfEndingCleanly(t *testing.T) {
+	app, client := newTestApp(t, false)
+	userID := signInTest(t, app, client, false)
+	if _, err := app.store.CreateTopic(context.Background(), 1, userID, "Our weekend", strings.Repeat("Words worth keeping. ", 500), AudienceMembers); err != nil {
+		t.Fatal(err)
+	}
+	_, raw, _ := readExport(t, client)
+	for _, limit := range []int{0, 100, len(raw) / 2, len(raw) - 30} {
+		r := httptest.NewRequest("GET", "/account/export", nil)
+		r.RemoteAddr = "127.0.0.1:1234"
+		for _, cookie := range client.cookies {
+			r.AddCookie(cookie)
+		}
+		w := &failingWriter{header: http.Header{}, limit: limit}
+		aborted := func() (recovered any) {
+			defer func() { recovered = recover() }()
+			app.ServeHTTP(w, r)
+			return nil
+		}()
+		if aborted != http.ErrAbortHandler {
+			t.Fatalf("export cut off after %d bytes finished with %v instead of aborting", limit, aborted)
+		}
+	}
+}
