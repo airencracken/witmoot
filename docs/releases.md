@@ -9,18 +9,20 @@ Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 - `witmoot_VERSION_source.tar.gz`: the corresponding source.
 - `witmoot_VERSION_checksums.txt`: SHA-256 checksums for all five artifacts.
 
-See [the 0.9.0 release notes](release-notes/0.9.0.md) for optional Bubblewrap confinement, and
+See [the 0.10.0 release notes](release-notes/0.10.0.md) before upgrading: it
+changes mail and sandbox settings and the database schema. See
+[the 0.9.0 release notes](release-notes/0.9.0.md) for optional Bubblewrap confinement, and
 [the 0.8.0 release notes](release-notes/0.8.0.md) for owner controls, house rules, and interface refinements.
 
 The Go compiler is only needed when building from source.
-HTTPS connections to imvault need your system's CA certificates.
+HTTPS connections to Imvault need your system's CA certificates.
 
 ## Debian and Ubuntu
 
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.9.0
+release_version=0.10.0
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"
@@ -71,8 +73,8 @@ Download the archive and checksum file for your architecture, verify them as
 above, and extract the archive:
 
 ```sh
-tar -xzf witmoot_0.9.0_linux_amd64.tar.gz
-cd witmoot_0.9.0_linux_amd64
+tar -xzf witmoot_0.10.0_linux_amd64.tar.gz
+cd witmoot_0.10.0_linux_amd64
 sudo install -m 0755 witmoot /usr/local/bin/witmoot
 sudo install -d /usr/local/share/doc/witmoot
 sudo install -m 0644 LICENSE README.md THIRD_PARTY_NOTICES.txt /usr/local/share/doc/witmoot/
