@@ -291,13 +291,7 @@ func multipartPost(t *testing.T, c *testClient, path string, form url.Values, fi
 	if csrf {
 		form.Set("csrf", c.cookies[c.app.cookieName("csrf")].Value)
 	}
-	for key, values := range form {
-		for _, value := range values {
-			if err := writer.WriteField(key, value); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
+	writeFields(t, writer, form)
 	for _, data := range files {
 		p, err := writer.CreateFormFile("images", "upload.png")
 		if err != nil {

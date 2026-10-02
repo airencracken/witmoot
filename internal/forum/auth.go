@@ -134,7 +134,7 @@ func (a *App) startSession(w http.ResponseWriter, r *http.Request, userID int64)
 		return err
 	}
 	a.cookie(w, "session", token, int(lifetime.Seconds()))
-	a.cookie(w, "csrf", randomToken(), 86400)
+	a.cookie(w, "csrf", sessionCSRFToken(token), 86400)
 	return nil
 }
 

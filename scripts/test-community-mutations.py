@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that community regressions catch deliberate permission/data-loss defects."""
+"""Check that community regressions catch deliberate permission, CSRF, and data-loss defects."""
 
 import os
 from pathlib import Path
@@ -30,6 +30,12 @@ MUTATIONS = [
     ("export board names", "internal/forum/export_store.go", "CASE WHEN vb.id IS NULL THEN '' ELSE b.name END", "b.name", "TestExportWithholdsNamesTheMemberCanNoLongerRead"),
     ("title replacement record", "internal/forum/community_store.go", "TitleReplaced: replaceTitle}", "TitleReplaced: false}", "TestOwnerActivityLinksRemovalsAndRecordsTitlesAndAvatars"),
     ("avatar removal record", "internal/forum/community_store.go", 'communityEvent{Action: "remove-avatar", Subject: name}); err != nil {\n\t\t\treturn err', 'communityEvent{Action: "remove-avatar", Subject: name}); err != nil {\n\t\t\treturn nil', "TestOwnerAvatarRemovalIsAtomic"),
+    ("session-bound CSRF", "internal/forum/csrf.go", "\tif session != \"\" {", "\tif false && session != \"\" {", "TestSessionTokensNeverValidateAcrossSessions"),
+    ("signed-in CSRF session", "internal/forum/web.go", "\t\t\t\tsession = c.Value\n", "", "TestPlantedCSRFCookieIsRefusedWhenSignedIn"),
+    ("sign-in CSRF binding", "internal/forum/auth.go", 'a.cookie(w, "csrf", sessionCSRFToken(token), 86400)', 'a.cookie(w, "csrf", randomToken(), 86400)', "TestSignedOutFormsKeepDoubleSubmit"),
+    ("state-changing methods", "internal/forum/web.go", "if isMutating(r.Method) {", "if r.Method == http.MethodPost {", "TestEveryStateChangingMethodNeedsTheToken"),
+    ("bounded multipart peek", "internal/forum/csrf.go", "io.LimitReader(original, csrfPeekLimit)", "original", "TestMultipartTokenCheckReadsOnlyTheFirstPart"),
+    ("multipart body restore", "internal/forum/csrf.go", "{io.MultiReader(bytes.NewReader(consumed.Bytes()), original), original}", "{original, original}", "TestMultipartFormsCarryTheTokenInTheirFirstPart"),
     ("removed message schema", "internal/forum/migrations/013_community_care.sql", "AND (removed = 0 OR body = 'This message was removed by a site owner.')", "", "TestCommunitySchemaUpgradeAndConstraints"),
 ]
 

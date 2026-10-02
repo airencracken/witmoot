@@ -13,7 +13,7 @@ import (
 
 // slowPost sends a request whose body arrives in two halves, pausing between
 // them, and returns the status line or the connection error.
-func slowPost(t *testing.T, address, path, contentType, body string, pause time.Duration) (string, error) {
+func slowPost(t *testing.T, address, path, contentType, cookie, body string, pause time.Duration) (string, error) {
 	t.Helper()
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -24,7 +24,7 @@ func slowPost(t *testing.T, address, path, contentType, body string, pause time.
 			t.Log(err)
 		}
 	}()
-	if _, err := fmt.Fprintf(conn, "POST %s HTTP/1.1\r\nHost: board.test\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", path, contentType, len(body), body[:len(body)/2]); err != nil {
+	if _, err := fmt.Fprintf(conn, "POST %s HTTP/1.1\r\nHost: board.test\r\nContent-Type: %s\r\nCookie: %s\r\nContent-Length: %d\r\n\r\n%s", path, contentType, cookie, len(body), body[:len(body)/2]); err != nil {
 		return "", err
 	}
 	time.Sleep(pause)
@@ -49,15 +49,17 @@ func TestRequestBodyDeadlinesFollowTheRoute(t *testing.T) {
 	address := strings.TrimPrefix(server.URL, "http://")
 
 	// A slow ordinary form is cut off; the handler sees an unreadable form.
-	status, err := slowPost(t, address, "/login", "application/x-www-form-urlencoded", "username=alex&password=a+long+test+password", time.Second)
+	status, err := slowPost(t, address, "/login", "application/x-www-form-urlencoded", "", "username=alex&password=a+long+test+password", time.Second)
 	if err == nil && !strings.Contains(status, " 400 ") {
 		t.Fatalf("a slow form body was accepted: %q", status)
 	}
-	// A slow upload of the same pace is still read. The missing CSRF token
-	// proves the whole form arrived and was parsed.
-	body := "--b\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\nhello\r\n--b--\r\n"
-	status, err = slowPost(t, address, "/account/avatar", "multipart/form-data; boundary=b", body, time.Second)
-	if err != nil || !strings.Contains(status, fmt.Sprintf(" %d ", http.StatusForbidden)) {
+	// A slow upload of the same pace is still read. It carries a valid
+	// signed-out token, so the whole form is parsed before the sign-in
+	// redirect; a form cut off part way would be refused as unreadable.
+	token := randomToken()
+	body := "--b\r\nContent-Disposition: form-data; name=\"csrf\"\r\n\r\n" + token + "\r\n--b\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\n" + strings.Repeat("hello ", 100) + "\r\n--b--\r\n"
+	status, err = slowPost(t, address, "/account/avatar", "multipart/form-data; boundary=b", "witmoot_csrf="+token, body, time.Second)
+	if err != nil || !strings.Contains(status, fmt.Sprintf(" %d ", http.StatusSeeOther)) {
 		t.Fatalf("a slow upload was cut off: %q %v", status, err)
 	}
 }
