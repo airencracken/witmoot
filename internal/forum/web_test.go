@@ -346,3 +346,36 @@ func TestUnicodeMessageAtCharacterLimit(t *testing.T) {
 	w := client.post("/boards/1/new", url.Values{"title": {"A message in any language"}, "body": {strings.Repeat("界", 20000)}})
 	requireStatus(t, w, 303)
 }
+
+func TestMissingRecordsAreNamedByTheirRoute(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	for _, tc := range []struct {
+		method, path, thing string
+	}{
+		{"GET", "/boards/999", "board"},
+		{"GET", "/boards/999/new", "board"},
+		{"GET", "/boards/999/settings", "board"},
+		{"GET", "/boards/999/archive", "board"},
+		{"GET", "/topics/999", "conversation"},
+		{"POST", "/topics/999/replies", "conversation"},
+		{"GET", "/posts/999/edit", "message"},
+		{"GET", "/posts/999/remove", "message"},
+		{"POST", "/invites/999/revoke", "invitation"},
+		{"POST", "/invites/members/999/permission", "member"},
+		{"GET", "/members/999/suspend", "member"},
+		{"POST", "/members/999/reset", "member"},
+		{"GET", "/groups/999", "group"},
+		{"GET", "/groups/999/delete", "group"},
+	} {
+		var w *httptest.ResponseRecorder
+		if tc.method == "POST" {
+			w = owner.post(tc.path, url.Values{"body": {"hello"}, "enabled": {"1"}})
+		} else {
+			w = owner.request(tc.method, tc.path, nil, nil)
+		}
+		if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "We could not find that "+tc.thing+".") {
+			t.Errorf("%s %s: %d, want the missing %s named", tc.method, tc.path, w.Code, tc.thing)
+		}
+	}
+}

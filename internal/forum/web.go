@@ -451,10 +451,26 @@ func (a *App) storeError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		a.fail(w, r, 404, "We could not find that conversation.")
+		a.fail(w, r, 404, notFoundMessage(r))
 		return
 	}
 	a.serverError(w, r, err)
+}
+
+// notFoundMessage names what the matched route looks up, so a missing record
+// is described in the terms of the page that asked for it.
+func notFoundMessage(r *http.Request) string {
+	_, path, _ := strings.Cut(r.Pattern, " ")
+	for _, route := range []struct{ prefix, thing string }{
+		{"/boards/", "board"}, {"/topics/", "conversation"}, {"/posts/", "message"},
+		{"/invites/members/", "member"}, {"/invites/", "invitation"},
+		{"/members/", "member"}, {"/groups/", "group"},
+	} {
+		if strings.HasPrefix(path, route.prefix) {
+			return "We could not find that " + route.thing + "."
+		}
+	}
+	return "We could not find what you were looking for."
 }
 
 func pathID(r *http.Request) int64 { id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64); return id }
