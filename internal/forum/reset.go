@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/airencracken/comfylib/smtp"
 	"golang.org/x/crypto/bcrypt"
-
-	"witmoot/internal/mail"
 )
 
 // ResetLinkTTL is how long an owner-issued reset link stays valid, from the
@@ -255,8 +254,8 @@ func (a *App) revokeResetLink(w http.ResponseWriter, r *http.Request) {
 // ResetMessage is the email a member receives with a reset link. The web and
 // the admin view both use it, so the wording and stated expiry cannot drift
 // from the link they send.
-func ResetMessage(to User, site, link string, ttl time.Duration) mail.Message {
-	return mail.Message{To: to.Email, Subject: "Choose a new password for " + site, Body: fmt.Sprintf(`Hello %s,
+func ResetMessage(to User, site, link string, ttl time.Duration) smtp.Message {
+	return smtp.Message{To: to.Email, Subject: "Choose a new password for " + site, Body: fmt.Sprintf(`Hello %s,
 
 An owner of %s made a link so you can choose a new password. Open it here:
 

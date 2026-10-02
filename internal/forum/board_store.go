@@ -10,7 +10,7 @@ var (
 	errOwner         = errors.New("only site owners can do that")
 	errBoardConflict = errors.New("this board has changed since you opened its settings; reload before saving")
 	errBoardAccess   = errors.New("choose a valid permission for each member and group; reload if a group has been removed")
-	errBoardDetails  = errors.New("use 1–80 characters for the name and category, and up to 500 for the description")
+	errBoardDetails  = errors.New("use 1–80 characters on one line for the name and category, and up to 500 for the description")
 )
 
 type BoardMember struct {
@@ -38,7 +38,7 @@ func (s *Store) BoardMembers(ctx context.Context, boardID int64) ([]BoardMember,
 }
 
 func (s *Store) SaveBoard(ctx context.Context, ownerID int64, board Board, access, groups map[int64]string) (int64, error) {
-	if !validText(board.Name, 1, 80) || !validText(board.Category, 1, 80) || !validText(board.Description, 0, 500) {
+	if !validText(board.Name, 1, 80) || !validText(board.Category, 1, 80) || !validText(board.Description, 0, 500) || !SingleLine(board.Name) || !SingleLine(board.Category) {
 		return 0, errBoardDetails
 	}
 	tx, err := s.db.BeginTx(ctx, nil)

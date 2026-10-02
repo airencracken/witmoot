@@ -13,9 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/airencracken/comfylib/smtp"
 	"golang.org/x/crypto/bcrypt"
-
-	"witmoot/internal/mail"
 )
 
 var resetLinkPattern = regexp.MustCompile(`/reset/([a-f0-9]{64})`)
@@ -23,13 +22,13 @@ var resetLinkPattern = regexp.MustCompile(`/reset/([a-f0-9]{64})`)
 // recordingMailer stands in for a configured relay so email paths can be tested
 // without a socket.
 type recordingMailer struct {
-	sent    []mail.Message
+	sent    []smtp.Message
 	failure error
 }
 
 func (m *recordingMailer) Enabled() bool { return true }
 
-func (m *recordingMailer) Send(_ context.Context, msg mail.Message) error {
+func (m *recordingMailer) Send(_ context.Context, msg smtp.Message) error {
 	if m.failure != nil {
 		return m.failure
 	}
@@ -245,6 +244,16 @@ func TestValidEmail(t *testing.T) {
 		{"jules@", false},
 		{"has space@example.org", false},
 		{"line\nbreak@example.org", false},
+		{"carriage\r@example.org", false},
+		{"tab\t@example.org", false},
+		{"nul\x00@example.org", false},
+		{"del\x7f@example.org", false},
+		{"Jules <jules@example.org>", false},
+		{"<jules@example.org>", false},
+		{"jules@example.org,victim@example.org", false},
+		{"jules@example.org>", false},
+		{"jules+board@example.org", true},
+		{"jülés@example.org", true},
 		{strings.Repeat("a", 250) + "@example.org", false},
 	} {
 		if got := validEmail(tc.email); got != tc.ok {

@@ -21,8 +21,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/airencracken/comfylib/smtp"
+
 	"witmoot/internal/imvault"
-	"witmoot/internal/mail"
 )
 
 //go:embed templates/*.html static/*
@@ -40,7 +41,7 @@ type Config struct {
 	TrustedProxies []netip.Prefix
 	// Mail describes an optional SMTP relay. An empty Host leaves mail
 	// disabled, and password reset links are handed over by an owner instead.
-	Mail mail.Config
+	Mail smtp.Config
 }
 
 type App struct {
@@ -51,7 +52,7 @@ type App struct {
 	limiter   *limiter
 	dummyHash string
 	vault     *imvault.Client
-	mailer    mail.Sender
+	mailer    smtp.Sender
 }
 
 type requestState struct {
@@ -116,6 +117,9 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.TrimSpace(config.Name) == "" {
 		config.Name = "Witmoot"
 	}
+	if err := CheckSiteName(config.Name); err != nil {
+		return nil, err
+	}
 	if config.SourceURL == "" {
 		config.SourceURL = "https://github.com/airencracken/witmoot"
 	}
@@ -143,9 +147,13 @@ func New(store *Store, config Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	var mailer mail.Sender = mail.Disabled{}
+	var mailer smtp.Sender = smtp.Disabled{}
 	if config.Mail.Host != "" {
-		mailer = mail.NewSMTP(config.Mail)
+		// An unknown TLS mode or a malformed sender stops startup rather
+		// than sending in plain text or failing on the first reset link.
+		if mailer, err = smtp.New(config.Mail); err != nil {
+			return nil, err
+		}
 	}
 	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: newLimiter(), mailer: mailer}
 	if config.ImvaultURL != "" {

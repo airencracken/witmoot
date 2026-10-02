@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/airencracken/comfylib/smtp"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"witmoot/internal/forum"
-	"witmoot/internal/mail"
 )
 
 // errRelativeLink stops a reset link without an origin from being emailed: a
@@ -30,7 +30,7 @@ var errRelativeLink = errors.New("set WITMOOT_BASE_URL to email complete reset l
 type Options struct {
 	BaseURL  string
 	SiteName string
-	Mailer   mail.Sender
+	Mailer   smtp.Sender
 }
 
 type screen int
@@ -160,9 +160,9 @@ func (m *Model) reload() error {
 	return nil
 }
 
-func (m Model) mailer() mail.Sender {
+func (m Model) mailer() smtp.Sender {
 	if m.opts.Mailer == nil {
-		return mail.Disabled{}
+		return smtp.Disabled{}
 	}
 	return m.opts.Mailer
 }

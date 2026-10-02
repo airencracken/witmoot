@@ -78,19 +78,53 @@ func TestStartupRejectsInvalidDeploymentConfiguration(t *testing.T) {
 	args := os.Args
 	os.Args = []string{"witmoot"}
 	t.Cleanup(func() { os.Args = args })
-	for _, name := range []string{"WITMOOT_TRUSTED_PROXIES", "WITMOOT_BASE_URL"} {
-		t.Run(name, func(t *testing.T) {
+	relay := map[string]string{"WITMOOT_SMTP_HOST": "relay.example.org", "WITMOOT_SMTP_FROM": "Board <no-reply@example.org>"}
+	for _, tc := range []struct {
+		name, value string
+		with        map[string]string
+	}{
+		{"WITMOOT_TRUSTED_PROXIES", "not-an-address", nil},
+		{"WITMOOT_BASE_URL", "not-an-address", nil},
+		// An unknown mode used to be refused here too; it must never reach
+		// the sender as plain text.
+		{"WITMOOT_SMTP_TLS", "plaintext", relay},
+		{"WITMOOT_SMTP_TLS", "STARTTLS", relay},
+		// The site name becomes the reset email's subject, which the mail
+		// sender refuses outright if it holds a line break.
+		{"WITMOOT_NAME", "Our board\r\nBcc: victim@example.org", nil},
+		{"WITMOOT_NAME", "Our board\nsecond line", relay},
+		{"WITMOOT_NAME", "Our board\u2028second line", nil},
+	} {
+		t.Run(tc.name+"="+tc.value, func(t *testing.T) {
 			t.Setenv("WITMOOT_DATA_DIR", t.TempDir())
 			t.Setenv("WITMOOT_SECURE_COOKIES", "false")
-			t.Setenv("WITMOOT_IMVAULT_URL", "")
-			t.Setenv("WITMOOT_TRUSTED_PROXIES", "")
-			t.Setenv("WITMOOT_BASE_URL", "")
+			for _, key := range []string{"WITMOOT_IMVAULT_URL", "WITMOOT_TRUSTED_PROXIES", "WITMOOT_BASE_URL", "WITMOOT_NAME", "WITMOOT_SMTP_HOST", "WITMOOT_SMTP_FROM", "WITMOOT_SMTP_TLS", "WITMOOT_SMTP_PORT"} {
+				t.Setenv(key, "")
+			}
 			t.Setenv("WITMOOT_ADDR", "invalid-listen-address")
-			t.Setenv(name, "not-an-address")
-			if err := run(); err == nil || !strings.Contains(err.Error(), name) {
-				t.Fatalf("invalid %s did not stop startup: %v", name, err)
+			for key, value := range tc.with {
+				t.Setenv(key, value)
+			}
+			t.Setenv(tc.name, tc.value)
+			if err := run(); err == nil || !strings.Contains(err.Error(), tc.name) {
+				t.Fatalf("invalid %s did not stop startup: %v", tc.name, err)
 			}
 		})
+	}
+}
+
+// The admin view and reset-link mail use the configured site name too.
+func TestAdminOptionsRejectMultilineSiteNames(t *testing.T) {
+	for _, key := range instanceSettings {
+		t.Setenv(key, "")
+	}
+	t.Setenv("WITMOOT_NAME", "Our board\nBcc: victim@example.org")
+	if _, err := adminOptions(testServicePaths()); err == nil || !strings.Contains(err.Error(), "WITMOOT_NAME") {
+		t.Fatalf("multi-line site name accepted: %v", err)
+	}
+	t.Setenv("WITMOOT_NAME", "Our board")
+	if options, err := adminOptions(testServicePaths()); err != nil || options.SiteName != "Our board" {
+		t.Fatalf("admin options = %+v, %v", options, err)
 	}
 }
 

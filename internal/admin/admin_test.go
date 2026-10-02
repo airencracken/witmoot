@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/airencracken/comfylib/smtp"
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/crypto/bcrypt"
 
 	"witmoot/internal/forum"
-	"witmoot/internal/mail"
 )
 
 type fakeMailer struct {
 	enabled bool
-	sent    []mail.Message
+	sent    []smtp.Message
 }
 
 func (f *fakeMailer) Enabled() bool { return f.enabled }
 
-func (f *fakeMailer) Send(_ context.Context, msg mail.Message) error {
+func (f *fakeMailer) Send(_ context.Context, msg smtp.Message) error {
 	f.sent = append(f.sent, msg)
 	return nil
 }

@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/airencracken/comfylib/privdrop"
+	"github.com/airencracken/comfylib/smtp"
 
 	"witmoot/internal/forum"
-	"witmoot/internal/mail"
 )
 
 // version is set at build time with -ldflags "-X main.version=...", which the
@@ -129,26 +129,24 @@ func env(key, fallback string) string {
 // mailConfig reads the optional SMTP relay through lookup, which returns one
 // WITMOOT_* setting or "". An empty WITMOOT_SMTP_HOST leaves mail disabled;
 // everything else is only validated when a relay is configured.
-func mailConfig(lookup func(string) string) (mail.Config, error) {
+func mailConfig(lookup func(string) string) (smtp.Config, error) {
 	host := lookup("WITMOOT_SMTP_HOST")
 	if host == "" {
-		return mail.Config{}, nil
+		return smtp.Config{}, nil
 	}
 	port, err := strconv.Atoi(cmp.Or(lookup("WITMOOT_SMTP_PORT"), "587"))
 	if err != nil || port < 1 || port > 65535 {
-		return mail.Config{}, errors.New("WITMOOT_SMTP_PORT must be a whole number from 1 to 65535")
+		return smtp.Config{}, errors.New("WITMOOT_SMTP_PORT must be a whole number from 1 to 65535")
 	}
-	mode := mail.TLSMode(cmp.Or(lookup("WITMOOT_SMTP_TLS"), string(mail.TLSStartTLS)))
-	switch mode {
-	case mail.TLSStartTLS, mail.TLSImplicit, mail.TLSNone:
-	default:
-		return mail.Config{}, errors.New("WITMOOT_SMTP_TLS must be starttls, implicit, or none")
+	mode, err := smtp.ParseTLSMode(lookup("WITMOOT_SMTP_TLS"))
+	if err != nil {
+		return smtp.Config{}, fmt.Errorf("WITMOOT_SMTP_TLS: %w", err)
 	}
 	from, err := mailSender(lookup)
 	if err != nil {
-		return mail.Config{}, err
+		return smtp.Config{}, err
 	}
-	return mail.Config{
+	return smtp.Config{
 		Host:     host,
 		Port:     port,
 		Username: lookup("WITMOOT_SMTP_USERNAME"),
@@ -163,7 +161,7 @@ func mailConfig(lookup func(string) string) (mail.Config, error) {
 // real domain rather than localhost. With neither, mail cannot be enabled.
 func mailSender(lookup func(string) string) (string, error) {
 	if from := lookup("WITMOOT_SMTP_FROM"); from != "" {
-		canonical, err := mail.ParseFrom(from)
+		canonical, err := smtp.ParseFrom(from)
 		if err != nil {
 			return "", fmt.Errorf("WITMOOT_SMTP_FROM: %w", err)
 		}

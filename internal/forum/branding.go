@@ -70,7 +70,7 @@ func cleanBranding(branding SiteBranding) (SiteBranding, error) {
 	if !brandTextValid(branding.HouseRules, 5000, true) || !brandTextValid(branding.OwnerContact, 500, true) {
 		return SiteBranding{}, errors.New("keep house rules under 5000 characters and owner contact details under 500")
 	}
-	if !brandTextValid(branding.Name, 80, false) || !brandTextValid(branding.WelcomeTitle, 120, false) || !brandTextValid(branding.WelcomeText, 2000, true) {
+	if !brandTextValid(branding.Name, 80, false) || !SingleLine(branding.Name) || !brandTextValid(branding.WelcomeTitle, 120, false) || !brandTextValid(branding.WelcomeText, 2000, true) {
 		return SiteBranding{}, errors.New("keep the site name under 80 characters, welcome title under 120, and welcome text under 2000")
 	}
 	if len(branding.SourceURL) > 512 || !validSourceURL(branding.SourceURL) {
