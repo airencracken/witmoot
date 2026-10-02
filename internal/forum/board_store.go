@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	errOwner         = errors.New("only owners can manage boards and groups")
+	errOwner         = errors.New("only site owners can do that")
 	errBoardConflict = errors.New("this board has changed since you opened its settings; reload before saving")
 	errBoardAccess   = errors.New("choose a valid permission for each member and group; reload if a group has been removed")
 	errBoardDetails  = errors.New("use 1–80 characters for the name and category, and up to 500 for the description")

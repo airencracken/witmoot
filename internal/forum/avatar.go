@@ -133,7 +133,7 @@ func (a *App) saveAvatar(w http.ResponseWriter, r *http.Request) {
 		a.redirect(w, r, "/account?saved=avatar")
 		return
 	}
-	data, err := uploadedBrandImage(r, "avatar")
+	data, err := uploadedImage(r, "avatar")
 	if err != nil {
 		a.render(w, r, http.StatusUnprocessableEntity, a.accountPage(r, err.Error(), "", user.Email))
 		return

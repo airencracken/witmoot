@@ -218,12 +218,12 @@ func (a *App) brandingAsset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) saveBrandingAssets(w http.ResponseWriter, r *http.Request) {
-	mascot, err := uploadedBrandImage(r, "mascot")
+	mascot, err := uploadedImage(r, "mascot")
 	if err != nil {
 		a.render(w, r, http.StatusUnprocessableEntity, a.settingsPage(r, err.Error()))
 		return
 	}
-	favicon, err := uploadedBrandImage(r, "favicon")
+	favicon, err := uploadedImage(r, "favicon")
 	if err != nil {
 		a.render(w, r, http.StatusUnprocessableEntity, a.settingsPage(r, err.Error()))
 		return
@@ -241,7 +241,7 @@ func (a *App) saveBrandingAssets(w http.ResponseWriter, r *http.Request) {
 	a.redirect(w, r, "/settings?saved=1")
 }
 
-func uploadedBrandImage(r *http.Request, name string) ([]byte, error) {
+func uploadedImage(r *http.Request, name string) ([]byte, error) {
 	file, header, err := r.FormFile(name)
 	if errors.Is(err, http.ErrMissingFile) {
 		return nil, nil

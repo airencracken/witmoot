@@ -78,16 +78,19 @@ func (s *Store) SaveInstanceSettings(ctx context.Context, mode Mode, branding Si
 }
 
 func (a *App) settings(w http.ResponseWriter, r *http.Request) {
-	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only owners can change site settings.")
-		return
-	}
 	a.render(w, r, 200, a.settingsPage(r, ""))
 }
 
 func (a *App) settingsPage(r *http.Request, message string) Page {
-	page := Page{View: "settings", Title: "Site settings", Saved: r.URL.Query().Get("saved") == "1", Error: message}
-	if r.Method == http.MethodPost {
+	return Page{View: "settings", Title: "Site settings", Saved: r.URL.Query().Get("saved") == "1", Error: message}
+}
+
+// settingsDraft redisplays a rejected settings form with what was submitted.
+// Other forms on the page, such as image uploads, show the saved values.
+func (a *App) settingsDraft(r *http.Request, message string) Page {
+	page := a.settingsPage(r, message)
+	if _, submitted := r.PostForm["site_name"]; submitted {
+		page.BrandingDraft = true
 		page.Name = r.PostForm.Get("site_name")
 		page.SourceURL = r.PostForm.Get("source_url")
 		page.WelcomeTitle = r.PostForm.Get("welcome_title")
@@ -99,13 +102,9 @@ func (a *App) settingsPage(r *http.Request, message string) Page {
 }
 
 func (a *App) saveSettings(w http.ResponseWriter, r *http.Request) {
-	if state(r).User.Role != "owner" {
-		a.fail(w, r, 403, "Only owners can change site settings.")
-		return
-	}
 	mode := Mode(r.PostForm.Get("mode"))
 	if !mode.Valid() {
-		a.render(w, r, 422, a.settingsPage(r, errMode.Error()))
+		a.render(w, r, 422, a.settingsDraft(r, errMode.Error()))
 		return
 	}
 	if _, hasBranding := r.PostForm["site_name"]; hasBranding {
@@ -115,7 +114,7 @@ func (a *App) saveSettings(w http.ResponseWriter, r *http.Request) {
 			HouseRules: r.PostForm.Get("house_rules"), OwnerContact: r.PostForm.Get("owner_contact"),
 		}
 		if err := a.store.SaveInstanceSettings(r.Context(), mode, branding); err != nil {
-			a.render(w, r, 422, a.settingsPage(r, err.Error()))
+			a.render(w, r, 422, a.settingsDraft(r, err.Error()))
 			return
 		}
 	} else if err := a.store.SetMode(r.Context(), mode); err != nil {
