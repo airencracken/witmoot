@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"witmoot/internal/sandbox"
+	"github.com/airencracken/comfylib/sandbox"
 )
 
 func runSandbox(args []string, out io.Writer) error {
@@ -40,8 +40,11 @@ func runSandbox(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	environment := os.Environ()
-	policy := sandbox.Service{Prefix: "WITMOOT_", DataDir: data, Executable: executable, Env: environment}
+	// Witmoot builds no sandboxes of its own, so the server gets no user
+	// namespaces: NestedSandbox stays false and the policy adds
+	// --disable-userns. SSL_CERT_FILE in the environment names a custom CA
+	// bundle, bound read-only at /app/ca-bundle.crt.
+	policy := sandbox.Service{Prefix: "WITMOOT_", DataDir: data, Executable: executable, Env: os.Environ()}
 	mounts, environment, err := policy.Policy()
 	if err != nil {
 		return err

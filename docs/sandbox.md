@@ -94,6 +94,11 @@ its default. The `--write-dir` and `--read-file` options of earlier releases are
 gone: Witmoot never needed the extra directory, and a certificate file is now
 configured with `SSL_CERT_FILE`.
 
+The server cannot create user namespaces of its own: Bubblewrap starts it with
+`--disable-userns`. Witmoot never builds nested sandboxes, so this removes a
+large part of the kernel a compromised server could otherwise reach. It needs
+Bubblewrap 0.8 or later, which every supported distribution ships.
+
 A compromised server can still access its own data and use the network. This
 limits access to the rest of the host; it does not protect the database from the
 application itself. Bubblewrap is not a CPU, memory or disk quota. Existing
@@ -102,7 +107,11 @@ limits.
 
 ## Verification
 
-`make test-sandbox` requires real Bubblewrap namespaces. It tests hidden host
-files, environment filtering, writable data, retained server networking, a
-custom CA bundle and graceful shutdown. Setup failures fail the tests rather than skipping them.
-`make test-sandbox-mutations` checks deliberate policy regressions.
+The sandbox policy itself comes from the shared
+[comfylib](https://github.com/airencracken/comfylib) `sandbox` package, whose
+own tests cover hidden host files, environment filtering, writable data,
+retained server networking, a custom CA bundle and graceful shutdown in real
+Bubblewrap namespaces. `make test-sandbox` runs Witmoot's server under real
+Bubblewrap from check to graceful stop. Setup failures fail the tests rather
+than skipping them. `make test-sandbox-mutations` checks deliberate regressions
+in how Witmoot builds its policy.

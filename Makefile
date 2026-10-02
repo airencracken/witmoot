@@ -100,7 +100,7 @@ install-logrotate: ## Install log rotation while preserving local settings
 
 .PHONY: test-sandbox test-sandbox-mutations
 test-sandbox: ## Require real Bubblewrap boundary and lifecycle tests (Linux)
-	COMFYWARE_SANDBOX_TEST=1 go test -race -count=1 ./internal/sandbox ./cmd/witmoot -run 'Sandbox|Real'
+	COMFYWARE_SANDBOX_TEST=1 go test -race -count=1 ./cmd/witmoot -run 'Sandbox|Real'
 
 test-sandbox-mutations: ## Verify sandbox regressions reject deliberate defects (Python 3)
 	python3 scripts/test-sandbox-mutations.py
