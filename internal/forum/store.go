@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -95,6 +96,15 @@ func OpenStore(path string) (*Store, error) {
 }
 
 func (s *Store) Close() error { return s.db.Close() }
+
+// rollback ends a transaction that was not committed. After Commit it does
+// nothing; any other failure is logged because the caller's result is already
+// decided by then.
+func rollback(tx *sql.Tx) {
+	if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+		slog.Error("roll back transaction", "error", err)
+	}
+}
 
 func (s *Store) migrate() error {
 	tx, err := s.db.Begin()
@@ -398,7 +408,8 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 			CreatedBy int64
 			Creator   string
 		}
-		if err := tx.QueryRowContext(ctx, `SELECT i.id, i.created_by, u.username FROM invitations i JOIN users u ON u.id = i.created_by WHERE i.token_hash = ? AND u.suspended = 0`, inviteHash).Scan(&invite.ID, &invite.CreatedBy, &invite.Creator); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT i.id, i.created_by, u.username FROM invitations i JOIN users u ON u.id = i.created_by WHERE i.token_hash = ?
+			AND u.suspended = 0 AND (u.role = 'owner' OR u.can_invite = 1)`, inviteHash).Scan(&invite.ID, &invite.CreatedBy, &invite.Creator); err != nil {
 			return 0, errInvitation
 		}
 		result, err := tx.ExecContext(ctx, `UPDATE invitations SET uses = uses + 1 WHERE token_hash = ? AND revoked_at IS NULL
