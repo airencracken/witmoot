@@ -15,6 +15,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/airencracken/comfylib/svcconfig"
 	"golang.org/x/term"
 
 	"witmoot/internal/admin"
@@ -44,8 +45,8 @@ var instanceSettings = []string{
 // openProvisioningStore opens the database in the resolved data directory. It
 // refuses to create one, so a mistyped command cannot leave an empty board
 // behind; start or provision the board first.
-func openProvisioningStore(paths provisioningConfigPaths) (*forum.Store, error) {
-	dataDir, err := resolveProvisioningDataDir(paths)
+func openProvisioningStore(paths svcconfig.Paths) (*forum.Store, error) {
+	dataDir, err := paths.DataDir("WITMOOT_DATA_DIR")
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +68,10 @@ func accountByUsername(ctx context.Context, store *forum.Store, name string) (fo
 }
 
 func setPassword(args []string, stdin io.Reader, stdout io.Writer) error {
-	return setPasswordWithConfigPaths(args, stdin, stdout, defaultProvisioningConfigPaths())
+	return setPasswordWithConfigPaths(args, stdin, stdout, servicePaths())
 }
 
-func setPasswordWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths provisioningConfigPaths) error {
+func setPasswordWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths svcconfig.Paths) error {
 	flags := commandFlags("set-password", stdout)
 	username := flags.String("username", "", "account username (required)")
 	passwordPrompt := flags.Bool("password-prompt", false, "prompt twice without echoing (requires a terminal)")
@@ -113,10 +114,10 @@ func setPasswordWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 }
 
 func resetLink(args []string, stdout io.Writer) error {
-	return resetLinkWithConfigPaths(args, stdout, defaultProvisioningConfigPaths())
+	return resetLinkWithConfigPaths(args, stdout, servicePaths())
 }
 
-func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths provisioningConfigPaths) error {
+func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths svcconfig.Paths) error {
 	flags := commandFlags("reset-link", stdout)
 	username := flags.String("username", "", "account username (required)")
 	expires := flags.Duration("expires", forum.ResetLinkTTL, "how long the link stays valid, for example 48h")
@@ -132,7 +133,7 @@ func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 	if *expires < time.Minute || *expires > 365*24*time.Hour {
 		return errors.New("--expires must be between 1 minute and 365 days")
 	}
-	settings, err := provisioningSettings(paths, "WITMOOT_BASE_URL")
+	settings, err := paths.Settings("WITMOOT_BASE_URL")
 	if err != nil {
 		return err
 	}
@@ -164,10 +165,10 @@ func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 }
 
 func listUsers(args []string, stdout io.Writer) error {
-	return listUsersWithConfigPaths(args, stdout, defaultProvisioningConfigPaths())
+	return listUsersWithConfigPaths(args, stdout, servicePaths())
 }
 
-func listUsersWithConfigPaths(args []string, stdout io.Writer, paths provisioningConfigPaths) error {
+func listUsersWithConfigPaths(args []string, stdout io.Writer, paths svcconfig.Paths) error {
 	flags := commandFlags("list-users", stdout)
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -224,7 +225,7 @@ func runAdmin(args []string, stdout io.Writer) error {
 	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
 		return errors.New("witmoot admin needs an interactive terminal; use set-password, reset-link, or list-users for scripts")
 	}
-	paths := defaultProvisioningConfigPaths()
+	paths := servicePaths()
 	options, err := adminOptions(paths)
 	if err != nil {
 		return err
@@ -244,8 +245,8 @@ func runAdmin(args []string, stdout io.Writer) error {
 
 // adminOptions resolves the site and mail settings the admin view uses the
 // same way the service does.
-func adminOptions(paths provisioningConfigPaths) (admin.Options, error) {
-	settings, err := provisioningSettings(paths, instanceSettings...)
+func adminOptions(paths svcconfig.Paths) (admin.Options, error) {
+	settings, err := paths.Settings(instanceSettings...)
 	if err != nil {
 		return admin.Options{}, err
 	}

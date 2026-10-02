@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/airencracken/comfylib/svcconfig"
+
 	"witmoot/contrib"
 	"witmoot/internal/forum"
 )
@@ -130,10 +132,10 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 }
 
 func createOwner(args []string, stdin io.Reader, stdout io.Writer) error {
-	return createOwnerWithConfigPaths(args, stdin, stdout, defaultProvisioningConfigPaths())
+	return createOwnerWithConfigPaths(args, stdin, stdout, servicePaths())
 }
 
-func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths provisioningConfigPaths) error {
+func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths svcconfig.Paths) error {
 	flags := commandFlags("create-owner", stdout)
 	username := flags.String("username", "", "owner username (required)")
 	passwordPrompt := flags.Bool("password-prompt", false, "prompt twice without echoing (requires a terminal)")
@@ -158,7 +160,7 @@ func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if err != nil {
 		return err
 	}
-	dataDir, err := resolveProvisioningDataDir(paths)
+	dataDir, err := paths.DataDir("WITMOOT_DATA_DIR")
 	if err != nil {
 		return err
 	}

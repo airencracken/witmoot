@@ -231,7 +231,8 @@ func TestResetLinkReadsTheBaseURLFromTheServiceConfiguration(t *testing.T) {
 	data := filepath.Join(t.TempDir(), "service data")
 	provisionOwner(t, data, "alex", "a long test password")
 	config := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.confd"), "WITMOOT_DATA_DIR=\""+data+"\"\nWITMOOT_BASE_URL=https://board.example.org/\n")
-	paths := provisioningConfigPaths{openRCConfig: config, openRCInstalled: true, openRCActive: true, serviceDefault: "/var/lib/witmoot"}
+	paths := testServicePaths()
+	paths.OpenRCConfig, paths.OpenRCInstalled, paths.OpenRCActive = config, true, true
 	var output bytes.Buffer
 	if err := resetLinkWithConfigPaths([]string{"--username", "alex"}, &output, paths); err != nil {
 		t.Fatal(err)
