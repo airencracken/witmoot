@@ -26,6 +26,8 @@ MUTATIONS = [
     ("limiter eviction", "internal/forum/security.go", "for l.order.Len() >= rateClients {\n\t\t\tl.remove(l.order.Front())\n\t\t}", "if l.order.Len() >= rateClients {\n\t\t\treturn false\n\t\t}", "TestFloodedLimiterStillAdmitsNewClients"),
     ("successful sign-in refund", "internal/forum/auth.go", "\ta.limiter.refund(a.clientIP(r))\n", "", "TestSuccessfulSignInsDoNotSpendTheBudget"),
     ("immediate transactions", "internal/forum/store.go", 'q.Add("_txlock", "immediate")', 'q.Add("_txlock", "deferred")', "TestTransactionsTakeTheWriteLockImmediately"),
+    ("export abort", "internal/forum/export.go", "panic(http.ErrAbortHandler)", "return", "TestFailedExportAbortsInsteadOfEndingCleanly"),
+    ("export board names", "internal/forum/export_store.go", "CASE WHEN vb.id IS NULL THEN '' ELSE b.name END", "b.name", "TestExportWithholdsNamesTheMemberCanNoLongerRead"),
     ("removed message schema", "internal/forum/migrations/013_community_care.sql", "AND (removed = 0 OR body = 'This message was removed by a site owner.')", "", "TestCommunitySchemaUpgradeAndConstraints"),
 ]
 
