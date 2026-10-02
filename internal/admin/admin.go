@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -19,9 +20,13 @@ import (
 	"witmoot/internal/mail"
 )
 
-const resetTTL = 24 * time.Hour
+// errRelativeLink stops a reset link without an origin from being emailed: a
+// bare path is useless to the person who receives it.
+var errRelativeLink = errors.New("set WITMOOT_BASE_URL to email complete reset links; copy this path instead")
 
-// Options are the small pieces of instance context the view needs.
+// Options are the small pieces of instance context the view needs. BaseURL is
+// the canonical public origin; without it, links are shown as paths and are
+// never emailed.
 type Options struct {
 	BaseURL  string
 	SiteName string
@@ -162,6 +167,11 @@ func (m Model) mailer() mail.Sender {
 	return m.opts.Mailer
 }
 
+// canEmail reports whether the selected member's link may be emailed.
+func (m Model) canEmail() bool {
+	return m.mailer().Enabled() && m.target.Email != "" && m.opts.BaseURL != ""
+}
+
 func (m Model) resetURL(token string) string {
 	if m.opts.BaseURL != "" {
 		return m.opts.BaseURL + "/reset/" + token
@@ -240,7 +250,7 @@ func (m Model) memberActions() []item {
 	if !m.target.Suspended {
 		items = append(items, item{"Create a reset link", actionReset})
 	}
-	if !m.target.Suspended && m.mailer().Enabled() && m.target.Email != "" {
+	if !m.target.Suspended && m.canEmail() {
 		items = append(items, item{"Email a reset link", actionResetEmail})
 	}
 	if m.target.Pending {
@@ -290,7 +300,7 @@ func (m Model) updateActions(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) issueReset(email bool) (tea.Model, tea.Cmd) {
 	token := forum.NewToken()
-	if err := m.store.CreateAuthToken(context.Background(), m.target.ID, forum.TokenPasswordReset, forum.TokenHash(token), time.Now().Add(resetTTL)); err != nil {
+	if err := m.store.CreateAuthToken(context.Background(), m.target.ID, forum.TokenPasswordReset, forum.TokenHash(token), time.Now().Add(forum.ResetLinkTTL)); err != nil {
 		m.err = err
 		return m, nil
 	}
@@ -298,22 +308,26 @@ func (m Model) issueReset(email bool) (tea.Model, tea.Cmd) {
 	m.link = m.resetURL(token)
 	m.emailed = false
 	if email {
-		message := mail.Message{
-			To:      m.target.Email,
-			Subject: "Choose a new password for " + m.opts.SiteName,
-			Body:    resetBody(m.target.Username, m.opts.SiteName, m.link),
-		}
-		if err := m.mailer().Send(context.Background(), message); err != nil {
-			m.err = err
-		} else {
-			m.emailed = true
-		}
+		m.sendReset()
 	}
 	if err := m.reload(); err != nil {
 		m.err = err
 	}
 	m.screen = screenResult
 	return m, nil
+}
+
+// sendReset emails the current link, refusing one that is only a path.
+func (m *Model) sendReset() {
+	if !strings.HasPrefix(m.link, "https://") && !strings.HasPrefix(m.link, "http://") {
+		m.err = errRelativeLink
+		return
+	}
+	if err := m.mailer().Send(context.Background(), forum.ResetMessage(m.target.User, m.opts.SiteName, m.link, forum.ResetLinkTTL)); err != nil {
+		m.err = err
+		return
+	}
+	m.emailed, m.err = true, nil
 }
 
 func (m *Model) cancelReset() error {
@@ -453,18 +467,8 @@ func (m Model) updateResult(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	switch key.String() {
 	case "e":
-		if m.mailer().Enabled() && m.target.Email != "" && !m.emailed {
-			message := mail.Message{
-				To:      m.target.Email,
-				Subject: "Choose a new password for " + m.opts.SiteName,
-				Body:    resetBody(m.target.Username, m.opts.SiteName, m.link),
-			}
-			if err := m.mailer().Send(context.Background(), message); err != nil {
-				m.err = err
-			} else {
-				m.emailed = true
-				m.err = nil
-			}
+		if m.canEmail() && !m.emailed {
+			m.sendReset()
 		}
 	case "q", "esc", "enter", " ":
 		m.screen = screenList
@@ -530,10 +534,10 @@ func (m Model) resultView() string {
 	}
 	if m.emailed {
 		lines = append(lines, okStyle.Render("Emailed to "+m.target.Email+"."))
-	} else if m.mailer().Enabled() && m.target.Email != "" {
+	} else if m.canEmail() {
 		lines = append(lines, helpStyle.Render("Press e to email it to "+m.target.Email+", or copy the link."))
 	}
-	lines = append(lines, helpStyle.Render("It works once and expires in 24 hours. Copy it now; it cannot be shown again."))
+	lines = append(lines, helpStyle.Render("It works once and expires in "+forum.HumanDuration(forum.ResetLinkTTL)+". Copy it now; it cannot be shown again."))
 	lines = append(lines, m.notices()...)
 	lines = append(lines, helpStyle.Render("esc back to the list"))
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
@@ -563,19 +567,6 @@ func passwordInput(label string) textinput.Model {
 	input.EchoMode = textinput.EchoPassword
 	input.CharLimit = 72
 	return input
-}
-
-func resetBody(name, site, link string) string {
-	return fmt.Sprintf(`Hello %s,
-
-An owner of %s made a link so you can choose a new password. Open it here:
-
-%s
-
-The link works once and expires in 24 hours.
-
-If you did not ask for this, you can ignore this message: your password has not changed.
-`, name, site, link)
 }
 
 func atLeast(a, b int) int {

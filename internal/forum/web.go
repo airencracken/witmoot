@@ -118,7 +118,7 @@ func New(store *Store, config Config) (*App, error) {
 	if config.SourceURL == "" {
 		config.SourceURL = "https://github.com/airencracken/witmoot"
 	}
-	baseURL, err := canonicalBaseURL(config.BaseURL)
+	baseURL, err := CanonicalBaseURL(config.BaseURL)
 	if err != nil {
 		return nil, err
 	}

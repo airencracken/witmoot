@@ -256,8 +256,9 @@ shared among all owner accounts.
 | `WITMOOT_SMTP_PORT` | `587` | Relay port |
 | `WITMOOT_SMTP_USERNAME` | unset | Relay username, if it needs one |
 | `WITMOOT_SMTP_PASSWORD` | unset | Relay password, if it needs one |
-| `WITMOOT_SMTP_FROM` | `Witmoot <no-reply@localhost>` | From address for outgoing mail |
+| `WITMOOT_SMTP_FROM` | `no-reply@` the `WITMOOT_BASE_URL` domain | From address for outgoing mail; required with a relay when the base URL has no domain name |
 | `WITMOOT_SMTP_TLS` | `starttls` | `starttls`, `implicit`, or `none` |
+| `SSL_CERT_FILE` | system bundle | Optional PEM bundle of trusted CAs, for example for a private relay; also used in the sandbox |
 
 ```bash
 WITMOOT_NAME='Our little corner' WITMOOT_ADDR=127.0.0.1:9000 make run

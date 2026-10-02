@@ -1,12 +1,14 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,9 +28,17 @@ var commandSummary = map[string]string{
 	"serve":        "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.",
 	"create-owner": "Create a new owner locally. Existing accounts are never promoted or changed.\nWITMOOT_DATA_DIR is read from the active service configuration unless set in the environment. Root invocations use the configured service user. Use a hidden terminal prompt or read from stdin.",
 	"set-password": "Replace an account's password and end its signed-in sessions.\nThis is the forced reset for someone who cannot use a one-time link. Root invocations use the configured service user.",
-	"reset-link":   "Make a single-use link an account can open to choose its own password.\nThe link expires (24 hours by default) and is shown once. Root invocations use the configured service user.",
+	"reset-link":   "Make a single-use link an account can open to choose its own password.\nThe link expires (" + forum.HumanDuration(forum.ResetLinkTTL) + " by default) and is shown once. WITMOOT_BASE_URL is read from the\nactive service configuration unless set in the environment. Root invocations use the configured service user.",
 	"list-users":   "List every account in the local database with its role and email address.",
-	"admin":        "Open an interactive manager for accounts: browse members, create owners,\nissue or cancel reset links, and set passwords. It needs an interactive terminal;\nuse set-password, reset-link, or list-users for scripts.",
+	"admin":        "Open an interactive manager for accounts: browse members, create owners,\nissue or cancel reset links, and set passwords. It needs an interactive terminal;\nuse set-password, reset-link, or list-users for scripts. Site and mail settings\nare read from the active service configuration unless set in the environment.",
+}
+
+// instanceSettings are the service settings reset links and mail depend on.
+// Account commands resolve them like WITMOOT_DATA_DIR, so a link printed or
+// mailed from the command line matches one made in the web interface.
+var instanceSettings = []string{
+	"WITMOOT_BASE_URL", "WITMOOT_NAME", "WITMOOT_SMTP_HOST", "WITMOOT_SMTP_PORT",
+	"WITMOOT_SMTP_USERNAME", "WITMOOT_SMTP_PASSWORD", "WITMOOT_SMTP_FROM", "WITMOOT_SMTP_TLS",
 }
 
 // openProvisioningStore opens the database in the resolved data directory. It
@@ -109,7 +119,7 @@ func resetLink(args []string, stdout io.Writer) error {
 func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths provisioningConfigPaths) error {
 	flags := commandFlags("reset-link", stdout)
 	username := flags.String("username", "", "account username (required)")
-	expires := flags.Duration("expires", 24*time.Hour, "how long the link stays valid, for example 48h")
+	expires := flags.Duration("expires", forum.ResetLinkTTL, "how long the link stays valid, for example 48h")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -122,11 +132,19 @@ func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 	if *expires < time.Minute || *expires > 365*24*time.Hour {
 		return errors.New("--expires must be between 1 minute and 365 days")
 	}
+	settings, err := provisioningSettings(paths, "WITMOOT_BASE_URL")
+	if err != nil {
+		return err
+	}
+	base, err := forum.CanonicalBaseURL(settings["WITMOOT_BASE_URL"])
+	if err != nil {
+		return err
+	}
 	store, err := openProvisioningStore(paths)
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer closeStore(store)
 	user, err := accountByUsername(context.Background(), store, strings.TrimSpace(*username))
 	if err != nil {
 		return err
@@ -135,14 +153,11 @@ func resetLinkWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 	if err := store.CreateAuthToken(context.Background(), user.ID, forum.TokenPasswordReset, forum.TokenHash(token), time.Now().Add(*expires)); err != nil {
 		return err
 	}
-	path := "/reset/" + token
-	if base := strings.TrimRight(os.Getenv("WITMOOT_BASE_URL"), "/"); base != "" {
-		path = base + path
-	}
+	path := base + "/reset/" + token
 	if _, err := fmt.Fprintf(stdout, "Reset link for %q (works once, expires in %s):\n  %s\n\nReset code, if the link is hard to share:\n  %s\n", user.Username, *expires, path, token); err != nil {
 		return err
 	}
-	if !strings.HasPrefix(path, "http") {
+	if base == "" {
 		_, err = fmt.Fprintln(stdout, "\nSet WITMOOT_BASE_URL to print a complete link.")
 	}
 	return err
@@ -209,24 +224,53 @@ func runAdmin(args []string, stdout io.Writer) error {
 	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
 		return errors.New("witmoot admin needs an interactive terminal; use set-password, reset-link, or list-users for scripts")
 	}
-	store, err := openProvisioningStore(defaultProvisioningConfigPaths())
+	paths := defaultProvisioningConfigPaths()
+	options, err := adminOptions(paths)
 	if err != nil {
 		return err
 	}
-	defer store.Close()
-	var sender mail.Sender = mail.Disabled{}
-	mailSettings, err := mailConfig()
+	store, err := openProvisioningStore(paths)
 	if err != nil {
 		return err
+	}
+	defer closeStore(store)
+	brand, err := store.LoadBranding(context.Background(), forum.SiteBranding{Name: options.SiteName})
+	if err != nil {
+		return err
+	}
+	options.SiteName = brand.Name
+	return admin.Run(store, options)
+}
+
+// adminOptions resolves the site and mail settings the admin view uses the
+// same way the service does.
+func adminOptions(paths provisioningConfigPaths) (admin.Options, error) {
+	settings, err := provisioningSettings(paths, instanceSettings...)
+	if err != nil {
+		return admin.Options{}, err
+	}
+	lookup := func(key string) string { return settings[key] }
+	base, err := forum.CanonicalBaseURL(lookup("WITMOOT_BASE_URL"))
+	if err != nil {
+		return admin.Options{}, err
+	}
+	var sender mail.Sender = mail.Disabled{}
+	mailSettings, err := mailConfig(lookup)
+	if err != nil {
+		return admin.Options{}, err
 	}
 	if mailSettings.Host != "" {
 		sender = mail.NewSMTP(mailSettings)
 	}
-	return admin.Run(store, admin.Options{
-		BaseURL:  os.Getenv("WITMOOT_BASE_URL"),
-		SiteName: env("WITMOOT_NAME", "Witmoot"),
-		Mailer:   sender,
-	})
+	return admin.Options{BaseURL: base, SiteName: cmp.Or(lookup("WITMOOT_NAME"), "Witmoot"), Mailer: sender}, nil
+}
+
+// closeStore closes the database after a command; a failure is reported but
+// cannot change the command's outcome any more.
+func closeStore(store *forum.Store) {
+	if err := store.Close(); err != nil {
+		slog.Error("close database", "error", err)
+	}
 }
 
 // readProvisionedPassword reads a password the way create-owner and

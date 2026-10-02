@@ -25,23 +25,52 @@ func TestHelpDoesNotCreateDatabase(t *testing.T) {
 
 func TestMailConfigValidation(t *testing.T) {
 	t.Setenv("WITMOOT_SMTP_HOST", "")
-	if cfg, err := mailConfig(); err != nil || cfg.Host != "" {
+	if cfg, err := mailConfig(os.Getenv); err != nil || cfg.Host != "" {
 		t.Fatalf("mail should be disabled without a host: %+v %v", cfg, err)
 	}
 	t.Setenv("WITMOOT_SMTP_HOST", "relay.example.org")
+	t.Setenv("WITMOOT_SMTP_FROM", "")
+	t.Setenv("WITMOOT_BASE_URL", "https://board.example.org")
+	t.Setenv("WITMOOT_NAME", "")
 	t.Setenv("WITMOOT_SMTP_PORT", "not-a-port")
-	if _, err := mailConfig(); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_PORT") {
+	if _, err := mailConfig(os.Getenv); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_PORT") {
 		t.Fatalf("invalid port: %v", err)
 	}
 	t.Setenv("WITMOOT_SMTP_PORT", "587")
 	t.Setenv("WITMOOT_SMTP_TLS", "bogus")
-	if _, err := mailConfig(); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_TLS") {
+	if _, err := mailConfig(os.Getenv); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_TLS") {
 		t.Fatalf("invalid TLS mode: %v", err)
 	}
 	t.Setenv("WITMOOT_SMTP_TLS", "implicit")
-	cfg, err := mailConfig()
-	if err != nil || cfg.Host != "relay.example.org" || cfg.Port != 587 || string(cfg.Mode) != "implicit" || cfg.From == "" {
+	cfg, err := mailConfig(os.Getenv)
+	if err != nil || cfg.Host != "relay.example.org" || cfg.Port != 587 || string(cfg.Mode) != "implicit" || cfg.From != `"Witmoot" <no-reply@board.example.org>` {
 		t.Fatalf("mail config: %+v %v", cfg, err)
+	}
+}
+
+func TestMailSenderIsExplicitOrDerivedFromTheBaseURL(t *testing.T) {
+	settings := map[string]string{"WITMOOT_SMTP_HOST": "relay.example.org"}
+	lookup := func(key string) string { return settings[key] }
+	for _, base := range []string{"", "http://localhost:8080", "https://192.0.2.10", "https://[2001:db8::1]", "not a url"} {
+		settings["WITMOOT_BASE_URL"] = base
+		if cfg, err := mailConfig(lookup); err == nil || !strings.Contains(err.Error(), "WITMOOT_SMTP_FROM") {
+			t.Errorf("base URL %q gave sender %q (%v); want WITMOOT_SMTP_FROM required", base, cfg.From, err)
+		}
+	}
+	settings["WITMOOT_BASE_URL"] = "https://board.example.org"
+	settings["WITMOOT_NAME"] = "Café Crew"
+	if cfg, err := mailConfig(lookup); err != nil || cfg.From != "=?utf-8?q?Caf=C3=A9_Crew?= <no-reply@board.example.org>" {
+		t.Fatalf("derived sender = %q, %v", cfg.From, err)
+	}
+	settings["WITMOOT_SMTP_FROM"] = "Board Mail <mail@example.net>"
+	if cfg, err := mailConfig(lookup); err != nil || cfg.From != `"Board Mail" <mail@example.net>` {
+		t.Fatalf("explicit sender = %q, %v", cfg.From, err)
+	}
+	for _, from := range []string{"no-reply@localhost\r\nBcc: victim@example.org", "not an address", "Board <>", "a@b@c"} {
+		settings["WITMOOT_SMTP_FROM"] = from
+		if cfg, err := mailConfig(lookup); err == nil {
+			t.Errorf("accepted sender %q as %q", from, cfg.From)
+		}
 	}
 }
 

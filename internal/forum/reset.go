@@ -13,8 +13,9 @@ import (
 	"witmoot/internal/mail"
 )
 
-// resetLinkTTL is how long an owner-issued reset link stays valid.
-const resetLinkTTL = 24 * time.Hour
+// ResetLinkTTL is how long an owner-issued reset link stays valid, from the
+// web or the admin view.
+const ResetLinkTTL = 24 * time.Hour
 
 // resetURL is the link an owner hands to a member, or mails when a relay is
 // configured.
@@ -219,7 +220,7 @@ func (a *App) createResetLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := randomToken()
-	if err := a.store.CreateAuthToken(r.Context(), target.ID, TokenPasswordReset, tokenHash(token), time.Now().Add(resetLinkTTL)); err != nil {
+	if err := a.store.CreateAuthToken(r.Context(), target.ID, TokenPasswordReset, tokenHash(token), time.Now().Add(ResetLinkTTL)); err != nil {
 		a.storeError(w, r, err)
 		return
 	}
@@ -232,8 +233,7 @@ func (a *App) createResetLink(w http.ResponseWriter, r *http.Request) {
 		case target.Email == "":
 			p.Error = target.Username + " has no email address on file. Copy the link and share it yourself."
 		default:
-			message := mail.Message{To: target.Email, Subject: "Choose a new password for " + site, Body: resetEmailBody(target.Username, site, p.ResetLink, resetLinkTTL)}
-			if err := a.mailer.Send(r.Context(), message); err != nil {
+			if err := a.mailer.Send(r.Context(), ResetMessage(target, site, p.ResetLink, ResetLinkTTL)); err != nil {
 				slog.Error("send reset link", "user", target.ID, "error", err)
 				p.Error = "The link was created, but the email could not be sent. Copy the link and share it yourself."
 			} else {
@@ -252,9 +252,11 @@ func (a *App) revokeResetLink(w http.ResponseWriter, r *http.Request) {
 	a.redirect(w, r, "/members?saved=link-revoked")
 }
 
-// resetEmailBody is the plain-text message a member receives.
-func resetEmailBody(name, site, link string, ttl time.Duration) string {
-	return fmt.Sprintf(`Hello %s,
+// ResetMessage is the email a member receives with a reset link. The web and
+// the admin view both use it, so the wording and stated expiry cannot drift
+// from the link they send.
+func ResetMessage(to User, site, link string, ttl time.Duration) mail.Message {
+	return mail.Message{To: to.Email, Subject: "Choose a new password for " + site, Body: fmt.Sprintf(`Hello %s,
 
 An owner of %s made a link so you can choose a new password. Open it here:
 
@@ -263,11 +265,11 @@ An owner of %s made a link so you can choose a new password. Open it here:
 The link works once and expires in %s.
 
 If you did not ask for this, you can ignore this message: your password has not changed.
-`, name, site, link, humanDuration(ttl))
+`, to.Username, site, link, HumanDuration(ttl))}
 }
 
-// humanDuration renders a coarse duration for prose.
-func humanDuration(d time.Duration) string {
+// HumanDuration renders a coarse duration for prose.
+func HumanDuration(d time.Duration) string {
 	switch {
 	case d >= 24*time.Hour:
 		days := int(d.Hours() / 24)

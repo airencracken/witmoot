@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-func canonicalBaseURL(value string) (string, error) {
+// CanonicalBaseURL validates WITMOOT_BASE_URL and returns it without a
+// trailing slash. An empty value stays empty.
+func CanonicalBaseURL(value string) (string, error) {
 	if value == "" {
 		return "", nil
 	}

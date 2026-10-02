@@ -237,12 +237,12 @@ func TestInvitationInputValidationAndURL(t *testing.T) {
 		t.Fatalf("HTTPS invite link: %s", got)
 	}
 	for _, invalid := range []string{"//board.example.org", "javascript:alert(1)", "https://user@board.example.org", "https://board.example.org/path", "https://board.example.org?x=y", "https://board.example.org/#part"} {
-		if _, err := canonicalBaseURL(invalid); err == nil {
+		if _, err := CanonicalBaseURL(invalid); err == nil {
 			t.Errorf("accepted base URL: %s", invalid)
 		}
 	}
 	for _, value := range []string{"https://board.example.org/", "https://board.example.org/#"} {
-		if got, err := canonicalBaseURL(value); err != nil || got != "https://board.example.org" {
+		if got, err := CanonicalBaseURL(value); err != nil || got != "https://board.example.org" {
 			t.Fatalf("canonical origin: %s %v", got, err)
 		}
 	}

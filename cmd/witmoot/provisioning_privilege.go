@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"os/user"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -80,9 +82,19 @@ func reexecProvisioningAsService(args []string) (bool, int, error) {
 	if err != nil {
 		return true, 1, fmt.Errorf("find Witmoot executable: %w", err)
 	}
+	settings := map[string]string{"WITMOOT_DATA_DIR": dataDir}
+	if commandName == "reset-link" || commandName == "admin" {
+		// The service user usually cannot read the root-only configuration,
+		// so the settings for links and mail are resolved here.
+		resolved, err := provisioningSettings(paths, instanceSettings...)
+		if err != nil {
+			return true, 1, err
+		}
+		maps.Copy(settings, resolved)
+	}
 	command := exec.Command(executable, args...)
 	command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
-	command.Env = withDataDirEnvironment(os.Environ(), "WITMOOT_DATA_DIR", dataDir)
+	command.Env = withEnvironment(os.Environ(), settings)
 	command.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{
 		Uid:    uint32(uid),
 		Gid:    gid,
@@ -125,13 +137,19 @@ func serviceGroupID(groupName, fallbackGID string) (uint32, error) {
 	return 0, fmt.Errorf("look up service group %q: %w", groupName, err)
 }
 
-func withDataDirEnvironment(environment []string, name, value string) []string {
-	prefix := name + "="
-	filtered := make([]string, 0, len(environment)+1)
+// withEnvironment replaces the given settings in an environment, leaving every
+// other entry in place.
+func withEnvironment(environment []string, settings map[string]string) []string {
+	filtered := make([]string, 0, len(environment)+len(settings))
 	for _, item := range environment {
-		if !strings.HasPrefix(item, prefix) {
+		if name, _, _ := strings.Cut(item, "="); settings[name] == "" {
 			filtered = append(filtered, item)
 		}
 	}
-	return append(filtered, prefix+value)
+	for _, name := range slices.Sorted(maps.Keys(settings)) {
+		if settings[name] != "" {
+			filtered = append(filtered, name+"="+settings[name])
+		}
+	}
+	return filtered
 }

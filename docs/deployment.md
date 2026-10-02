@@ -98,7 +98,10 @@ sudo /usr/local/bin/witmoot admin
 
 `set-password` replaces the password and signs the account out everywhere.
 `reset-link` prints a link and its code; set `WITMOOT_BASE_URL` so the printed
-link is complete. `list-users` prints each account's ID, username, role, and
+link is complete. `reset-link` and `admin` read `WITMOOT_BASE_URL`,
+`WITMOOT_NAME` and the `WITMOOT_SMTP_*` settings from the active service
+configuration, as they do `WITMOOT_DATA_DIR`, unless the environment sets them.
+`admin` only emails complete links, so it needs `WITMOOT_BASE_URL` to send mail. `list-users` prints each account's ID, username, role, and
 address. `admin` opens an interactive manager for the same work and needs a
 terminal; the other commands remain the scriptable path.
 
@@ -113,6 +116,12 @@ WITMOOT_SMTP_PASSWORD="…"
 WITMOOT_SMTP_FROM="Witmoot <no-reply@example.org>"
 WITMOOT_SMTP_TLS="starttls"
 ```
+
+`WITMOOT_SMTP_FROM` is optional when `WITMOOT_BASE_URL` names a domain: mail
+is then sent from `no-reply@` that domain, with `WITMOOT_NAME` as the display
+name. Without either, startup stops with an error rather than sending from
+`localhost`. Subjects are encoded for non-ASCII site names, and every message
+carries its own `Message-ID`.
 
 `starttls` is the default and requires the relay to offer TLS; it refuses to
 send reset links over plaintext. `implicit` suits port 465, and `none` is for a

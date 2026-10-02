@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,5 +152,33 @@ func TestSystemdEnvironmentFileRejectsHostilePaths(t *testing.T) {
 	unit := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.service"), "[Service]\nEnvironment=WITMOOT_DATA_DIR=/srv/unit\nEnvironmentFile=-"+filepath.Join(root, "missing.env")+"\nEnvironmentFile="+present+"\nEnvironmentFile=\n")
 	if got, err := resolveProvisioningDataDir(provisioningConfigPaths{systemdUnit: unit, systemdActive: true, serviceDefault: "/var/lib/witmoot"}); err != nil || got != "/srv/unit" {
 		t.Fatalf("resolve = %q, %v; want /srv/unit", got, err)
+	}
+}
+
+func TestProvisioningSettingsFollowTheServiceConfiguration(t *testing.T) {
+	for _, key := range instanceSettings {
+		t.Setenv(key, "")
+	}
+	envFile := writeTestFile(t, filepath.Join(t.TempDir(), "with space", "witmoot.env"), "WITMOOT_BASE_URL=https://board.example.org\nWITMOOT_SMTP_HOST=relay.example.org\nWITMOOT_SMTP_FROM='Board <mail@example.org>'\n")
+	unit := writeTestFile(t, filepath.Join(t.TempDir(), "witmoot.service"), "[Service]\nEnvironment=\"WITMOOT_NAME=Our Board\"\nEnvironmentFile="+envFile+"\n")
+	paths := provisioningConfigPaths{systemdUnit: unit, systemdActive: true, serviceDefault: "/var/lib/witmoot"}
+	settings, err := provisioningSettings(paths, instanceSettings...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"WITMOOT_BASE_URL": "https://board.example.org", "WITMOOT_SMTP_HOST": "relay.example.org", "WITMOOT_SMTP_FROM": "Board <mail@example.org>", "WITMOOT_NAME": "Our Board"}
+	if fmt.Sprint(settings) != fmt.Sprint(want) {
+		t.Fatalf("settings = %v, want %v", settings, want)
+	}
+	t.Setenv("WITMOOT_BASE_URL", "https://override.example.org")
+	if settings, err := provisioningSettings(paths, "WITMOOT_BASE_URL"); err != nil || settings["WITMOOT_BASE_URL"] != "https://override.example.org" {
+		t.Fatalf("environment did not win: %v %v", settings, err)
+	}
+	options, err := adminOptions(paths)
+	if err != nil || options.BaseURL != "https://override.example.org" || options.SiteName != "Our Board" || !options.Mailer.Enabled() {
+		t.Fatalf("admin options = %+v, %v", options, err)
+	}
+	if settings, err := provisioningSettings(provisioningConfigPaths{}, "WITMOOT_SMTP_HOST"); err != nil || len(settings) != 0 {
+		t.Fatalf("portable install read service settings: %v %v", settings, err)
 	}
 }

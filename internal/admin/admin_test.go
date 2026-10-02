@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -265,5 +266,70 @@ func TestAdminHandlesAnEmptyBoard(t *testing.T) {
 	send(t, &m, press("enter"))
 	if m.screen != screenList {
 		t.Fatalf("empty list opened a screen: %v", m.screen)
+	}
+}
+
+func memberWithEmail(t *testing.T, store *forum.Store) {
+	t.Helper()
+	ctx := context.Background()
+	userID, err := store.CreateUser(ctx, "jules", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetEmail(ctx, userID, "jules@example.org"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAdminNeverEmailsARelativeLink(t *testing.T) {
+	store := testStore(t)
+	memberWithEmail(t, store)
+	relay := &fakeMailer{enabled: true}
+	m := testModel(t, store, Options{Mailer: relay})
+	send(t, &m, press("enter"))
+	for _, choice := range m.items {
+		if choice.kind == actionResetEmail {
+			t.Fatal("offered to email a link without WITMOOT_BASE_URL")
+		}
+	}
+	send(t, &m, press("enter"))
+	if m.screen != screenResult || !strings.HasPrefix(m.link, "/reset/") {
+		t.Fatalf("relative link not shown: %v %q", m.screen, m.link)
+	}
+	send(t, &m, press("e"))
+	if len(relay.sent) != 0 || m.emailed || strings.Contains(m.resultView(), "Press e") {
+		t.Fatalf("relative link was emailed or offered: %+v", relay.sent)
+	}
+	// Even if asked directly, the path is refused rather than mailed.
+	m.sendReset()
+	if !errors.Is(m.err, errRelativeLink) || len(relay.sent) != 0 {
+		t.Fatalf("relative link sent: %v %+v", m.err, relay.sent)
+	}
+}
+
+func TestAdminEmailMatchesTheWebEmailAndRealExpiry(t *testing.T) {
+	store := testStore(t)
+	memberWithEmail(t, store)
+	relay := &fakeMailer{enabled: true}
+	m := testModel(t, store, Options{BaseURL: "https://board.example.org", Mailer: relay})
+	send(t, &m, press("enter"), press("down"), press("enter"))
+	if len(relay.sent) != 1 {
+		t.Fatalf("message not sent: %v", m.err)
+	}
+	want := forum.ResetMessage(m.target.User, "Test table", m.link, forum.ResetLinkTTL)
+	if relay.sent[0] != want {
+		t.Fatalf("admin email differs from the web email:\n%+v\n%+v", relay.sent[0], want)
+	}
+	expiry := "expires in " + forum.HumanDuration(forum.ResetLinkTTL)
+	if !strings.Contains(relay.sent[0].Body, expiry) || !strings.Contains(m.resultView(), expiry) {
+		t.Fatalf("stated expiry does not match the link lifetime %s", forum.ResetLinkTTL)
+	}
+	token := m.link[strings.LastIndex(m.link, "/")+1:]
+	user, err := store.AuthTokenValid(context.Background(), forum.TokenHash(token), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL-time.Minute))
+	if err != nil || user.Username != "jules" {
+		t.Fatalf("link expires before its stated lifetime: %v", err)
+	}
+	if _, err := store.AuthTokenValid(context.Background(), forum.TokenHash(token), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL+time.Minute)); err == nil {
+		t.Fatal("link outlives its stated lifetime")
 	}
 }
