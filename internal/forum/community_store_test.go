@@ -337,7 +337,7 @@ func TestCommunitySchemaUpgradeAndConstraints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer closeTest(t, s)
 	u, err := s.UserByID(context.Background(), 2)
 	if err != nil || u.Suspended || u.SuspensionRevision != 0 {
 		t.Fatalf("migration changed account: %+v %v", u, err)

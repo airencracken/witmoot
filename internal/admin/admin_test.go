@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"errors"
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -33,7 +34,7 @@ func testStore(t *testing.T) *forum.Store {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { closeTest(t, store) })
 	return store
 }
 
@@ -331,5 +332,13 @@ func TestAdminEmailMatchesTheWebEmailAndRealExpiry(t *testing.T) {
 	}
 	if _, err := store.AuthTokenValid(context.Background(), forum.TokenHash(token), forum.TokenPasswordReset, time.Now().Add(forum.ResetLinkTTL+time.Minute)); err == nil {
 		t.Fatal("link outlives its stated lifetime")
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
 	}
 }

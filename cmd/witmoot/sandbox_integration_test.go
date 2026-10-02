@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"net"
 	"net/http"
 	"os"
@@ -14,6 +15,14 @@ import (
 	"testing"
 	"time"
 )
+
+// killTest stops a test process that may already have exited.
+func killTest(t testing.TB, process *os.Process) {
+	t.Helper()
+	if err := process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+		t.Error(err)
+	}
+}
 
 func TestRealSandboxedServerLifecycle(t *testing.T) {
 	if os.Getenv("COMFYWARE_SANDBOX_TEST") != "1" {
@@ -35,7 +44,7 @@ func TestRealSandboxedServerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	address := listener.Addr().String()
-	listener.Close()
+	closeTest(t, listener)
 	environment := append(os.Environ(), "WITMOOT_DATA_DIR="+data, "WITMOOT_ADDR="+address)
 
 	check := exec.Command(binary, "sandbox", "--check")
@@ -61,7 +70,7 @@ func TestRealSandboxedServerLifecycle(t *testing.T) {
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { command.Process.Kill() })
+	t.Cleanup(func() { killTest(t, command.Process) })
 	done := make(chan error, 1)
 	go func() { done <- command.Wait() }()
 	ready := false
@@ -71,7 +80,7 @@ func TestRealSandboxedServerLifecycle(t *testing.T) {
 		response, err := client.Get("http://" + address + "/healthz")
 		if err == nil {
 			ready = response.StatusCode == 200
-			response.Body.Close()
+			closeTest(t, response.Body)
 		}
 		if ready {
 			break
@@ -80,7 +89,7 @@ func TestRealSandboxedServerLifecycle(t *testing.T) {
 		case err := <-done:
 			t.Fatalf("server stopped: %v\n%s", err, &log)
 		case <-deadline:
-			command.Process.Kill()
+			killTest(t, command.Process)
 			<-done
 			t.Fatalf("server did not start:\n%s", &log)
 		case <-time.After(20 * time.Millisecond):
@@ -95,7 +104,7 @@ func TestRealSandboxedServerLifecycle(t *testing.T) {
 			t.Fatalf("graceful shutdown: %v\n%s", err, &log)
 		}
 	case <-time.After(5 * time.Second):
-		command.Process.Kill()
+		killTest(t, command.Process)
 		<-done
 		t.Fatalf("shutdown timed out:\n%s", &log)
 	}

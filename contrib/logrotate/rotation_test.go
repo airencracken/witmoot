@@ -42,7 +42,7 @@ func TestRotationWithOpenWriter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer writer.Close()
+	defer closeTest(t, writer)
 	original, err := writer.Stat()
 	if err != nil {
 		t.Fatal(err)
@@ -69,12 +69,12 @@ func TestRotationWithOpenWriter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer oldest.Close()
+	defer closeTest(t, oldest)
 	compressed, err := gzip.NewReader(oldest)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer compressed.Close()
+	defer closeTest(t, compressed)
 	if data, err := io.ReadAll(compressed); err != nil || string(data) != "record 2\n" {
 		t.Fatalf("oldest archive: %s (%v)", data, err)
 	}
@@ -103,5 +103,13 @@ func TestRotationWithOpenWriter(t *testing.T) {
 	rotate()
 	if data, err := os.ReadFile(log + ".1"); err != nil || string(data) != "daily\n" {
 		t.Fatalf("daily interval did not rotate: %s (%v)", data, err)
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
 	}
 }

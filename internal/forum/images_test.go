@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -60,7 +58,7 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 		token := r.Header.Get("Authorization")
 		path := r.URL.Path
 		if path == "/f/public/thumb" && token == "" {
-			w.Write(fixture.imageBytes)
+			writeResponse(t, w, string(fixture.imageBytes))
 			return w.Result(), nil
 		}
 		if token != "Bearer test-key" {
@@ -69,9 +67,9 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 		}
 		switch {
 		case path == "/api/v1/me":
-			io.WriteString(w, `{"username":"alex"}`)
+			writeResponse(t, w, `{"username":"alex"}`)
 		case path == "/api/v1/files":
-			io.WriteString(w, `{"files":[{"id":"own","kind":"image","name":"Family photo.png","visibility":"private"}],"total":1}`)
+			writeResponse(t, w, `{"files":[{"id":"own","kind":"image","name":"Family photo.png","visibility":"private"}],"total":1}`)
 		case r.Method == "DELETE":
 			fixture.deleted = append(fixture.deleted, strings.TrimPrefix(path, "/api/v1/files/"))
 			w.WriteHeader(204)
@@ -79,7 +77,7 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 			if err := r.ParseMultipartForm(1 << 20); err != nil {
 				t.Fatal(err)
 			}
-			defer r.MultipartForm.RemoveAll()
+			defer removeForm(t, r.MultipartForm)
 			if r.PostForm.Get("visibility") != "private" || r.PostForm.Get("metadata") != "hidden" {
 				t.Fatal("upload not private")
 			}
@@ -88,16 +86,16 @@ func imageTestApp(t *testing.T) (*App, *testClient, int64, *vaultFixture) {
 				fixture.beforeUpload()
 			}
 			w.WriteHeader(201)
-			json.NewEncoder(w).Encode(map[string]any{"files": []imvault.File{{ID: fmt.Sprintf("upload%d", fixture.uploads), Name: "New photo.png", Kind: "image", Visibility: "private"}}})
+			writeJSON(t, w, map[string]any{"files": []imvault.File{{ID: fmt.Sprintf("upload%d", fixture.uploads), Name: "New photo.png", Kind: "image", Visibility: "private"}}})
 		case strings.HasPrefix(path, "/api/v1/files/"):
 			id := strings.TrimPrefix(path, "/api/v1/files/")
 			if id != "own" && !strings.HasPrefix(id, "upload") {
 				w.WriteHeader(404)
 				break
 			}
-			json.NewEncoder(w).Encode(imvault.File{ID: id, Name: "Family photo.png", Kind: "image", Visibility: "private"})
+			writeJSON(t, w, imvault.File{ID: id, Name: "Family photo.png", Kind: "image", Visibility: "private"})
 		case strings.HasPrefix(path, "/f/own/") || strings.HasPrefix(path, "/f/upload"):
-			w.Write(fixture.imageBytes)
+			writeResponse(t, w, string(fixture.imageBytes))
 		default:
 			w.WriteHeader(404)
 		}

@@ -146,7 +146,7 @@ func TestGroupMigrationPreservesExistingIndividualPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer closeTest(t, db)
 	for _, name := range []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql"} {
 		migration, err := migrations.ReadFile("migrations/" + name)
 		if err != nil {
@@ -171,7 +171,7 @@ func TestGroupMigrationPreservesExistingIndividualPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer closeTest(t, s)
 	ctx, reader := context.Background(), &User{ID: 2, Role: "member"}
 	b, err := s.Board(ctx, 1, reader)
 	if err != nil || b.Access != "read" {

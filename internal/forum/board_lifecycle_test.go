@@ -225,7 +225,7 @@ func TestLifecycleMigrationKeepsDataAndRetiresDeletedURLs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer closeTest(t, db)
 	for _, name := range []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql"} {
 		migration, err := migrations.ReadFile("migrations/" + name)
 		if err != nil {
@@ -250,7 +250,7 @@ func TestLifecycleMigrationKeepsDataAndRetiresDeletedURLs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer closeTest(t, s)
 	ctx, owner := context.Background(), &User{ID: 1, Role: "owner"}
 	b, err := s.Board(ctx, 50, owner)
 	if err != nil || b.Archived || b.Name != "Last summer" {
@@ -271,7 +271,7 @@ func TestLifecycleMigrationKeepsDataAndRetiresDeletedURLs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer closeTest(t, s)
 	boardID, err := s.SaveBoard(ctx, 1, Board{Name: "Next summer", Category: "Plans"}, nil, nil)
 	if err != nil || boardID <= 50 {
 		t.Fatalf("reused board URL: %d %v", boardID, err)

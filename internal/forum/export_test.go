@@ -29,7 +29,7 @@ func readExport(t *testing.T, client *testClient) (map[string][]byte, []byte, *h
 			t.Fatalf("open %s: %v", file.Name, err)
 		}
 		content, err := io.ReadAll(reader)
-		reader.Close()
+		closeTest(t, reader)
 		if err != nil {
 			t.Fatalf("read %s: %v", file.Name, err)
 		}
