@@ -462,9 +462,3 @@ func (s *Store) CreateOwner(ctx context.Context, name, passwordHash string) erro
 	}
 	return nil
 }
-
-func (s *Store) Invite(ctx context.Context, ownerID int64, hash string) error {
-	expires := time.Now().Add(7 * 24 * time.Hour)
-	_, err := s.CreateInvitation(ctx, ownerID, hash, "", InvitationOptions{MaxUses: 1, ExpiresAt: &expires})
-	return err
-}

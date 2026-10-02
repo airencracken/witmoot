@@ -1,8 +1,10 @@
 package forum
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -300,5 +302,22 @@ func TestFailedResetPreservesLinkPasswordAndSessions(t *testing.T) {
 			}
 			requireStatus(t, client.post("/reset/"+token, form), http.StatusSeeOther)
 		})
+	}
+}
+
+func TestResetTokensNeverReachTheLogs(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	app, client := newTestApp(t, false)
+	token := randomToken()
+	if err := app.store.db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, client.request("GET", "/reset/"+token, nil, nil), 500)
+	requireStatus(t, client.post("/reset/"+token, url.Values{"password": {"a long new password"}}), 500)
+	if !strings.Contains(logs.String(), "request failed") || strings.Contains(logs.String(), token) {
+		t.Fatalf("logs carry the reset token or no failure: %s", &logs)
 	}
 }

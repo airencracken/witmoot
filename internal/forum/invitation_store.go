@@ -164,21 +164,6 @@ func (s *Store) SetInvitePermission(ctx context.Context, userID int64, enabled b
 	return tx.Commit()
 }
 
-func (s *Store) RevokeInvitation(ctx context.Context, id int64) error {
-	result, err := s.db.ExecContext(ctx, "UPDATE invitations SET revoked_at = coalesce(revoked_at, ?) WHERE id = ?", time.Now().Unix(), id)
-	if err != nil {
-		return err
-	}
-	n, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return sql.ErrNoRows
-	}
-	return nil
-}
-
 func (s *Store) RevokeInvitationByCreator(ctx context.Context, id, creatorID int64, owner bool) error {
 	query := `UPDATE invitations SET revoked_at = coalesce(revoked_at, ?) WHERE id = ? AND created_by = ?`
 	args := []any{time.Now().Unix(), id, creatorID}

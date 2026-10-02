@@ -32,11 +32,11 @@ func TestResetTokenLifecycleAndSingleUse(t *testing.T) {
 	if user, err := s.AuthTokenValid(ctx, TokenHash(token), TokenPasswordReset, time.Now()); err != nil || user.ID != owner {
 		t.Fatalf("valid token lookup: %+v %v", user, err)
 	}
-	user, err := s.ConsumeAuthToken(ctx, TokenHash(token), TokenPasswordReset, time.Now())
+	user, err := s.ResetPassword(ctx, TokenHash(token), "new-hash", time.Now())
 	if err != nil || user.ID != owner {
 		t.Fatalf("consume: %+v %v", user, err)
 	}
-	if _, err := s.ConsumeAuthToken(ctx, TokenHash(token), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.ResetPassword(ctx, TokenHash(token), "replayed-hash", time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("replayed token accepted: %v", err)
 	}
 	if _, err := s.AuthTokenValid(ctx, TokenHash(token), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
@@ -45,14 +45,14 @@ func TestResetTokenLifecycleAndSingleUse(t *testing.T) {
 
 	// A token for another purpose, an unknown digest and an expired one are all
 	// reported the same way.
-	if _, err := s.ConsumeAuthToken(ctx, NewToken(), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.ResetPassword(ctx, NewToken(), "unknown-hash", time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("unknown token accepted: %v", err)
 	}
 	expired := NewToken()
 	if err := s.CreateAuthToken(ctx, owner, TokenPasswordReset, TokenHash(expired), time.Now().Add(-time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.ConsumeAuthToken(ctx, TokenHash(expired), TokenPasswordReset, time.Now()); !errors.Is(err, errAuthToken) {
+	if _, err := s.ResetPassword(ctx, TokenHash(expired), "expired-hash", time.Now()); !errors.Is(err, errAuthToken) {
 		t.Fatalf("expired token accepted: %v", err)
 	}
 }

@@ -44,23 +44,9 @@ func (s *Store) CreateAuthToken(ctx context.Context, userID int64, purpose Token
 	return tx.Commit()
 }
 
-// ConsumeAuthToken redeems a token and returns the account it belonged to.
-//
-// Marking it used and reading the owner happen in one transaction, so a token
-// cannot be redeemed twice even if two requests arrive together.
-func (s *Store) ConsumeAuthToken(ctx context.Context, tokenHash string, purpose TokenPurpose, at time.Time) (User, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return User{}, err
-	}
-	defer tx.Rollback()
-	u, err := consumeAuthToken(ctx, tx, tokenHash, purpose, at)
-	if err != nil {
-		return User{}, err
-	}
-	return u, tx.Commit()
-}
-
+// consumeAuthToken redeems a token and returns the account it belonged to.
+// Marking it used and reading the owner happen in the caller's transaction, so
+// a token cannot be redeemed twice even if two requests arrive together.
 func consumeAuthToken(ctx context.Context, tx *sql.Tx, tokenHash string, purpose TokenPurpose, at time.Time) (User, error) {
 	var userID int64
 	var usedAt sql.NullInt64
@@ -119,15 +105,6 @@ func (s *Store) DeleteAuthTokensForUser(ctx context.Context, userID int64, purpo
 	return err
 }
 
-// DeleteExpiredAuthTokens prunes tokens that have lapsed or been redeemed.
-func (s *Store) DeleteExpiredAuthTokens(ctx context.Context, at time.Time) (int64, error) {
-	result, err := s.db.ExecContext(ctx, "DELETE FROM auth_tokens WHERE expires_at <= ? OR used_at IS NOT NULL", at.Unix())
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 // SetPassword replaces an account's password and revokes its sessions and reset
 // links together. A failure leaves all three unchanged.
 func (s *Store) SetPassword(ctx context.Context, userID int64, passwordHash string) error {
@@ -176,13 +153,6 @@ func setPassword(ctx context.Context, tx *sql.Tx, userID int64, passwordHash str
 		return err
 	}
 	_, err = tx.ExecContext(ctx, "DELETE FROM auth_tokens WHERE user_id = ? AND purpose = ?", userID, string(TokenPasswordReset))
-	return err
-}
-
-// DeleteSessionsForUser signs every device out. A password change should not
-// leave an old session usable.
-func (s *Store) DeleteSessionsForUser(ctx context.Context, userID int64) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE user_id = ?", userID)
 	return err
 }
 
