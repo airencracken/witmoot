@@ -36,7 +36,8 @@ func (a *App) origin(r *http.Request) string {
 		return a.config.BaseURL
 	}
 	scheme := "http"
-	if r.TLS != nil || a.config.SecureCookies {
+	// A trusted proxy that terminated TLS says so in X-Forwarded-Proto.
+	if a.clients().ForwardedHTTPS(r) || a.config.SecureCookies {
 		scheme = "https"
 	}
 	return (&url.URL{Scheme: scheme, Host: r.Host}).String()

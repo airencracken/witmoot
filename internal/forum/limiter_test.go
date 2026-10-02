@@ -3,47 +3,76 @@ package forum
 import (
 	"fmt"
 	"math/rand/v2"
+	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/netip"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/airencracken/comfylib/clientip"
 )
 
-func TestRateKeysGroupIPv6Networks(t *testing.T) {
-	for _, tc := range []struct{ client, key string }{
-		{"198.51.100.7", "198.51.100.7"},
-		{"::ffff:198.51.100.7", "198.51.100.7"},
-		{"2001:db8:1:2:3:4:5:6", "2001:db8:1:2::/64"},
-		{"2001:db8:1:2::ffff", "2001:db8:1:2::/64"},
-		{"fe80::1%eth0", "fe80::/64"},
-		{"not an address", "not an address"},
-	} {
-		if got := rateKey(tc.client); got != tc.key {
-			t.Errorf("rateKey(%q) = %q, want %q", tc.client, got, tc.key)
-		}
-	}
+// requestFrom is a sign-in attempt arriving directly from address.
+func requestFrom(address string) *http.Request {
+	r := httptest.NewRequest("POST", "/login", nil)
+	r.RemoteAddr = net.JoinHostPort(address, "41000")
+	return r
 }
 
 func TestIPv6AddressesInOneNetworkShareABudget(t *testing.T) {
+	a := &App{}
 	l := newLimiter()
 	allowed := 0
 	for i := range 1000 {
-		if l.allow(fmt.Sprintf("2001:db8:0:1::%x", i+1)) {
+		if l.allow(a.rateKey(requestFrom(fmt.Sprintf("2001:db8:0:1::%x", i+1)))) {
 			allowed++
 		}
 	}
 	if allowed != rateAttempts || len(l.entries) != 1 {
 		t.Fatalf("one /64 got %d attempts across %d records", allowed, len(l.entries))
 	}
-	if !l.allow("2001:db8:0:2::1") {
+	if !l.allow(a.rateKey(requestFrom("2001:db8:0:2::1"))) {
 		t.Fatal("a neighbouring /64 was locked out")
+	}
+}
+
+// Through the routes, too: rotating addresses inside one /64 does not buy a
+// fresh budget, while IPv4 neighbours keep their own.
+func TestSignInBudgetCoversTheWholeIPv6Network(t *testing.T) {
+	app, client := newTestApp(t, false)
+	client.request("GET", "/login", nil, nil)
+	form := url.Values{"username": {"nobody"}, "password": {"incorrect"}, "csrf": {client.cookies[app.cookieName("csrf")].Value}}
+	attempt := func(address string) int {
+		r := httptest.NewRequest("POST", "/login", strings.NewReader(form.Encode()))
+		r.RemoteAddr = net.JoinHostPort(address, "41000")
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, cookie := range client.cookies {
+			r.AddCookie(cookie)
+		}
+		w := httptest.NewRecorder()
+		app.ServeHTTP(w, r)
+		return w.Code
+	}
+	for i := range rateAttempts {
+		if code := attempt(fmt.Sprintf("2001:db8:7:7::%x", i+1)); code != http.StatusUnprocessableEntity {
+			t.Fatalf("attempt %d: %d", i, code)
+		}
+	}
+	if code := attempt("2001:db8:7:7:ffff::1"); code != http.StatusTooManyRequests {
+		t.Fatalf("a fresh address in the same /64 got status %d", code)
+	}
+	if code := attempt("2001:db8:7:8::1"); code != http.StatusUnprocessableEntity {
+		t.Fatalf("the next /64 got status %d", code)
 	}
 }
 
 func TestFloodedLimiterStillAdmitsNewClients(t *testing.T) {
 	l := newLimiter()
 	for i := range rateClients + 500 {
-		l.allow(fmt.Sprintf("2001:db8:%x:%x::1", i>>16, i&0xffff))
+		l.allow(clientip.NetworkKey(netip.MustParseAddr(fmt.Sprintf("2001:db8:%x:%x::1", i>>16, i&0xffff))))
 	}
 	if len(l.entries) > rateClients || l.order.Len() != len(l.entries) {
 		t.Fatalf("limiter grew to %d records (%d in order)", len(l.entries), l.order.Len())
@@ -80,12 +109,13 @@ func TestLimiterPropertiesUnderRandomTraffic(t *testing.T) {
 			default:
 				client = fmt.Sprintf("2001:db8:ffff:1::%x", random.IntN(65536))
 			}
+			key := clientip.NetworkKey(netip.MustParseAddr(client))
 			if random.IntN(10) == 0 {
-				l.refund(client)
+				l.refund(key)
 				continue
 			}
-			if l.allow(client) {
-				granted[rateKey(client)]++
+			if l.allow(key) {
+				granted[key]++
 			}
 		}
 		if len(l.entries) > rateClients || l.order.Len() != len(l.entries) {

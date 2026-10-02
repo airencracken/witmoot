@@ -36,7 +36,7 @@ func (a *App) authAllowed(w http.ResponseWriter, r *http.Request) bool {
 		a.redirect(w, r, "/")
 		return false
 	}
-	if !a.limiter.allow(a.clientIP(r)) {
+	if !a.limiter.allow(a.rateKey(r)) {
 		w.Header().Set("Retry-After", "900")
 		a.fail(w, r, 429, "Too many attempts. Take a little break and try again in 15 minutes.")
 		return false
@@ -70,7 +70,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, 403, Page{View: "login", Title: "Welcome back", Username: name, Error: errPersonal.Error()})
 		return
 	}
-	a.limiter.refund(a.clientIP(r))
+	a.limiter.refund(a.rateKey(r))
 	a.signIn(w, r, user.ID)
 }
 
