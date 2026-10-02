@@ -126,7 +126,7 @@ func TestInvitationMigrationPreservesExistingLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer closeTest(t, db)
 	for _, file := range []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql"} {
 		data, err := migrations.ReadFile("migrations/" + file)
 		if err != nil {
@@ -154,7 +154,7 @@ func TestInvitationMigrationPreservesExistingLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer closeTest(t, s)
 	ctx := context.Background()
 	if _, err := s.Register(ctx, "friend", "hash", "old"); err != nil {
 		t.Fatalf("old invitation stopped working: %v", err)

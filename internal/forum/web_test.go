@@ -2,7 +2,10 @@ package forum
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -377,5 +380,37 @@ func TestMissingRecordsAreNamedByTheirRoute(t *testing.T) {
 		if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "We could not find that "+tc.thing+".") {
 			t.Errorf("%s %s: %d, want the missing %s named", tc.method, tc.path, w.Code, tc.thing)
 		}
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+// writeResponse writes a fake server reply and reports a failed write.
+func writeResponse(t testing.TB, w io.Writer, body string) {
+	t.Helper()
+	if _, err := io.WriteString(w, body); err != nil {
+		t.Error(err)
+	}
+}
+
+// writeJSON writes a fake server's JSON reply and reports a failure.
+func writeJSON(t testing.TB, w io.Writer, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Error(err)
+	}
+}
+
+// removeForm deletes a parsed upload's temporary files.
+func removeForm(t testing.TB, form *multipart.Form) {
+	t.Helper()
+	if err := form.RemoveAll(); err != nil {
+		t.Error(err)
 	}
 }

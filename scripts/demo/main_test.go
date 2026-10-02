@@ -28,7 +28,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 	temporary := t.TempDir()
 	t.Setenv("TMPDIR", temporary)
 	reader, writer := io.Pipe()
-	defer reader.Close()
+	defer closeTest(t, reader)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
@@ -38,7 +38,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 	}()
 	t.Cleanup(func() {
 		cancel()
-		reader.Close()
+		closeTest(t, reader)
 		select {
 		case err := <-done:
 			if err != nil {
@@ -64,7 +64,8 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 			}
 			if strings.HasPrefix(scanner.Text(), "Press Ctrl-C") {
 				ready <- base
-				io.Copy(io.Discard, reader)
+				// Drain the rest of the output; the pipe closes at cleanup.
+				_, _ = io.Copy(io.Discard, reader)
 				return
 			}
 		}
@@ -184,7 +185,7 @@ func login(t *testing.T, client *http.Client, base, username string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer response.Body.Close()
+	defer closeTest(t, response.Body)
 	if response.StatusCode != 200 || response.Request.URL.Path != "/" {
 		t.Fatalf("demo login failed: %d %s", response.StatusCode, response.Request.URL)
 	}
@@ -196,7 +197,7 @@ func getPage(t *testing.T, client *http.Client, address string, status int) stri
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer response.Body.Close()
+	defer closeTest(t, response.Body)
 	body, err := io.ReadAll(response.Body)
 	if err != nil || response.StatusCode != status {
 		t.Fatalf("GET %s: status=%d, err=%v", address, response.StatusCode, err)
@@ -209,7 +210,7 @@ func TestDemoRefusesOccupiedPortWithoutCreatingData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer closeTest(t, listener)
 	temporary := t.TempDir()
 	t.Setenv("TMPDIR", temporary)
 	err = run(context.Background(), listener.Addr().(*net.TCPAddr).Port, io.Discard)
@@ -218,5 +219,13 @@ func TestDemoRefusesOccupiedPortWithoutCreatingData(t *testing.T) {
 	}
 	if entries, err := os.ReadDir(temporary); err != nil || len(entries) != 0 {
 		t.Fatalf("failed startup created data: %v (%v)", entries, err)
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
 	}
 }

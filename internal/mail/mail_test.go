@@ -52,7 +52,7 @@ func newFakeSMTP(t *testing.T) *fakeSMTP {
 
 	go server.serve()
 
-	t.Cleanup(func() { listener.Close() })
+	t.Cleanup(func() { closeTest(t, listener) })
 	return server
 }
 
@@ -76,15 +76,20 @@ func (s *fakeSMTP) serve() {
 }
 
 func (s *fakeSMTP) handle(conn net.Conn) {
-	defer conn.Close()
+	// A session can outlive its test, so there is nowhere to report a
+	// failed close; the client side observes any real problem.
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 
+	// A failed reply means the client has hung up, and the next read ends
+	// the session.
 	reply := func(line string) {
-		writer.WriteString(line + "\r\n")
-		writer.Flush()
+		if _, err := writer.WriteString(line + "\r\n"); err == nil {
+			_ = writer.Flush()
+		}
 	}
 
 	reply("220 fake ESMTP ready")
@@ -398,7 +403,7 @@ func TestSendBoundsStalledConnections(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer listener.Close()
+				defer closeTest(t, listener)
 				accepted := make(chan net.Conn, 1)
 				go func() {
 					conn, err := listener.Accept()
@@ -419,7 +424,7 @@ func TestSendBoundsStalledConnections(t *testing.T) {
 				go func() { done <- sender.Send(ctx, Message{To: "b@example.org", Body: "secret"}) }()
 				select {
 				case conn := <-accepted:
-					defer conn.Close()
+					defer closeTest(t, conn)
 				case <-time.After(time.Second):
 					t.Fatal("sender did not connect")
 				}
@@ -529,5 +534,13 @@ func TestParseFromCanonicalisesAndRejectsHostileSenders(t *testing.T) {
 		if got, err := ParseFrom(in); err == nil {
 			t.Errorf("ParseFrom(%q) accepted %q", in, got)
 		}
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
 	}
 }

@@ -60,7 +60,7 @@ func TestMigrationPersistenceAndConstraints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer closeTest(t, s)
 	boards, err := s.Boards(ctx, testReader)
 	if err != nil || len(boards) != 5 {
 		t.Fatalf("boards=%v, err=%v", boards, err)
@@ -274,7 +274,7 @@ func TestUpgradePreservesPrivateContentAndSavedMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer closeTest(t, store)
 	mode, err = store.Mode(ctx)
 	if err != nil || mode != ModeOpen {
 		t.Fatalf("mode did not survive restart: %s %v", mode, err)

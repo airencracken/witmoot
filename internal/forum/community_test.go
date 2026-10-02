@@ -161,7 +161,7 @@ func TestRemovalHTTPConfirmationHTMXAndExport(t *testing.T) {
 			t.Fatal(err)
 		}
 		content, err := io.ReadAll(r)
-		r.Close()
+		closeTest(t, r)
 		if err != nil {
 			t.Fatal(err)
 		}

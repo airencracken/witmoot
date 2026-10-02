@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -83,19 +84,19 @@ func TestAccountLibraryAndPrivateUploadContract(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/base/api/v1/me":
-			io.WriteString(w, `{"username":"alex"}`)
+			writeResponse(t, w, `{"username":"alex"}`)
 		case "/base/api/v1/files":
 			if r.URL.Query().Get("q") != "tea & cake" || r.URL.Query().Get("limit") != "12" || r.URL.Query().Get("offset") != "12" {
 				t.Fatal("library query")
 			}
-			io.WriteString(w, `{"files":[{"id":"photo","kind":"image"},{"id":"clip","kind":"video"}],"total":30}`)
+			writeResponse(t, w, `{"files":[{"id":"photo","kind":"image"},{"id":"clip","kind":"video"}],"total":30}`)
 		case "/base/api/v1/files/photo":
-			io.WriteString(w, `{"id":"photo","kind":"image","name":"tea.png"}`)
+			writeResponse(t, w, `{"id":"photo","kind":"image","name":"tea.png"}`)
 		case "/base/api/v1/upload":
 			if err := r.ParseMultipartForm(1 << 20); err != nil {
 				t.Fatal(err)
 			}
-			defer r.MultipartForm.RemoveAll()
+			defer removeForm(t, r.MultipartForm)
 			if r.PostForm.Get("visibility") != "private" || r.PostForm.Get("metadata") != "hidden" {
 				t.Fatal("unsafe upload defaults")
 			}
@@ -103,16 +104,16 @@ func TestAccountLibraryAndPrivateUploadContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer f.Close()
+			defer closeTest(t, f)
 			data, _ := io.ReadAll(f)
 			if !bytes.Equal(data, pngBytes) {
 				t.Fatal("changed upload")
 			}
 			w.WriteHeader(201)
-			io.WriteString(w, `{"files":[{"id":"upload","kind":"image","visibility":"private"}]}`)
+			writeResponse(t, w, `{"files":[{"id":"upload","kind":"image","visibility":"private"}]}`)
 		case "/base/f/photo/preview":
 			w.Header().Set("Content-Type", "text/html")
-			w.Write(pngBytes)
+			writeResponse(t, w, string(pngBytes))
 		default:
 			t.Fatalf("unexpected request %s", r.URL)
 		}
@@ -143,7 +144,7 @@ func TestUpstreamFailuresAndRedirects(t *testing.T) {
 		{"denied", 403, `{}`}, {"missing", 404, `{}`}, {"malformed", 200, `<html>`}, {"oversized", 200, strings.Repeat("x", (1<<20)+1)}, {"empty account", 200, `{}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			c := testClient(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(tc.status); io.WriteString(w, tc.body) })
+			c := testClient(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(tc.status); writeResponse(t, w, tc.body) })
 			if _, err := c.Me(context.Background(), "key"); err == nil {
 				t.Fatal("accepted bad upstream response")
 			}
@@ -159,7 +160,7 @@ func TestUpstreamFailuresAndRedirects(t *testing.T) {
 		t.Fatal("followed upstream redirect")
 	}
 	for _, body := range [][]byte{[]byte("<svg onload='x'>"), []byte("<html>"), append(pngBytes, make([]byte, MaxImageBytes)...)} {
-		c := testClient(t, func(w http.ResponseWriter, r *http.Request) { w.Write(body) })
+		c := testClient(t, func(w http.ResponseWriter, r *http.Request) { writeResponse(t, w, string(body)) })
 		if _, _, err := c.Image(context.Background(), "", "photo", "thumb"); err == nil {
 			t.Fatal("accepted invalid/oversized image")
 		}
@@ -176,7 +177,7 @@ func TestRejectedUploadsAndCleanup(t *testing.T) {
 			return
 		}
 		w.WriteHeader(201)
-		json.NewEncoder(w).Encode(map[string]any{"files": []File{{ID: "newfile", Kind: "image", Visibility: "public"}}})
+		writeJSON(t, w, map[string]any{"files": []File{{ID: "newfile", Kind: "image", Visibility: "public"}}})
 	})
 	for _, data := range [][]byte{[]byte("not an image"), append(pngBytes, make([]byte, MaxImageBytes)...)} {
 		if _, err := c.Upload(context.Background(), "key", "bad.png", data); err == nil {
@@ -191,5 +192,37 @@ func TestRejectedUploadsAndCleanup(t *testing.T) {
 	}
 	if deleted != "/base/api/v1/files/newfile" || calls != 2 {
 		t.Fatalf("cleanup: %s %d", deleted, calls)
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+// writeResponse writes a fake server reply and reports a failed write.
+func writeResponse(t testing.TB, w io.Writer, body string) {
+	t.Helper()
+	if _, err := io.WriteString(w, body); err != nil {
+		t.Error(err)
+	}
+}
+
+// writeJSON writes a fake server's JSON reply and reports a failure.
+func writeJSON(t testing.TB, w io.Writer, value any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Error(err)
+	}
+}
+
+// removeForm deletes a parsed upload's temporary files.
+func removeForm(t testing.TB, form *multipart.Form) {
+	t.Helper()
+	if err := form.RemoveAll(); err != nil {
+		t.Error(err)
 	}
 }

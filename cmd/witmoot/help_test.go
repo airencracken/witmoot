@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/crypto/bcrypt"
 	"witmoot/internal/forum"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestCLIHelpAndProxyConfigDoNotTouchData(t *testing.T) {
@@ -65,8 +66,8 @@ func TestCreateOwnerPromptRequiresTerminalBeforeOpeningData(t *testing.T) {
 	os.Stdin = stdin
 	t.Cleanup(func() {
 		os.Stdin = oldStdin
-		stdin.Close()
-		writer.Close()
+		closeTest(t, stdin)
+		closeTest(t, writer)
 	})
 	err = runCommand([]string{"create-owner", "--username", "alex", "--password-prompt"}, strings.NewReader("unused"), &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "use --password-stdin") {
@@ -96,7 +97,7 @@ func TestCreateOwnerCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer closeTest(t, store)
 	user, hash, err := store.Credentials(context.Background(), "alex")
 	if err != nil || user.Role != "owner" {
 		t.Fatalf("created account: %+v, %v", user, err)

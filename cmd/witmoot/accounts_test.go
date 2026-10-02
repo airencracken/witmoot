@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -74,7 +75,7 @@ func TestSetPasswordCommandEndsSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer closeTest(t, store)
 	_, hash, err := store.Credentials(ctx, "alex")
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +111,7 @@ func TestResetLinkCommandStoresAHashedUsableToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer closeTest(t, store)
 	ctx := context.Background()
 	if _, err := store.AuthTokenValid(ctx, forum.TokenHash(token), forum.TokenPasswordReset, time.Now()); err != nil {
 		t.Fatalf("issued link is not usable: %v", err)
@@ -241,5 +242,13 @@ func TestResetLinkReadsTheBaseURLFromTheServiceConfiguration(t *testing.T) {
 	writeTestFile(t, config, "WITMOOT_DATA_DIR=\""+data+"\"\nWITMOOT_BASE_URL=https://board.example.org/path?x=1\n")
 	if err := resetLinkWithConfigPaths([]string{"--username", "alex"}, &bytes.Buffer{}, paths); err == nil || !strings.Contains(err.Error(), "WITMOOT_BASE_URL") {
 		t.Fatalf("invalid base URL accepted: %v", err)
+	}
+}
+
+// closeTest closes a test resource and reports a failure.
+func closeTest(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Error(err)
 	}
 }
