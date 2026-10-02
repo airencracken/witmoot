@@ -121,11 +121,15 @@ WITMOOT_SMTP_TLS="starttls"
 is then sent from `no-reply@` that domain, with `WITMOOT_NAME` as the display
 name. Without either, startup stops with an error rather than sending from
 `localhost`. Subjects are encoded for non-ASCII site names, and every message
-carries its own `Message-ID`.
+carries its own `Message-ID`. Site names, from `WITMOOT_NAME` or **Settings**,
+and board names and categories must each fit on one line, because the site name
+becomes the subject of reset emails and the sender refuses a subject with a line
+break. A member's address must be a single bare address, without a display name
+or a comma.
 
 `starttls` is the default and requires the relay to offer TLS; it refuses to
 send reset links over plaintext. `implicit` suits port 465, and `none` is for a
-trusted local relay. Leave `WITMOOT_SMTP_HOST` unset to disable sending; reset links
+trusted local relay. Any other value stops startup. Leave `WITMOOT_SMTP_HOST` unset to disable sending; reset links
 still work when an owner copies them. Member addresses are optional and are set
 under **Account**.
 

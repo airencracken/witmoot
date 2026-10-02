@@ -15,12 +15,12 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/airencracken/comfylib/smtp"
 	"github.com/airencracken/comfylib/svcconfig"
 	"golang.org/x/term"
 
 	"witmoot/internal/admin"
 	"witmoot/internal/forum"
-	"witmoot/internal/mail"
 )
 
 // commandSummary describes each command for its --help output.
@@ -255,15 +255,21 @@ func adminOptions(paths svcconfig.Paths) (admin.Options, error) {
 	if err != nil {
 		return admin.Options{}, err
 	}
-	var sender mail.Sender = mail.Disabled{}
+	siteName := cmp.Or(lookup("WITMOOT_NAME"), "Witmoot")
+	if err := forum.CheckSiteName(siteName); err != nil {
+		return admin.Options{}, err
+	}
+	var sender smtp.Sender = smtp.Disabled{}
 	mailSettings, err := mailConfig(lookup)
 	if err != nil {
 		return admin.Options{}, err
 	}
 	if mailSettings.Host != "" {
-		sender = mail.NewSMTP(mailSettings)
+		if sender, err = smtp.New(mailSettings); err != nil {
+			return admin.Options{}, err
+		}
 	}
-	return admin.Options{BaseURL: base, SiteName: cmp.Or(lookup("WITMOOT_NAME"), "Witmoot"), Mailer: sender}, nil
+	return admin.Options{BaseURL: base, SiteName: siteName, Mailer: sender}, nil
 }
 
 // closeStore closes the database after a command; a failure is reported but
