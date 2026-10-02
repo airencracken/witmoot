@@ -442,3 +442,16 @@ func TestInvitePermissionHTTPRevokesAndExplains(t *testing.T) {
 	requireStatus(t, owner.post("/invites/members/999/permission", url.Values{"enabled": {"0"}}), 404)
 	requireStatus(t, delegate.post(fmt.Sprintf("/invites/members/%d/permission", jules.ID), url.Values{"enabled": {"1"}}), 403)
 }
+
+func TestInvitationExpiryNamesItsTimeZoneOnce(t *testing.T) {
+	a, owner := newTestApp(t, false)
+	signInTest(t, a, owner, true)
+	requireStatus(t, owner.post("/invites", url.Values{"max_uses": {"1"}, "expires_days": {"7"}}), 200)
+	page := owner.request("GET", "/invites", nil, nil).Body.String()
+	if !regexp.MustCompile(`Expires <time datetime="[^"]+">[A-Z][a-z]{2} \d{1,2}, \d{4} · \d{2}:\d{2} UTC</time>`).MatchString(page) {
+		t.Fatalf("invitation expiry is not shown once in UTC: %s", page)
+	}
+	if strings.Contains(page, "UTC UTC") {
+		t.Fatal("invitation expiry repeats its time zone")
+	}
+}
