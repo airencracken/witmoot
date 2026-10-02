@@ -48,7 +48,7 @@ func runServer() error {
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer closeStore(store)
 	secure := env("WITMOOT_SECURE_COOKIES", "false")
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")

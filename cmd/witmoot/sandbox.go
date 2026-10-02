@@ -48,7 +48,7 @@ func runSandbox(args []string, out io.Writer) error {
 	}
 	binary, err := sandbox.Binary(*bwrap)
 	if err != nil {
-		return fmt.Errorf("Bubblewrap is required for sandbox mode: %w", err)
+		return fmt.Errorf("sandbox mode requires Bubblewrap: %w", err)
 	}
 	// Running the bound server proves the namespaces, mounts and loader work
 	// without depending on any particular host utility.

@@ -88,7 +88,7 @@ func NewSMTP(cfg Config) *SMTP {
 func (s *SMTP) Enabled() bool { return true }
 
 // Send delivers one message.
-func (s *SMTP) Send(ctx context.Context, msg Message) error {
+func (s *SMTP) Send(ctx context.Context, msg Message) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	if err := ctx.Err(); err != nil {
@@ -99,23 +99,28 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	// Closing the dialled connection also closes any TLS layer the client
+	// adds. After a successful Quit it is already closed, which is expected.
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
+			err = errors.Join(err, fmt.Errorf("smtp: close: %w", closeErr))
+		}
+	}()
 	// Cover the greeting as well as the SMTP exchange. Cancelling a context
 	// without a deadline must also interrupt an already connected relay.
 	deadline, _ := ctx.Deadline()
 	if err := conn.SetDeadline(deadline); err != nil {
 		return fmt.Errorf("smtp: set deadline: %w", err)
 	}
-	stop := context.AfterFunc(ctx, func() { conn.Close() })
+	// Closing interrupts a stalled exchange, which then reports the failure;
+	// the close itself has nothing further to say.
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
 
 	client, err := smtp.NewClient(conn, s.cfg.Host)
 	if err != nil {
-		conn.Close()
 		return fmt.Errorf("smtp: greeting: %w", err)
 	}
-	// Quit closes the connection; Close is a safety net for the error paths.
-	defer client.Close()
 
 	if s.cfg.Mode == TLSStartTLS {
 		if ok, _ := client.Extension("STARTTLS"); !ok {
@@ -152,8 +157,7 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 		return fmt.Errorf("smtp: start body: %w", err)
 	}
 	if _, err := writer.Write(buildMessage(s.cfg.From, msg)); err != nil {
-		writer.Close()
-		return fmt.Errorf("smtp: write body: %w", err)
+		return errors.Join(fmt.Errorf("smtp: write body: %w", err), writer.Close())
 	}
 	if err := writer.Close(); err != nil {
 		return fmt.Errorf("smtp: finish body: %w", err)
@@ -176,8 +180,7 @@ func (s *SMTP) dial(ctx context.Context) (net.Conn, error) {
 		MinVersion: tls.VersionTLS12,
 	})
 	if err := tlsConn.HandshakeContext(ctx); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("smtp: handshake: %w", err)
+		return nil, errors.Join(fmt.Errorf("smtp: handshake: %w", err), conn.Close())
 	}
 	return tlsConn, nil
 }

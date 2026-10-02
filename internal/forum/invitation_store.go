@@ -97,7 +97,7 @@ func (s *Store) listInvitations(ctx context.Context, creatorID int64, all bool, 
 	if err != nil {
 		return nil, false, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var list []Invitation
 	for rows.Next() {
 		var i Invitation
@@ -122,7 +122,7 @@ func (s *Store) InviteMembers(ctx context.Context) ([]InviteMember, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var members []InviteMember
 	for rows.Next() {
 		var member InviteMember

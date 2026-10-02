@@ -124,23 +124,13 @@ func (s *Store) Attachment(ctx context.Context, id int64, reader *User) (Attachm
 
 func (s *Store) PostImages(ctx context.Context, posts []Post) error {
 	for i := range posts {
-		rows, err := s.db.QueryContext(ctx, "SELECT id, name FROM attachments WHERE post_id = ? ORDER BY id", posts[i].ID)
+		images, err := collect(ctx, s.db, "SELECT id, name FROM attachments WHERE post_id = ? ORDER BY id", []any{posts[i].ID}, func(rows *sql.Rows) (img Attachment, err error) {
+			return img, rows.Scan(&img.ID, &img.Name)
+		})
 		if err != nil {
 			return err
 		}
-		for rows.Next() {
-			var img Attachment
-			if err := rows.Scan(&img.ID, &img.Name); err != nil {
-				rows.Close()
-				return err
-			}
-			posts[i].Images = append(posts[i].Images, img)
-		}
-		err = rows.Err()
-		rows.Close()
-		if err != nil {
-			return err
-		}
+		posts[i].Images = append(posts[i].Images, images...)
 	}
 	return nil
 }

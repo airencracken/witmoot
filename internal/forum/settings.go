@@ -67,7 +67,7 @@ func (s *Store) SaveInstanceSettings(ctx context.Context, mode Mode, branding Si
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if _, err := tx.ExecContext(ctx, "UPDATE settings SET mode = ? WHERE id = 1", mode); err != nil {
 		return err
 	}

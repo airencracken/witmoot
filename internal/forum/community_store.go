@@ -37,7 +37,7 @@ func (s *Store) ChangeMember(ctx context.Context, ownerID, memberID, revision in
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *Store) RemovePost(ctx context.Context, ownerID, postID, revision int64,
 	if err != nil {
 		return Post{}, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return Post{}, err
 	}

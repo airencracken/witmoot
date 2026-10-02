@@ -95,7 +95,7 @@ func setPasswordWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer closeStore(store)
 	user, err := accountByUsername(context.Background(), store, strings.TrimSpace(*username))
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func listUsersWithConfigPaths(args []string, stdout io.Writer, paths provisionin
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer closeStore(store)
 	members, err := store.Members(context.Background())
 	if err != nil {
 		return err

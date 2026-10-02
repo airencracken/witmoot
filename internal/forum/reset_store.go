@@ -31,7 +31,7 @@ func (s *Store) CreateAuthToken(ctx context.Context, userID int64, purpose Token
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireActive(ctx, tx, userID); err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (s *Store) SetPassword(ctx context.Context, userID int64, passwordHash stri
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := setPassword(ctx, tx, userID, passwordHash); err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (s *Store) ResetPassword(ctx context.Context, tokenHash, passwordHash strin
 	if err != nil {
 		return User{}, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	u, err := consumeAuthToken(ctx, tx, tokenHash, TokenPasswordReset, at)
 	if err != nil {
 		return User{}, err
@@ -188,7 +188,7 @@ func (s *Store) Members(ctx context.Context) ([]MemberReset, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var members []MemberReset
 	for rows.Next() {
 		var m MemberReset

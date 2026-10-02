@@ -224,7 +224,7 @@ func (a *App) image(w http.ResponseWriter, r *http.Request) {
 func (a *App) serveImage(w http.ResponseWriter, r *http.Request, token, id, rendition string) {
 	data, contentType, err := a.vault.Image(r.Context(), token, id, rendition)
 	if err != nil {
-		http.Error(w, "This image is currently unavailable.", 502)
+		http.Error(w, "This image is currently unavailable.", http.StatusBadGateway)
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
@@ -324,7 +324,7 @@ func (a *App) prepareImages(r *http.Request) ([]Attachment, func(), error) {
 				return nil, cleanup, errors.New("that image could not be read")
 			}
 			data, err := io.ReadAll(io.LimitReader(file, imvault.MaxImageBytes+1))
-			file.Close()
+			closeLogged("uploaded image", file)
 			if err != nil {
 				return nil, cleanup, errors.New("that image could not be read")
 			}

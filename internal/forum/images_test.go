@@ -331,7 +331,7 @@ func attachmentIDs(t *testing.T, a *App) []int64 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var ids []int64
 	for rows.Next() {
 		var id int64

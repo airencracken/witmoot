@@ -22,7 +22,7 @@ func (s *Store) BoardGroups(ctx context.Context, boardID int64) ([]BoardGroup, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var groups []BoardGroup
 	for rows.Next() {
 		var g BoardGroup
@@ -87,7 +87,7 @@ func (s *Store) GroupBoards(ctx context.Context, groupID int64) ([]GroupBoard, e
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	boards, err := groupBoards(ctx, tx, groupID)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func groupBoards(ctx context.Context, tx *sql.Tx, groupID int64) ([]GroupBoard, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var boards []GroupBoard
 	for rows.Next() {
 		var b GroupBoard
@@ -128,7 +128,7 @@ func groupBoardMembers(ctx context.Context, tx *sql.Tx, groupID int64, boards []
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	byID := make(map[int64]*GroupBoard, len(boards))
 	for i := range boards {
 		byID[boards[i].Board.ID] = &boards[i]

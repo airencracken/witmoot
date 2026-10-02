@@ -35,7 +35,7 @@ func (s *Store) EditPost(ctx context.Context, id, authorID int64, body string, r
 	if err != nil {
 		return Post{}, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireActive(ctx, tx, authorID); err != nil {
 		return Post{}, err
 	}

@@ -36,7 +36,7 @@ func (s *Store) Groups(ctx context.Context) ([]Group, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var groups []Group
 	for rows.Next() {
 		var g Group
@@ -64,7 +64,7 @@ func (s *Store) GroupMembers(ctx context.Context, id int64) ([]GroupMember, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var members []GroupMember
 	for rows.Next() {
 		var m GroupMember
@@ -85,7 +85,7 @@ func (s *Store) SaveGroup(ctx context.Context, ownerID int64, g Group, members [
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return 0, err
 	}
@@ -158,7 +158,7 @@ func (s *Store) DeleteGroup(ctx context.Context, ownerID, id, revision int64, co
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return err
 	}

@@ -25,7 +25,7 @@ func (s *Store) BoardMembers(ctx context.Context, boardID int64) ([]BoardMember,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var members []BoardMember
 	for rows.Next() {
 		var m BoardMember
@@ -45,7 +45,7 @@ func (s *Store) SaveBoard(ctx context.Context, ownerID int64, board Board, acces
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return 0, err
 	}

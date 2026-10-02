@@ -99,17 +99,17 @@ func invitationForm(r *http.Request) (Page, InvitationOptions, error) {
 	}
 	opts := InvitationOptions{Label: p.InviteLabel}
 	if !validText(opts.Label, 0, 64) || strings.ContainsAny(opts.Label, "\r\n") {
-		return p, opts, errors.New("Keep the label to 64 characters on one line.")
+		return p, opts, userError("Keep the label to 64 characters on one line.")
 	}
 	uses, err := strconv.Atoi(p.InviteUses)
 	if err != nil || uses < 0 || uses > 10000 {
-		return p, opts, errors.New("Uses must be a whole number from 0 to 10000; 0 means no limit.")
+		return p, opts, userError("Uses must be a whole number from 0 to 10000; 0 means no limit.")
 	}
 	opts.MaxUses = uses
 	if p.InviteDays != "" {
 		days, err := strconv.Atoi(p.InviteDays)
 		if err != nil || days < 0 || days > 3650 {
-			return p, opts, errors.New("Expiry must be a whole number from 0 to 3650 days; blank or 0 means never.")
+			return p, opts, userError("Expiry must be a whole number from 0 to 3650 days; blank or 0 means never.")
 		}
 		if days > 0 {
 			expires := time.Now().AddDate(0, 0, days)
