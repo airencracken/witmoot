@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 )
 
 type Connection struct {
@@ -19,37 +18,6 @@ type Attachment struct {
 	ID, PostID                        int64
 	Server, RemoteID, Name, Rendition string
 	CredentialUserID                  sql.NullInt64
-}
-
-func LoadImageKey(path string) ([]byte, error) {
-	key, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		key = make([]byte, 32)
-		rand.Read(key)
-		file, createErr := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-		if errors.Is(createErr, os.ErrExist) {
-			return LoadImageKey(path)
-		}
-		if createErr != nil {
-			return nil, createErr
-		}
-		_, writeErr := file.Write(key)
-		closeErr := file.Close()
-		if writeErr != nil {
-			return nil, writeErr
-		}
-		if closeErr != nil {
-			return nil, closeErr
-		}
-		err = nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if len(key) != 32 {
-		return nil, errors.New("imvault.key must contain exactly 32 bytes; restore it from backup")
-	}
-	return key, nil
 }
 
 func imageCipher(key []byte) (cipher.AEAD, error) {

@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/airencracken/comfylib/keyfile"
 	"github.com/airencracken/comfylib/privdrop"
 	"github.com/airencracken/comfylib/smtp"
 
@@ -82,7 +83,7 @@ func runServer() error {
 		return err
 	}
 	if config.ImvaultURL != "" {
-		config.ImageKey, err = forum.LoadImageKey(filepath.Join(dataDir, "imvault.key"))
+		config.ImageKey, err = loadImageKey(dataDir)
 		if err != nil {
 			return err
 		}
@@ -110,6 +111,18 @@ func runServer() error {
 		defer cancel()
 		return server.Shutdown(shutdown)
 	}
+}
+
+// loadImageKey returns the key that encrypts members' Imvault tokens, creating
+// it on first use. The file holds exactly 32 raw bytes, as it always has, so
+// existing keys load unchanged; losing it disconnects every member's images.
+func loadImageKey(dataDir string) ([]byte, error) {
+	path := filepath.Join(dataDir, "imvault.key")
+	key, err := keyfile.LoadOrCreate(path, 32, keyfile.Raw)
+	if errors.Is(err, keyfile.ErrInvalid) {
+		return nil, fmt.Errorf("%s: %w; restore it from backup", path, err)
+	}
+	return key, err
 }
 
 // newHTTPServer leaves body read and response write deadlines to the
