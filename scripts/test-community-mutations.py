@@ -25,6 +25,7 @@ MUTATIONS = [
     ("IPv6 network budget", "internal/forum/security.go", 'netip.PrefixFrom(addr.WithZone(""), 64)', 'netip.PrefixFrom(addr.WithZone(""), 128)', "TestIPv6AddressesInOneNetworkShareABudget"),
     ("limiter eviction", "internal/forum/security.go", "for l.order.Len() >= rateClients {\n\t\t\tl.remove(l.order.Front())\n\t\t}", "if l.order.Len() >= rateClients {\n\t\t\treturn false\n\t\t}", "TestFloodedLimiterStillAdmitsNewClients"),
     ("successful sign-in refund", "internal/forum/auth.go", "\ta.limiter.refund(a.clientIP(r))\n", "", "TestSuccessfulSignInsDoNotSpendTheBudget"),
+    ("immediate transactions", "internal/forum/store.go", 'q.Add("_txlock", "immediate")', 'q.Add("_txlock", "deferred")', "TestTransactionsTakeTheWriteLockImmediately"),
     ("removed message schema", "internal/forum/migrations/013_community_care.sql", "AND (removed = 0 OR body = 'This message was removed by a site owner.')", "", "TestCommunitySchemaUpgradeAndConstraints"),
 ]
 

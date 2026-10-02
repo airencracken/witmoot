@@ -290,3 +290,40 @@ func TestUpgradePreservesPrivateContentAndSavedMode(t *testing.T) {
 		t.Fatal("invalid permission accepted")
 	}
 }
+
+// Transactions lock the database when they begin, so another process waits
+// for them instead of failing halfway through a read-then-write.
+func TestTransactionsTakeTheWriteLockImmediately(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "locks.db")
+	s, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	other, err := sql.Open("sqlite", "file:"+path+"?_pragma=busy_timeout(0)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := other.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	tx, err := s.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := other.Exec("BEGIN IMMEDIATE; ROLLBACK"); err == nil {
+		t.Fatal("another connection could write while a transaction was open")
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := other.Exec("BEGIN IMMEDIATE; ROLLBACK"); err != nil {
+		t.Fatalf("the lock outlived its transaction: %v", err)
+	}
+}
