@@ -73,12 +73,20 @@ func (c *Client) request(ctx context.Context, method, path, token, contentType s
 	return resp, nil
 }
 
+// closeBody releases a response once it has been read or abandoned. The
+// caller's result is already decided, so a failure is only logged.
+func closeBody(resp *http.Response) {
+	if err := resp.Body.Close(); err != nil {
+		slog.Debug("close imvault response", "error", err)
+	}
+}
+
 func (c *Client) json(ctx context.Context, path, token string, target any) error {
 	resp, err := c.request(ctx, "GET", path, token, "", nil)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 	if resp.StatusCode != 200 {
 		return ErrUnavailable
 	}
@@ -175,7 +183,7 @@ func (c *Client) Image(ctx context.Context, token, id, rendition string) ([]byte
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 	if resp.StatusCode != 200 {
 		return nil, "", ErrUnavailable
 	}
@@ -212,7 +220,7 @@ func (c *Client) Upload(ctx context.Context, token, name string, data []byte) (F
 	if err != nil {
 		return File{}, err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 	var response struct {
 		Files  []File   `json:"files"`
 		Errors []string `json:"errors"`
@@ -245,7 +253,7 @@ func (c *Client) Delete(ctx context.Context, token, id string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return ErrUnavailable
 	}

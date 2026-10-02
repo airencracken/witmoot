@@ -95,7 +95,7 @@ func RuntimeEnv() []string {
 func Binary(path string) (string, error) {
 	binary, err := exec.LookPath(path)
 	if err != nil {
-		return "", fmt.Errorf("Bubblewrap is required: %w", err)
+		return "", fmt.Errorf("bubblewrap is required: %w", err)
 	}
 	binary, err = filepath.Abs(binary)
 	if err != nil {

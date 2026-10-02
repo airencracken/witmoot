@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/url"
 	"path/filepath"
@@ -93,8 +94,7 @@ func OpenStore(path string) (*Store, error) {
 	db.SetMaxOpenConns(1)
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
-		db.Close()
-		return nil, err
+		return nil, errors.Join(err, db.Close())
 	}
 	return s, nil
 }
@@ -103,9 +103,13 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // closeRows releases a result set once it has been read. Callers check
 // rows.Err for the outcome, so a failure here is only logged.
-func closeRows(rows *sql.Rows) {
-	if err := rows.Close(); err != nil {
-		slog.Error("close query results", "error", err)
+func closeRows(rows *sql.Rows) { closeLogged("query results", rows) }
+
+// closeLogged closes c where a failure can no longer change the result, such
+// as an upload already read in full, and logs it instead.
+func closeLogged(what string, c io.Closer) {
+	if err := c.Close(); err != nil {
+		slog.Error("close "+what, "error", err)
 	}
 }
 
@@ -123,7 +127,7 @@ func (s *Store) migrate() error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	var version int
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
@@ -159,7 +163,7 @@ func (s *Store) Boards(ctx context.Context, reader *User) ([]Board, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var boards []Board
 	for rows.Next() {
 		var b Board
@@ -209,7 +213,7 @@ func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, 
 	if err != nil {
 		return nil, false, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var topics []Topic
 	for rows.Next() {
 		var t Topic
@@ -236,7 +240,7 @@ func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, rea
 	if err != nil {
 		return nil, false, err
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 	var posts []Post
 	for rows.Next() {
 		var p Post
@@ -258,7 +262,7 @@ func (s *Store) CreateTopic(ctx context.Context, boardID, authorID int64, title,
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	board, mode, err := boardForWriter(ctx, tx, boardID, authorID)
 	if err != nil {
 		return 0, err
@@ -294,7 +298,7 @@ func (s *Store) Reply(ctx context.Context, topicID, authorID int64, body string,
 	if err != nil {
 		return 0, 0, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if _, err := canWrite(ctx, tx, authorID); err != nil {
 		return 0, 0, err
 	}
@@ -379,7 +383,7 @@ func (s *Store) NewSession(ctx context.Context, hash string, userID int64, expir
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireActive(ctx, tx, userID); err != nil {
 		return err
 	}
@@ -404,7 +408,7 @@ func (s *Store) Register(ctx context.Context, name, passwordHash, inviteHash str
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	mode, err := readMode(ctx, tx)
 	if err != nil {
 		return 0, err

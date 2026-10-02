@@ -40,7 +40,12 @@ func run(ctx context.Context, port int, out io.Writer) (err error) {
 	if err != nil {
 		return fmt.Errorf("listen: %w; try make demo PORT=9000", err)
 	}
-	defer listener.Close()
+	// Serving closes the listener on shutdown, so a second close is expected.
+	defer func() {
+		if closeErr := listener.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 	dataDir, err := os.MkdirTemp("", "witmoot-demo-")
 	if err != nil {
 		return err
@@ -66,7 +71,8 @@ func run(ctx context.Context, port int, out io.Writer) (err error) {
 }
 
 func serve(ctx context.Context, listener net.Listener, handler http.Handler) error {
-	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 60 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
+	// The application sets body deadlines per request, as in the real server.
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
 	select {
@@ -77,7 +83,7 @@ func serve(ctx context.Context, listener net.Listener, handler http.Handler) err
 		defer cancel()
 		err := server.Shutdown(shutdown)
 		if err != nil {
-			server.Close()
+			err = errors.Join(err, server.Close())
 		}
 		<-done
 		return err

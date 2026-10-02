@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"log/slog"
 	"mime"
@@ -165,7 +166,9 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /branding/{name}", a.brandingAsset)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintln(w, "ok")
+		if _, err := io.WriteString(w, "ok\n"); err != nil {
+			slog.Debug("response interrupted", "error", err)
+		}
 	})
 	mux.HandleFunc("GET /{$}", a.home)
 	mux.HandleFunc("GET /about", a.about)
@@ -327,7 +330,11 @@ func (a *App) middleware(next http.Handler) http.Handler {
 			if multipart {
 				formErr = r.ParseMultipartForm(8 << 20)
 				if r.MultipartForm != nil {
-					defer r.MultipartForm.RemoveAll()
+					defer func() {
+						if err := r.MultipartForm.RemoveAll(); err != nil {
+							slog.Error("remove temporary upload files", "error", err)
+						}
+					}()
 				}
 			} else {
 				formErr = r.ParseForm()
@@ -350,7 +357,7 @@ func validToken(token string) bool {
 		return false
 	}
 	for _, c := range token {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return false
 		}
 	}
@@ -446,6 +453,13 @@ func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	slog.Error("request failed", "path", loggedPath(r), "error", err)
 	a.fail(w, r, 500, "Something went wrong. Please try again in a moment.")
 }
+
+// userError is a failure whose text is written as interface copy, a complete
+// sentence for the person who filled in the form, rather than a Go error
+// string meant to be wrapped.
+type userError string
+
+func (e userError) Error() string { return string(e) }
 
 // loggedPath is the request path with any reset token removed: a reset link in
 // a log is as good as the password it replaces.

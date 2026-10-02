@@ -45,7 +45,7 @@ func (s *Store) ChangeBoard(ctx context.Context, ownerID, boardID, revision int6
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	if err := requireOwner(ctx, tx, ownerID); err != nil {
 		return err
 	}

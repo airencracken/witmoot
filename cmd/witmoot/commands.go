@@ -121,9 +121,9 @@ func commandFlags(command string, out io.Writer) *flag.FlagSet {
 	flags := flag.NewFlagSet("witmoot "+command, flag.ContinueOnError)
 	flags.SetOutput(out)
 	flags.Usage = func() {
-		fmt.Fprintf(out, "Usage: witmoot %s [OPTIONS]\n\n", command)
-		fmt.Fprintln(out, commandSummary[command])
-		fmt.Fprintln(out)
+		// A flag set's Usage cannot report a failed write; PrintDefaults
+		// below drops write errors in the same way.
+		_, _ = fmt.Fprintf(out, "Usage: witmoot %s [OPTIONS]\n\n%s\n\n", command, commandSummary[command])
 		flags.PrintDefaults()
 	}
 	return flags
@@ -169,7 +169,7 @@ func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer closeStore(store)
 	if err := store.CreateOwner(context.Background(), *username, hash); err != nil {
 		return err
 	}

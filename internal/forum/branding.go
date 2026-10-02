@@ -111,7 +111,7 @@ func (s *Store) SaveBrandingAssets(ctx context.Context, mascot, favicon []byte, 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer rollback(tx)
 	for _, asset := range []struct {
 		name   string
 		data   []byte
@@ -181,7 +181,8 @@ func brandTextValid(value string, max int, multiline bool) bool {
 		return false
 	}
 	for _, r := range value {
-		if unicode.IsControl(r) && !(multiline && (r == '\n' || r == '\r' || r == '\t')) {
+		allowed := multiline && (r == '\n' || r == '\r' || r == '\t')
+		if unicode.IsControl(r) && !allowed {
 			return false
 		}
 	}
@@ -207,7 +208,9 @@ func (a *App) brandingAsset(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Write(content)
+	if _, err := w.Write(content); err != nil {
+		slog.Debug("response interrupted", "error", err)
+	}
 }
 
 func (a *App) saveBrandingAssets(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +245,7 @@ func uploadedImage(r *http.Request, name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer closeLogged("uploaded image", file)
 	if header.Size > maxBrandImageBytes {
 		return nil, errors.New("choose an image no larger than 2 MiB")
 	}

@@ -53,14 +53,14 @@ func reexecProvisioningAsService(args []string) (bool, int, error) {
 	}
 	uid, err := strconv.ParseUint(account.Uid, 10, 32)
 	if err != nil || uid == 0 {
-		return true, 1, fmt.Errorf("Witmoot service user %q must have a non-root numeric UID", username)
+		return true, 1, fmt.Errorf("the Witmoot service user %q must have a non-root numeric UID", username)
 	}
 	gid, err := serviceGroupID(groupName, account.Gid)
 	if err != nil {
 		return true, 1, err
 	}
 	if gid == 0 {
-		return true, 1, fmt.Errorf("Witmoot service group %q must have a non-root numeric GID", groupName)
+		return true, 1, fmt.Errorf("the Witmoot service group %q must have a non-root numeric GID", groupName)
 	}
 	groupIDs, err := account.GroupIds()
 	if err != nil {
@@ -73,7 +73,7 @@ func reexecProvisioningAsService(args []string) (bool, int, error) {
 			return true, 1, fmt.Errorf("invalid supplementary group ID %q for Witmoot service user %q", id, username)
 		}
 		if parsed == 0 {
-			return true, 1, fmt.Errorf("Witmoot service user %q belongs to the root group", username)
+			return true, 1, fmt.Errorf("the Witmoot service user %q belongs to the root group", username)
 		}
 		groups = append(groups, uint32(parsed))
 	}

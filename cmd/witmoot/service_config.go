@@ -259,7 +259,7 @@ func readShellConfigValue(path, key string) (string, bool, error) {
 		}
 		return "", false, fmt.Errorf("read %s: %w; run create-owner as a user that can read the service configuration, or set WITMOOT_DATA_DIR explicitly", path, err)
 	}
-	defer file.Close()
+	defer closeConfig(path, file)
 
 	var value string
 	found := false
@@ -350,11 +350,7 @@ func readSystemdEnvironmentFile(setting, unitPath, key string) (string, bool, er
 		}
 		return "", false, fmt.Errorf("read systemd environment file %s: %w", path, err)
 	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			slog.Debug("close systemd environment file", "path", path, "error", err)
-		}
-	}()
+	defer closeConfig(path, file)
 	var value string
 	found := false
 	scanner := bufio.NewScanner(file)
@@ -520,6 +516,14 @@ func splitConfigWords(raw string) ([]string, error) {
 		words = append(words, word.String())
 	}
 	return words, nil
+}
+
+// closeConfig closes a configuration file that has been read in full; a
+// failure cannot change what was read, so it is only logged.
+func closeConfig(path string, file *os.File) {
+	if err := file.Close(); err != nil {
+		slog.Debug("close configuration file", "path", path, "error", err)
+	}
 }
 
 func fileExists(path string) bool {
