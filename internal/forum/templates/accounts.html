@@ -67,7 +67,7 @@
 	{{template "pager" .}}
 	{{if .CanManageInvites}}
 	<h2>Members who can invite</h2>
-	<p class="muted">Grant invitation access to individual members. Each new account records the person who issued its invitation.</p>
+	<p class="muted">Grant invitation access to individual members. Each new account records the person who issued its invitation. Removing access also revokes their open invitations; granting it again does not restore them.</p>
 	{{range .InviteMembers}}<article class="invitation-record">
 		<h3>{{.Username}}</h3>
 		<p class="muted">{{if .InvitedByName}}Joined from an invitation by {{.InvitedByName}}{{else}}No invitation attribution recorded{{end}}</p>

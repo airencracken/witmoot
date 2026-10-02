@@ -134,12 +134,16 @@ func (s *Store) InviteMembers(ctx context.Context) ([]InviteMember, error) {
 	return members, rows.Err()
 }
 
+// SetInvitePermission grants or removes a member's right to invite. Removing
+// it also revokes that member's open invitations in the same transaction, so a
+// link already shared cannot outlive the permission that issued it.
 func (s *Store) SetInvitePermission(ctx context.Context, userID int64, enabled bool) error {
-	value := 0
-	if enabled {
-		value = 1
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE users SET can_invite = ? WHERE id = ? AND role != 'owner'`, value, userID)
+	defer rollback(tx)
+	result, err := tx.ExecContext(ctx, `UPDATE users SET can_invite = ? WHERE id = ? AND role != 'owner'`, enabled, userID)
 	if err != nil {
 		return err
 	}
@@ -150,7 +154,14 @@ func (s *Store) SetInvitePermission(ctx context.Context, userID int64, enabled b
 	if rows == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+	if !enabled {
+		now := time.Now().Unix()
+		if _, err := tx.ExecContext(ctx, `UPDATE invitations SET revoked_at = ? WHERE created_by = ? AND revoked_at IS NULL
+			AND (expires_at IS NULL OR expires_at > ?) AND (max_uses = 0 OR uses < max_uses)`, now, userID, now); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Store) RevokeInvitation(ctx context.Context, id int64) error {

@@ -286,3 +286,159 @@ func TestDelegatedInvitationsTrackAndRestrictCustody(t *testing.T) {
 		t.Fatal("owner id was not set")
 	}
 }
+
+// delegateFixture is an owner, a member allowed to invite, and one open and
+// one already used invitation from that member.
+type delegateFixture struct {
+	s                *Store
+	owner, delegate  int64
+	open, used, gone string
+}
+
+func newDelegateFixture(t *testing.T) delegateFixture {
+	t.Helper()
+	s := testStore(t)
+	ctx := context.Background()
+	f := delegateFixture{s: s, owner: testInvitationOwner(t, s, "owner"), delegate: testMember(t, s, "jules"), open: "open-code", used: "used-code", gone: "expired-code"}
+	if err := s.SetInvitePermission(ctx, f.delegate, true); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Hour)
+	for _, invite := range []struct {
+		hash string
+		opts InvitationOptions
+	}{{f.open, InvitationOptions{MaxUses: 0}}, {f.used, InvitationOptions{MaxUses: 1}}, {f.gone, InvitationOptions{MaxUses: 1, ExpiresAt: &past}}} {
+		if _, err := s.CreateInvitation(ctx, f.delegate, invite.hash, "", invite.opts); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.Register(ctx, "first", "hash", f.used); err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+func invitationStatuses(t *testing.T, s *Store, creator int64) map[string]string {
+	t.Helper()
+	list, _, err := s.InvitationsByCreator(context.Background(), creator, 20, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statuses := map[string]string{}
+	for _, invitation := range list {
+		var hash string
+		if err := s.db.QueryRow("SELECT token_hash FROM invitations WHERE id = ?", invitation.ID).Scan(&hash); err != nil {
+			t.Fatal(err)
+		}
+		statuses[hash] = invitation.Status()
+	}
+	return statuses
+}
+
+func TestRemovingInvitePermissionRevokesOpenInvitations(t *testing.T) {
+	f := newDelegateFixture(t)
+	ctx := context.Background()
+	if err := f.s.SetInvitePermission(ctx, f.delegate, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Register(ctx, "late", "hash", f.open); !errors.Is(err, errInvitation) {
+		t.Fatalf("invitation outlived its creator's permission: %v", err)
+	}
+	// History stays accurate: only the open invitation becomes revoked.
+	want := map[string]string{f.open: "revoked", f.used: "used up", f.gone: "expired"}
+	if got := invitationStatuses(t, f.s, f.delegate); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("statuses after removing permission: %v want %v", got, want)
+	}
+	// Granting the permission again does not revive old links.
+	if err := f.s.SetInvitePermission(ctx, f.delegate, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Register(ctx, "later", "hash", f.open); !errors.Is(err, errInvitation) {
+		t.Fatalf("restored permission revived a revoked invitation: %v", err)
+	}
+	if err := f.s.SetInvitePermission(ctx, f.owner, false); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("owner invite permission changed: %v", err)
+	}
+	if err := f.s.SetInvitePermission(ctx, 9999, false); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("unknown member accepted: %v", err)
+	}
+}
+
+func TestRegisterRequiresInviterPermission(t *testing.T) {
+	f := newDelegateFixture(t)
+	ctx := context.Background()
+	// Simulate a permission removed by an older release, which left the
+	// invitation open: the inviter's current permission still decides.
+	if _, err := f.s.db.Exec("UPDATE users SET can_invite = 0 WHERE id = ?", f.delegate); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Register(ctx, "late", "hash", f.open); !errors.Is(err, errInvitation) {
+		t.Fatalf("member without invite permission admitted someone: %v", err)
+	}
+	var uses int
+	if err := f.s.db.QueryRow("SELECT uses FROM invitations WHERE token_hash = ?", f.open).Scan(&uses); err != nil || uses != 0 {
+		t.Fatalf("rejected registration spent a use: %d %v", uses, err)
+	}
+	ownerCode := "owner-code"
+	if _, err := f.s.CreateInvitation(ctx, f.owner, ownerCode, "", InvitationOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.s.Register(ctx, "welcome", "hash", ownerCode); err != nil {
+		t.Fatalf("owner invitation rejected: %v", err)
+	}
+}
+
+func TestInvitePermissionRemovalIsAtomic(t *testing.T) {
+	for _, stage := range []struct{ name, event, table string }{
+		{"permission", "UPDATE", "users"}, {"invitations", "UPDATE", "invitations"},
+	} {
+		t.Run(stage.name, func(t *testing.T) {
+			f := newDelegateFixture(t)
+			if _, err := f.s.db.Exec(fmt.Sprintf("CREATE TRIGGER fail_write BEFORE %s ON %s BEGIN SELECT RAISE(ABORT, 'injected failure'); END", stage.event, stage.table)); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.s.SetInvitePermission(context.Background(), f.delegate, false); err == nil {
+				t.Fatal("failure ignored")
+			}
+			user, err := f.s.UserByID(context.Background(), f.delegate)
+			if err != nil || !user.CanInvite {
+				t.Fatalf("permission removed without revoking invitations: %+v %v", user, err)
+			}
+			if got := invitationStatuses(t, f.s, f.delegate); got[f.open] != "open" {
+				t.Fatalf("invitation revoked while permission stayed: %v", got)
+			}
+		})
+	}
+}
+
+func TestInvitePermissionHTTPRevokesAndExplains(t *testing.T) {
+	a, owner := newTestApp(t, false)
+	signInTest(t, a, owner, true)
+	delegate := memberClient(t, a, "jules")
+	jules, _, err := a.store.Credentials(context.Background(), "jules")
+	if err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, owner.post(fmt.Sprintf("/invites/members/%d/permission", jules.ID), url.Values{"enabled": {"1"}}), 303)
+	w := delegate.post("/invites", url.Values{"max_uses": {"5"}, "expires_days": {"7"}})
+	requireStatus(t, w, 200)
+	code := regexp.MustCompile(`id="invite-code" type="text" readonly value="([0-9a-f]{64})"`).FindStringSubmatch(w.Body.String())
+	if code == nil {
+		t.Fatal("no invitation code")
+	}
+	page := owner.request("GET", "/invites", nil, nil).Body.String()
+	if !strings.Contains(page, "also revokes their open invitations") {
+		t.Fatal("invite access copy does not explain what removal does")
+	}
+	requireStatus(t, owner.post(fmt.Sprintf("/invites/members/%d/permission", jules.ID), url.Values{"enabled": {"0"}}), 303)
+	requireStatus(t, delegate.request("GET", "/invites", nil, nil), 403)
+	newcomer := &testClient{app: a, cookies: make(map[string]*http.Cookie)}
+	newcomer.request("GET", "/join", nil, nil)
+	w = newcomer.post("/join", url.Values{"username": {"sam"}, "password": {"a long test password"}, "invite": {code[1]}})
+	requireStatus(t, w, 422)
+	if !strings.Contains(w.Body.String(), errInvitation.Error()) {
+		t.Fatal("revoked invitation did not explain itself")
+	}
+	requireStatus(t, owner.post("/invites/members/999/permission", url.Values{"enabled": {"0"}}), 404)
+	requireStatus(t, delegate.post(fmt.Sprintf("/invites/members/%d/permission", jules.ID), url.Values{"enabled": {"1"}}), 403)
+}
