@@ -42,8 +42,8 @@ test-imvault: build ## Test image integration (set IMVAULT_BINARY; see README)
 test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 	go test -tags=proxyintegration -count=1 -timeout=60s ./contrib/proxy
 
-test-mutations: ## Verify community regressions reject deliberate defects (needs Python 3)
-	python3 scripts/test-community-mutations.py
+test-mutations: ## Verify community and comfylib integration regressions reject deliberate defects (needs Python 3)
+	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json
 
 check: test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...
@@ -103,4 +103,4 @@ test-sandbox: ## Require real Bubblewrap boundary and lifecycle tests (Linux)
 	COMFYWARE_SANDBOX_TEST=1 go test -race -count=1 ./cmd/witmoot -run 'Sandbox|Real'
 
 test-sandbox-mutations: ## Verify sandbox regressions reject deliberate defects (Python 3)
-	python3 scripts/test-sandbox-mutations.py
+	GOWORK=off python3 scripts/mutate.py scripts/mutations/sandbox.json

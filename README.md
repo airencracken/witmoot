@@ -382,14 +382,24 @@ make test-mutations # deliberate defects in community controls (Python 3 require
 make build   # standalone binary; no cgo required
 ```
 
+The sandbox, service configuration, mail, key file, token, client address and
+proxy configuration code comes from
+[comfylib](https://github.com/airencracken/comfylib), pinned to an exact
+release in `go.mod`. To work on both at once, use an untracked workspace
+(`go work init . ../comfylib`) rather than a `replace` directive; tests refuse
+a committed one. The mutation tables in `scripts/mutations/` run on
+`scripts/mutate.py`, a copy of comfylib's engine that a test keeps identical
+to the pinned release.
+
 Tests cover all three modes, audience filtering, migration from the original
 private schema, persisted settings, stale forms and registration policy,
 invitation races and rollback, session expiry, CSRF, role checks, escaping,
 search literals, pagination, and failed writes. Community tests exercise
 suspension, session/reset/invitation revocation, permission preservation,
 confirmation conflicts, message/image erasure, export contracts, schema upgrades,
-generated action sequences, and rollback at every write. Ten deliberate
-mutations verify that these regressions detect broken controls.
+generated action sequences, and rollback at every write. Deliberate
+mutations verify that these regressions, and those for the comfylib
+integration, detect broken controls.
 Image tests cover the API contract, encrypted connections, all three attachment
 paths, audience checks, input limits, upstream failures, and upload cleanup.
 Packaging tests exercise staged installs, preserved configuration, service

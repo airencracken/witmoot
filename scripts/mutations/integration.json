@@ -1,0 +1,154 @@
+[
+    {
+        "name": "trusted proxy list",
+        "file": "internal/forum/proxy.go",
+        "before": "clientip.Resolver{Trusted: a.config.TrustedProxies}",
+        "after": "clientip.Resolver{}",
+        "package": "./internal/forum",
+        "run": "^(TestRateKeysFollowTheTrustedProxies|TestProxyVisitorsHaveSeparateAuthenticationBudgets)$"
+    },
+    {
+        "name": "forwarded HTTPS links",
+        "file": "internal/forum/invitations.go",
+        "before": "if a.clients().ForwardedHTTPS(r) || a.config.SecureCookies {",
+        "after": "if r.TLS != nil || a.config.SecureCookies {",
+        "package": "./internal/forum",
+        "run": "^TestLinkOriginsFollowTheTrustedProxy$"
+    },
+    {
+        "name": "line breaks in board names",
+        "file": "internal/forum/board_store.go",
+        "before": " || !SingleLine(board.Name) || !SingleLine(board.Category) {",
+        "after": " {",
+        "package": "./internal/forum",
+        "run": "^TestBoardNamesAndCategoriesMustBeOneLine$"
+    },
+    {
+        "name": "line breaks in branded site names",
+        "file": "internal/forum/branding.go",
+        "before": "|| !SingleLine(branding.Name) ||",
+        "after": "||",
+        "package": "./internal/forum",
+        "run": "^TestSiteNamesMustBeOneLine$"
+    },
+    {
+        "name": "line breaks in configured site names",
+        "file": "internal/forum/security.go",
+        "before": "if !SingleLine(name) || utf8.RuneCountInString(name) > 80 {",
+        "after": "if utf8.RuneCountInString(name) > 80 {",
+        "package": "./internal/forum",
+        "run": "^TestSiteNamesMustBeOneLine$"
+    },
+    {
+        "name": "site name check at startup",
+        "file": "internal/forum/web.go",
+        "before": "if err := CheckSiteName(config.Name); err != nil {",
+        "after": "if err := error(nil); err != nil {",
+        "package": "./internal/forum",
+        "run": "^TestSiteNamesMustBeOneLine$"
+    },
+    {
+        "name": "Unicode line separators",
+        "file": "internal/forum/security.go",
+        "before": "if unicode.IsControl(r) || r == '\\u2028' || r == '\\u2029' {",
+        "after": "if unicode.IsControl(r) {",
+        "package": "./internal/forum",
+        "run": "^TestSingleLineRejectsEveryLineBreak$"
+    },
+    {
+        "name": "site name check in account commands",
+        "file": "cmd/witmoot/accounts.go",
+        "before": "if err := forum.CheckSiteName(siteName); err != nil {",
+        "after": "if err := error(nil); err != nil {",
+        "package": "./cmd/witmoot",
+        "run": "^TestAdminOptionsRejectMultilineSiteNames$"
+    },
+    {
+        "name": "site name check before serving",
+        "file": "cmd/witmoot/main.go",
+        "before": "config := forum.Config{Name: env(\"WITMOOT_NAME\", \"Witmoot\")",
+        "after": "config := forum.Config{Name: strings.NewReplacer(\"\\r\", \"\", \"\\n\", \"\", \"\\u2028\", \"\").Replace(env(\"WITMOOT_NAME\", \"Witmoot\"))",
+        "package": "./cmd/witmoot",
+        "run": "^TestStartupRejectsInvalidDeploymentConfiguration$"
+    },
+    {
+        "name": "bare recipient addresses",
+        "file": "internal/forum/security.go",
+        "before": "if len(email) > 254 || strings.ContainsAny(email, \"<>,\") {",
+        "after": "if len(email) > 254 {",
+        "package": "./internal/forum",
+        "run": "^TestValidEmail$"
+    },
+    {
+        "name": "TLS mode startup error",
+        "file": "internal/forum/web.go",
+        "before": "if mailer, err = smtp.New(config.Mail); err != nil {\n\t\t\treturn nil, err\n\t\t}",
+        "after": "mailer, _ = smtp.New(config.Mail)",
+        "package": "./internal/forum",
+        "run": "^TestUnknownMailTLSModeStopsStartup$"
+    },
+    {
+        "name": "TLS mode setting",
+        "file": "cmd/witmoot/main.go",
+        "before": "mode, err := smtp.ParseTLSMode(lookup(\"WITMOOT_SMTP_TLS\"))",
+        "after": "mode, err := smtp.TLSMode(lookup(\"WITMOOT_SMTP_TLS\")), error(nil)",
+        "package": "./cmd/witmoot",
+        "run": "^TestMailConfigValidation$"
+    },
+    {
+        "name": "relay check in the admin view",
+        "file": "cmd/witmoot/accounts.go",
+        "before": "\t\tif sender, err = smtp.New(mailSettings); err != nil {\n\t\t\treturn admin.Options{}, err\n\t\t}",
+        "after": "\t\tsender, _ = smtp.New(mailSettings)",
+        "package": "./cmd/witmoot",
+        "run": "^TestUnusableRelayStopsStartupAndTheAdminView$"
+    },
+    {
+        "name": "raw image key encoding",
+        "file": "cmd/witmoot/main.go",
+        "before": "keyfile.LoadOrCreate(path, 32, keyfile.Raw)",
+        "after": "keyfile.LoadOrCreate(path, 32, keyfile.Hex)",
+        "package": "./cmd/witmoot",
+        "run": "^TestImageKeyFixtureLoadsUnchanged$"
+    },
+    {
+        "name": "stored invitation digests",
+        "file": "internal/forum/auth.go",
+        "before": "inviteHash = token.Hash(invite)",
+        "after": "inviteHash = invite",
+        "package": "./internal/forum",
+        "run": "^TestTokensIssuedBeforeComfylibStillWork$"
+    },
+    {
+        "name": "admin settings in re-run commands",
+        "file": "cmd/witmoot/provisioning.go",
+        "before": "\t\tif command != \"reset-link\" && command != \"admin\" {",
+        "after": "\t\tif command != \"reset-link\" {",
+        "package": "./cmd/witmoot",
+        "run": "^TestProvisioningChildSettingsFollowTheServiceConfiguration$"
+    },
+    {
+        "name": "re-run commands",
+        "file": "cmd/witmoot/provisioning.go",
+        "before": "\t\"list-users\":   true,\n",
+        "after": "",
+        "package": "./cmd/witmoot",
+        "run": "^TestProvisioningRequestCoversTheDatabaseCommands$"
+    },
+    {
+        "name": "default service account",
+        "file": "cmd/witmoot/provisioning.go",
+        "before": "const serviceUser = \"witmoot\"",
+        "after": "const serviceUser = \"root\"",
+        "package": "./cmd/witmoot",
+        "run": "^(TestServiceAccountDefaultsToWitmoot|TestProvisioningRequestCoversTheDatabaseCommands)$"
+    },
+    {
+        "name": "relay check at startup",
+        "file": "internal/forum/web.go",
+        "before": "if mailer, err = smtp.New(config.Mail); err != nil {\n\t\t\treturn nil, err\n\t\t}",
+        "after": "mailer, _ = smtp.New(config.Mail)",
+        "package": "./cmd/witmoot",
+        "run": "^TestUnusableRelayStopsStartupAndTheAdminView$"
+    }
+]

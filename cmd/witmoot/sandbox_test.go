@@ -121,3 +121,25 @@ func TestSandboxBindsTheCustomCertificateBundle(t *testing.T) {
 		t.Fatalf("the data directory is not the one writable mount: %q", args)
 	}
 }
+
+// A setuid Bubblewrap would run the policy with privileges the sandbox is
+// meant to do without, so it is refused before anything is launched.
+func TestSandboxRejectsSetuidBubblewrap(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("the sandbox refuses to run as root")
+	}
+	fake, record := fakeBubblewrap(t)
+	if err := os.Chmod(fake, 0700|os.ModeSetuid); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(fake); err != nil || info.Mode()&os.ModeSetuid == 0 {
+		t.Skip("the test directory does not keep the setuid bit")
+	}
+	t.Setenv("WITMOOT_DATA_DIR", t.TempDir())
+	if err := runSandbox([]string{"--check", "--bwrap", fake}, &bytes.Buffer{}); err == nil || !strings.Contains(err.Error(), "setuid") {
+		t.Fatalf("setuid launcher accepted: %v", err)
+	}
+	if _, err := os.Stat(record); !os.IsNotExist(err) {
+		t.Fatal("a setuid launcher was run")
+	}
+}
