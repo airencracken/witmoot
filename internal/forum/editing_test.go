@@ -136,3 +136,24 @@ func TestEditRedirectsToThePostsPageWithoutBumpingConversation(t *testing.T) {
 		t.Fatalf("edit bumped topic: %+v %v", topic, err)
 	}
 }
+
+func TestStorePostFollowsTheReadersAccess(t *testing.T) {
+	f := privateBoardFixture(t)
+	ctx := context.Background()
+	for _, reader := range []*User{f.owner, f.writer, f.reader} {
+		if p, err := f.app.store.Post(ctx, f.postID, reader); err != nil || p.Body != "Original message" || p.Number != 1 {
+			t.Fatalf("reader %d: %+v %v", reader.ID, p, err)
+		}
+	}
+	for _, reader := range []*User{f.outsider, nil} {
+		if _, err := f.app.store.Post(ctx, f.postID, reader); !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("message leaked to %v: %v", reader, err)
+		}
+	}
+	if _, err := f.app.store.RemovePost(ctx, f.owner.ID, f.postID, 0, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.store.Post(ctx, f.postID, f.owner); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("removed message returned: %v", err)
+	}
+}
