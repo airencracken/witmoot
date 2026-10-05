@@ -187,7 +187,7 @@ func (a *App) libraryImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The metadata API verifies ownership before a credentialed media request.
-	f, err := a.vault.File(r.Context(), token, r.PathValue("id"))
+	f, err := a.vault.CachedFile(r.Context(), token, r.PathValue("id"))
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -213,7 +213,7 @@ func (a *App) image(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Reconnecting with another imvault account must not turn old image IDs into grants.
-		if _, err := a.vault.File(r.Context(), token, img.RemoteID); err != nil {
+		if _, err := a.vault.CachedFile(r.Context(), token, img.RemoteID); err != nil {
 			http.NotFound(w, r)
 			return
 		}
@@ -222,16 +222,20 @@ func (a *App) image(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) serveImage(w http.ResponseWriter, r *http.Request, token, id, rendition string) {
-	data, contentType, err := a.vault.Image(r.Context(), token, id, rendition)
+	body, contentType, err := a.vault.StreamImage(r.Context(), token, id, rendition)
 	if err != nil {
 		http.Error(w, "This image is currently unavailable.", http.StatusBadGateway)
 		return
 	}
+	defer body.Close()
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": "imvault-image"}))
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Cache-Control", "private, max-age=15")
+	w.Header().Add("Vary", "Cookie")
 	if r.Method != "HEAD" {
-		_, _ = w.Write(data)
+		if _, err := io.Copy(w, body); err != nil {
+			panic(http.ErrAbortHandler)
+		}
 	}
 }
 

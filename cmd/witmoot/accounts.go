@@ -26,6 +26,7 @@ import (
 
 // commandSummary describes each command for its --help output.
 var commandSummary = map[string]string{
+	"migrate":      "Back up and migrate an existing database. Stop the server first. Account commands never migrate.",
 	"sandbox":      "Start the server confined by Bubblewrap. Run as the service user.\nThe data directory must already exist; see docs/sandbox.md.",
 	"serve":        "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.",
 	"create-owner": "Create a new owner locally. Existing accounts are never promoted or changed.\nWITMOOT_DATA_DIR is read from the active service configuration unless set in the environment. Root invocations use the configured service user. Use a hidden terminal prompt or read from stdin.",
@@ -55,7 +56,7 @@ func openProvisioningStore(paths svcconfig.Paths) (*forum.Store, error) {
 	if _, err := os.Stat(dbPath); err != nil {
 		return nil, fmt.Errorf("no Witmoot database at %s; start or provision the board first", dbPath)
 	}
-	return forum.OpenStore(dbPath)
+	return forum.OpenCurrentStore(dbPath)
 }
 
 // accountByUsername looks up one account, with a friendly error when it is

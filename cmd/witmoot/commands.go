@@ -14,6 +14,7 @@ import (
 
 	"witmoot/contrib"
 	"witmoot/internal/forum"
+	"witmoot/internal/instance"
 )
 
 const commandHelp = `witmoot - a little bulletin board for your people
@@ -26,6 +27,7 @@ Commands:
   create-owner   Provision a new owner using a hidden prompt or stdin.
   set-password   Replace an account's password and end its sessions.
   reset-link     Make a single-use link an account can use to choose a password.
+  migrate        Back up and migrate the database with the server stopped.
   list-users     List local accounts with their roles and email addresses.
   admin          Open an interactive manager for accounts (needs a terminal).
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
@@ -37,7 +39,7 @@ Server configuration uses environment variables:
   WITMOOT_NAME            Board name (default: Witmoot).
   WITMOOT_SOURCE_URL      Footer source link (default: upstream repository).
   WITMOOT_BASE_URL        Public origin, for example https://board.example.org.
-  WITMOOT_SECURE_COOKIES  Set true for HTTPS (default: false).
+  WITMOOT_SECURE_COOKIES  HTTPS base URLs enable automatically.
   WITMOOT_TRUSTED_PROXIES Comma-separated proxy IPs/CIDRs; empty trusts none.
   WITMOOT_IMVAULT_URL     Optional HTTPS origin of your Imvault image host.
   WITMOOT_SMTP_HOST       Optional SMTP relay; empty leaves mail disabled.
@@ -81,6 +83,8 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 		return setPassword(args[1:], stdin, stdout)
 	case "reset-link":
 		return resetLink(args[1:], stdout)
+	case "migrate":
+		return migrateDatabase(args[1:], stdout)
 	case "list-users":
 		return listUsers(args[1:], stdout)
 	case "admin":
@@ -168,7 +172,17 @@ func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return err
 	}
-	store, err := forum.OpenStore(filepath.Join(dataDir, "witmoot.db"))
+	dbPath := filepath.Join(dataDir, "witmoot.db")
+	open := forum.OpenCurrentStore
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		open = forum.OpenStore
+	}
+	lock, err := instance.Acquire(dbPath, false)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	store, err := open(dbPath)
 	if err != nil {
 		return err
 	}

@@ -116,8 +116,33 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		assert.match(await owner.locator('main').innerText(), new RegExp(`Suspended ${username}`));
 		assert.match(await owner.locator('main').innerText(), /Removed message \d+ in conversation \d+/);
 		await screenshot(owner, 'owner-activity');
+		await owner.goto(topicURL);
+		await owner.getByLabel('Your reply').fill('A reply from the owner that survives departure.');
+		await owner.getByRole('button', { name: 'Post reply', exact: true }).click();
+		await owner.waitForURL(/#post-/);
+		if (javaScriptEnabled) {
+			const stamp = owner.locator('time[data-local-time]').first();
+			assert.ok(await stamp.getAttribute('datetime'), 'localized time keeps its machine-readable value');
+			assert.doesNotMatch(await stamp.innerText(), /15:04 UTC/);
+		}
+		await owner.goto(origin + '/settings');
+		const downloadEvent = owner.waitForEvent('download');
+		await owner.getByRole('link', { name: 'Download community archive', exact: true }).click();
+		const download = await downloadEvent;
+		assert.equal(await download.failure(), null);
+		assert.match(download.suggestedFilename(), /^witmoot-community-/);
+		await member.goto(origin + '/account/delete');
+		await member.getByLabel('Type your username:', { exact: false }).fill(username);
+		await member.getByLabel('Current password', { exact: true }).fill(password);
+		await screenshot(member, 'delete-account');
+		await member.getByRole('button', { name: 'Delete my account', exact: true }).click();
+		await member.waitForURL(origin + '/login?deleted=1');
+		await owner.goto(topicURL);
+		assert.match(await owner.locator('main').innerText(), /This message was deleted by its author/);
+		assert.match(await owner.locator('main').innerText(), /A reply from the owner that survives departure/);
+		assert.doesNotMatch(await owner.locator('main').innerText(), new RegExp(username));
 		assert.deepEqual(problems, [], 'Community flow script or CSP errors');
-		console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} mobile rules, account access, message removal, suspension, restoration, and owner activity`);
+		console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} mobile rules, account access, message removal, suspension, restoration, owner activity, community export, and account deletion`);
 	} finally {
 		for (const context of contexts) await context.close();
 	}

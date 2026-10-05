@@ -214,5 +214,37 @@
         "after": "",
         "package": "./internal/forum",
         "run": "^TestCommunitySchemaUpgradeAndConstraints$"
+    },
+    {
+        "name": "last owner cannot delete their account",
+        "file": "internal/forum/account_delete.go",
+        "before": "if owners <= 1 {",
+        "after": "if owners < 1 {",
+        "package": "./internal/forum",
+        "run": "^(TestAccountDeletionLastOwnerAndRollback|TestConcurrentOwnerDeletionsLeaveOneOwner)$"
+    },
+    {
+        "name": "deleted account cannot retain credentials",
+        "file": "internal/forum/migrations/015_account_deletion.sql",
+        "before": " AND email=''",
+        "after": "",
+        "package": "./internal/forum",
+        "run": "^TestDeletedAccountSchemaAndIdentifierBoundaries$"
+    },
+    {
+        "name": "account deletion erases contribution bodies",
+        "file": "internal/forum/account_delete.go",
+        "before": "WHERE author_id=? AND removed=0",
+        "after": "WHERE author_id=-1 AND ?<>0 AND removed=0",
+        "package": "./internal/forum",
+        "run": "^TestAccountDeletionErasesOwnDataAndPreservesReplies$"
+    },
+    {
+        "name": "community exports retain empty and private boards",
+        "file": "internal/forum/export_store.go",
+        "before": "WHERE (? = 0 OR b.id IN",
+        "after": "WHERE (b.id=0 OR b.id IN",
+        "package": "./internal/forum",
+        "run": "^TestCommunityExportIncludesPrivateAndEmptyBoardsButNoCredentials$"
     }
 ]

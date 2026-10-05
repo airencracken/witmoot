@@ -48,7 +48,7 @@ func TestProvisioningRequestCoversTheDatabaseCommands(t *testing.T) {
 	paths := testServicePaths()
 	args := []string{"create-owner", "--username", "alex"}
 	request := provisioningRequest(args, paths)
-	want := []string{"admin", "create-owner", "list-users", "reset-link", "set-password"}
+	want := []string{"admin", "create-owner", "list-users", "migrate", "reset-link", "set-password"}
 	if got := slices.Sorted(maps.Keys(request.Commands)); !slices.Equal(got, want) {
 		t.Fatalf("re-run commands = %q, want %q", got, want)
 	}

@@ -21,7 +21,7 @@ type BoardMember struct {
 func (s *Store) BoardMembers(ctx context.Context, boardID int64) ([]BoardMember, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, coalesce(bm.access, 'inherit')
 		FROM users u LEFT JOIN board_members bm ON bm.user_id = u.id AND bm.board_id = ?
-		WHERE u.role = 'member' ORDER BY u.username`, boardID)
+		WHERE u.role = 'member' AND u.deleted=0 ORDER BY u.username`, boardID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func replaceBoardMembers(ctx context.Context, tx *sql.Tx, id int64, access map[i
 			return errBoardAccess
 		}
 		var role string
-		if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", userID).Scan(&role); err != nil || role != "member" {
+		if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ? AND deleted=0", userID).Scan(&role); err != nil || role != "member" {
 			return errBoardAccess
 		}
 		if level == "inherit" {

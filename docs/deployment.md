@@ -41,7 +41,7 @@ WITMOOT_BASE_URL="https://board.example.org"
 WITMOOT_SECURE_COOKIES="true"
 WITMOOT_TRUSTED_PROXIES="127.0.0.1/32,::1/128"
 # Optional; use your imvault server's public, canonical URL.
-WITMOOT_IMVAULT_URL="https://img.example.com"
+WITMOOT_IMVAULT_URL="https://photos.example.org"
 # Optional mail relay for reset links; leave unset to disable sending.
 # WITMOOT_SMTP_HOST="smtp.example.org"
 ```
@@ -221,7 +221,16 @@ Stop Witmoot before copying the **entire** data directory, including
 `imvault.key` when present. Restore with the service stopped and preserve
 ownership and private permissions. Back up imvault separately. For an upgrade,
 take that backup, install the new binary, and restart; schema migrations run
-at startup. An older binary may require restoring the pre-upgrade backup.
+at startup. Before upgrading an existing schema, startup saves a private
+`VACUUM INTO` database snapshot in a `witmoot-before-vN-*` directory beside the
+database and refuses the upgrade if that fails. This snapshot does not include
+`imvault.key` and does not replace the full-directory backup.
+
+Ordinary account and administration CLI commands refuse an outdated schema
+instead of silently migrating it. With the server stopped, run `witmoot migrate`
+explicitly if you need to upgrade before starting it. Current servers and CLI
+commands coordinate with a lifecycle lock; stop older versions first because
+they do not use it. An older binary may require restoring the pre-upgrade backup.
 
 ## systemd
 

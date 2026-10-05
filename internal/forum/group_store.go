@@ -60,7 +60,7 @@ func readGroup(ctx context.Context, q rowQuerier, id int64) (Group, error) {
 
 func (s *Store) GroupMembers(ctx context.Context, id int64) ([]GroupMember, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, gm.user_id IS NOT NULL FROM users u
-		LEFT JOIN group_members gm ON gm.user_id = u.id AND gm.group_id = ? WHERE u.role = 'member' ORDER BY u.username`, id)
+		LEFT JOIN group_members gm ON gm.user_id = u.id AND gm.group_id = ? WHERE u.role = 'member' AND u.deleted=0 ORDER BY u.username`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func replaceGroupMembers(ctx context.Context, tx *sql.Tx, id int64, members []in
 	seen := make(map[int64]bool)
 	for _, userID := range members {
 		var role string
-		if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ?", userID).Scan(&role); err != nil || role != "member" || seen[userID] {
+		if err := tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id = ? AND deleted=0", userID).Scan(&role); err != nil || role != "member" || seen[userID] {
 			return errGroupMembers
 		}
 		seen[userID] = true

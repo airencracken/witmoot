@@ -118,7 +118,7 @@ func (s *Store) listInvitations(ctx context.Context, creatorID int64, all bool, 
 
 func (s *Store) InviteMembers(ctx context.Context) ([]InviteMember, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, username, can_invite, invited_by_name, created_at
-		FROM users WHERE role != 'owner' ORDER BY username COLLATE NOCASE`)
+		FROM users WHERE role != 'owner' AND deleted=0 ORDER BY username COLLATE NOCASE`)
 	if err != nil {
 		return nil, err
 	}

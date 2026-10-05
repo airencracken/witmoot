@@ -8,7 +8,7 @@ WITMOOT_NAME="Witmoot"
 # WITMOOT_BASE_URL="https://board.example.org"
 # WITMOOT_SECURE_COOKIES="true"
 # WITMOOT_TRUSTED_PROXIES="127.0.0.1/32,::1/128"
-# WITMOOT_IMVAULT_URL="https://img.example.com"
+# WITMOOT_IMVAULT_URL="https://photos.example.org"
 
 # Service overrides. Paths must be absolute. The installer sets the binary
 # default to match PREFIX; uncomment only to override it.

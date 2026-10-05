@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your contributions · {{.Manifest.Site.Name}}</title>
+<title>{{if eq .Manifest.Format "witmoot-community-export"}}Community archive{{else}}Your contributions{{end}} · {{.Manifest.Site.Name}}</title>
 <style>
 	:root { color-scheme: light dark; }
 	body { margin: 0 auto; max-width: 46rem; padding: 2rem 1.25rem 4rem; font: 16px/1.6 system-ui, sans-serif; }
@@ -30,7 +30,7 @@
 <body>
 <header>
 	<p class="eyebrow">Witmoot archive</p>
-	<h1>Your contributions</h1>
+	<h1>{{if eq .Manifest.Format "witmoot-community-export"}}Community archive{{else}}Your contributions{{end}}</h1>
 	{{if .Manifest.Account.HasAvatar}}<img class="avatar" src="avatar.png" alt="Avatar" width="72" height="72">{{end}}
 	<p class="meta">{{.Manifest.Account.Username}} · exported {{human .Manifest.ExportedAt}}</p>
 </header>
@@ -48,14 +48,14 @@
 	{{range $post := $.Manifest.Posts}}{{if eq $post.TopicID $topic.ID}}
 	<article class="post">
 		<h3>#{{$post.Number}}{{if $post.EditedAt}} <span class="edited">edited</span>{{end}}</h3>
-		<p class="meta">{{human $post.CreatedAt}}{{if $post.URL}} · <a href="{{$post.URL}}">view online</a>{{end}}</p>
+		<p class="meta">{{$post.Author}} · {{human $post.CreatedAt}}{{if $post.URL}} · <a href="{{$post.URL}}">view online</a>{{end}}</p>
 		<div class="body">{{template "body" $post.Body}}</div>
-		{{if $post.Attachments}}<p class="meta">Images: {{range $post.Attachments}}{{.Name}} ({{.Rendition}}) on {{.Server}} · {{end}}</p>{{end}}
+		{{if $post.Attachments}}<p class="meta">Images: {{range $post.Attachments}}<a href="{{.URL}}">{{.Name}}</a> ({{.Rendition}}){{if .Path}}<br><img src="{{.Path}}" alt="{{.Name}}" style="max-width:100%; height:auto">{{else if .Note}} — {{.Note}}{{end}} · {{end}}</p>{{end}}
 	</article>
 	{{end}}{{end}}
 </section>
 {{else}}
-<p>You have not posted anything yet. When you do, it will appear here.</p>
+<p>{{if eq .Manifest.Format "witmoot-community-export"}}There are no conversations in this community yet.{{else}}You have not posted anything yet. When you do, it will appear here.{{end}}</p>
 {{end}}
 <footer>Exported from {{.Manifest.Site.Name}}{{if .Manifest.Site.SourceURL}} · <a href="{{.Manifest.Site.SourceURL}}">source</a>{{end}}</footer>
 </body>

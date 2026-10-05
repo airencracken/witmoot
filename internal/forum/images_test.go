@@ -468,7 +468,7 @@ func TestAllImagePathsAndAudienceGateway(t *testing.T) {
 			path := fmt.Sprintf("/images/%d", id)
 			w := c.request("GET", path, nil, nil)
 			requireStatus(t, w, 200)
-			if !bytes.Equal(w.Body.Bytes(), testPNG) || w.Header().Get("Content-Type") != "image/png" || w.Header().Get("Cache-Control") != "no-store" {
+			if !bytes.Equal(w.Body.Bytes(), testPNG) || w.Header().Get("Content-Type") != "image/png" || w.Header().Get("Cache-Control") != "private, max-age=15" {
 				t.Fatal("image response headers/body")
 			}
 			guestCode, memberCode := 303, 200

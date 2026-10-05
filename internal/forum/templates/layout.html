@@ -10,6 +10,7 @@
 	<script src="/static/theme.js"></script>
 	<link rel="stylesheet" href="/static/style.css">
 	<script src="/static/htmx.min.js" defer></script>
+	<script src="/static/local-time.js" defer></script>
 	<script src="/static/app.js" defer></script>
 </head>
 <body hx-boost="true" hx-history="false">
@@ -59,6 +60,7 @@
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}
 		{{else if eq .View "account"}}{{template "account" .}}
+		{{else if eq .View "delete-account"}}{{template "delete-account" .}}
 		{{else if eq .View "reset"}}{{template "reset" .}}
 		{{else if eq .View "avatar-library"}}{{template "avatar-library" .}}
 		{{else if eq .View "members"}}{{template "members" .}}

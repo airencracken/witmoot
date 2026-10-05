@@ -15,6 +15,7 @@ var provisioningCommands = map[string]bool{
 	"reset-link":   true,
 	"list-users":   true,
 	"admin":        true,
+	"migrate":      true,
 }
 
 // serviceUser is the account the packages create, and the OpenRC account when

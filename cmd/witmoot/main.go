@@ -25,6 +25,7 @@ import (
 	"github.com/airencracken/comfylib/smtp"
 
 	"witmoot/internal/forum"
+	"witmoot/internal/instance"
 )
 
 // version is set at build time with -ldflags "-X main.version=...", which the
@@ -65,11 +66,24 @@ func runServer() error {
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return err
 	}
-	store, err := forum.OpenStore(filepath.Join(dataDir, "witmoot.db"))
+	dbPath := filepath.Join(dataDir, "witmoot.db")
+	migration, err := instance.Acquire(dbPath, true)
+	if err != nil {
+		return err
+	}
+	store, err := forum.OpenStore(dbPath)
+	if closeErr := migration.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return err
 	}
 	defer closeStore(store)
+	serverLock, err := instance.AcquireServer(dbPath)
+	if err != nil {
+		return err
+	}
+	defer serverLock.Close()
 	secure := env("WITMOOT_SECURE_COOKIES", "false")
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")
@@ -96,6 +110,7 @@ func runServer() error {
 	server := newHTTPServer(env("WITMOOT_ADDR", "127.0.0.1:8080"), app)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	warnUntrustedProxy(server.Addr, config.TrustedProxies)
 	done := make(chan error, 1)
 	go func() {
 		slog.Info("Witmoot is ready", "version", buildVersion(), "address", server.Addr)

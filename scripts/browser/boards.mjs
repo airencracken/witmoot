@@ -59,7 +59,7 @@ export async function checkBoards(browser, origin, password, javaScriptEnabled) 
 		await writer.getByLabel('Your message', { exact: true }).fill('The picnic is on Sunday.\nPlease bring soup.');
 		await writer.getByRole('button', { name: 'Save changes', exact: true }).click();
 		await writer.waitForURL(/#post-/);
-		assert.match(await writer.locator('.post').last().innerText(), /Edited .*UTC/);
+		assert.match(await writer.locator('.post').last().innerText(), javaScriptEnabled ? /Edited / : /Edited .*UTC/);
 		assert.match(await writer.locator('.post-body').last().innerText(), /Sunday/);
 		await stale.getByLabel('Your message', { exact: true }).fill('A stale change');
 		await stale.getByRole('button', { name: 'Save changes', exact: true }).click();

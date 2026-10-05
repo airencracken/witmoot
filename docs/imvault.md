@@ -28,7 +28,7 @@ WITMOOT_BASE_URL=https://board.example.org
 WITMOOT_DATA_DIR=/var/lib/witmoot
 WITMOOT_SECURE_COOKIES=true
 WITMOOT_TRUSTED_PROXIES=127.0.0.1/32,::1/128
-WITMOOT_IMVAULT_URL=https://img.example.com
+WITMOOT_IMVAULT_URL=https://photos.example.org
 ```
 
 Set these in the environment of the Witmoot service and restart it. Add a
@@ -111,7 +111,11 @@ Witmoot serves images through local `/images/...` URLs. Each request checks the
 current board mode and conversation audience before accessing imvault. Private
 and Personal modes close access to formerly public images along with the board.
 The proxy does not forward browser cookies, expose API keys, or store shared
-conversation image bytes in SQLite. Responses use `Cache-Control: no-store`.
+conversation image bytes in SQLite. The proxy streams image bytes and caches
+successful ownership checks for 15 seconds, separately for each credential.
+Every request still checks local access. Browser responses use
+`Cache-Control: private, max-age=15` and `Vary: Cookie`; revocations may therefore
+take up to 15 seconds to expire from a browser or the ownership cache.
 
 Existing public imvault links remain public at their original URLs. Sharing one
 in a private conversation does not change its visibility in imvault. Anyone

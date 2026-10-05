@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,8 +25,10 @@ var renditionVersionPattern = regexp.MustCompile(`^[0-9a-f]{16}$`)
 var ErrUnavailable = errors.New("imvault could not complete that request; check your connection and try again")
 
 type Client struct {
-	Base string
-	HTTP *http.Client
+	Base      string
+	HTTP      *http.Client
+	cacheMu   sync.Mutex
+	ownership map[[32]byte]ownershipEntry
 }
 type File struct {
 	ID         string `json:"id"`
@@ -176,22 +179,16 @@ func ImageMIME(data []byte) string {
 }
 
 func (c *Client) Image(ctx context.Context, token, id, rendition string) ([]byte, string, error) {
-	if !IDPattern.MatchString(id) || rendition != "preview" && rendition != "thumb" {
-		return nil, "", ErrUnavailable
-	}
-	resp, err := c.request(ctx, "GET", "/f/"+id+"/"+rendition, token, "", nil)
+	body, mime, err := c.StreamImage(ctx, token, id, rendition)
 	if err != nil {
 		return nil, "", err
 	}
-	defer closeBody(resp)
-	if resp.StatusCode != 200 {
-		return nil, "", ErrUnavailable
+	defer body.Close()
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return nil, "", err
 	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxImageBytes+1))
-	if err != nil || len(data) > MaxImageBytes || ImageMIME(data) == "" {
-		return nil, "", ErrUnavailable
-	}
-	return data, ImageMIME(data), nil
+	return data, mime, nil
 }
 
 func (c *Client) Upload(ctx context.Context, token, name string, data []byte) (File, error) {

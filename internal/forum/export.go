@@ -2,12 +2,16 @@ package forum
 
 import (
 	"archive/zip"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -23,15 +27,17 @@ const (
 // download, which is exactly the mistake worth designing against.
 
 type exportManifest struct {
-	Format     string        `json:"format"`
-	Version    int           `json:"version"`
-	ExportedAt string        `json:"exported_at"`
-	Site       exportSite    `json:"site"`
-	Account    exportAccount `json:"account"`
-	Boards     []exportBoard `json:"boards"`
-	Topics     []exportTopic `json:"topics"`
-	Posts      []exportPost  `json:"posts"`
-	Note       string        `json:"note"`
+	Format     string           `json:"format"`
+	Version    int              `json:"version"`
+	ExportedAt string           `json:"exported_at"`
+	Site       exportSite       `json:"site"`
+	Account    exportAccount    `json:"account"`
+	Boards     []exportBoard    `json:"boards"`
+	Topics     []exportTopic    `json:"topics"`
+	Posts      []exportPost     `json:"posts"`
+	Note       string           `json:"note"`
+	Members    []exportMember   `json:"members,omitempty"`
+	Policy     *CommunityPolicy `json:"policy,omitempty"`
 }
 
 type exportSite struct {
@@ -72,6 +78,8 @@ type exportPost struct {
 	BoardName   string             `json:"board_name"`
 	Number      int64              `json:"number"`
 	Body        string             `json:"body"`
+	Author      string             `json:"author"`
+	AuthorID    int64              `json:"author_id"`
 	CreatedAt   string             `json:"created_at"`
 	EditedAt    string             `json:"edited_at,omitempty"`
 	Revision    int64              `json:"revision"`
@@ -85,6 +93,10 @@ type exportAttachment struct {
 	Rendition string `json:"rendition"`
 	Server    string `json:"server"`
 	RemoteID  string `json:"remote_id"`
+	URL       string `json:"url"`
+	Path      string `json:"path,omitempty"`
+	Note      string `json:"note,omitempty"`
+	ID        int64  `json:"-"`
 }
 
 // exportView is what the offline archive page renders.
@@ -93,20 +105,41 @@ type exportView struct {
 }
 
 const exportNote = "Your own messages only; other people's replies are not included. " +
-	"Shared images are listed by reference to the imvault preview that was posted. " +
+	"Available shared previews are included, with links to their Imvault pages. " +
 	"Fetch your originals from your imvault account export. " +
 	"Removed messages appear as placeholders, without their former text or image references. " +
 	"Boards and conversations you can no longer read are listed without their names. " +
 	"Passwords, sessions, and image connections are never included."
 
-// handleAccountExport streams a member's own contributions, plus a manifest
-// describing them, as a zip. It is written straight to the response: there is
-// no reason to keep a second copy of somebody's words on the server.
+// Exports are prepared in a private temporary file before successful headers.
+// Only one archive is prepared or downloaded at a time.
 func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
+	a.handleExport(w, r, false)
+}
+
+func (a *App) handleCommunityExport(w http.ResponseWriter, r *http.Request) {
+	a.handleExport(w, r, true)
+}
+
+func (a *App) handleExport(w http.ResponseWriter, r *http.Request, community bool) {
+	select {
+	case a.exportSlots <- struct{}{}:
+		defer func() { <-a.exportSlots }()
+	default:
+		w.Header().Set("Retry-After", "10")
+		http.Error(w, "Another export is being prepared. Try again shortly.", 503)
+		return
+	}
 	user := state(r).User
 	ctx := r.Context()
 
-	contributions, err := a.store.MemberContributions(ctx, user)
+	var contributions Contributions
+	var err error
+	if community {
+		contributions, err = a.store.CommunityContributions(ctx, user)
+	} else {
+		contributions, err = a.store.MemberContributions(ctx, user)
+	}
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -132,6 +165,13 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 		},
 		Note: exportNote,
 	}
+	if community {
+		manifest.Format = "witmoot-community-export"
+		manifest.Policy = contributions.Policy
+		manifest.Note = "Every board and conversation, including private ones. Available shared previews are included; unavailable previews retain Imvault links. Passwords, sessions, account email addresses and image credentials are omitted."
+		manifest.Account.Email = ""
+		manifest.Members = contributions.Members
+	}
 	for _, b := range contributions.Boards {
 		manifest.Boards = append(manifest.Boards, exportBoard(b))
 	}
@@ -149,6 +189,8 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 			ID: p.ID, TopicID: p.TopicID, BoardID: p.BoardID,
 			TopicTitle: p.TopicTitle, BoardName: p.BoardName, Number: p.Number,
 			Body:      p.Body,
+			Author:    p.Author,
+			AuthorID:  p.AuthorID,
 			CreatedAt: time.Unix(p.CreatedAt, 0).UTC().Format(time.RFC3339),
 			Revision:  p.Revision,
 			Removed:   p.Removed,
@@ -158,28 +200,66 @@ func (a *App) handleAccountExport(w http.ResponseWriter, r *http.Request) {
 			post.EditedAt = time.Unix(p.EditedAt, 0).UTC().Format(time.RFC3339)
 		}
 		for _, attachment := range p.Attachments {
-			post.Attachments = append(post.Attachments, exportAttachment(attachment))
+			post.Attachments = append(post.Attachments, exportAttachment{Name: attachment.Name, Rendition: attachment.Rendition, Server: attachment.Server, RemoteID: attachment.RemoteID, ID: attachment.ID, URL: attachment.Server + "/f/" + attachment.RemoteID})
 		}
 		manifest.Posts = append(manifest.Posts, post)
 	}
 
+	temp, err := os.CreateTemp("", "witmoot-export-*.zip")
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	defer os.Remove(temp.Name())
+	defer temp.Close()
+	if err := a.writeExport(zip.NewWriter(temp), manifest, avatar, exportOptions{ctx, user}); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	info, err := temp.Stat()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	filename := exportFilename(user.Username)
+	if community {
+		filename = exportFilename("community")
+	}
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, exportFilename(user.Username)))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	w.Header().Set("Cache-Control", "no-store")
-
-	if err := a.writeExport(zip.NewWriter(w), manifest, avatar); err != nil {
-		// The status line has gone out, so the only honest signal left is a
-		// broken connection. Finishing the stream would hand the browser a
-		// truncated archive that looks like a complete download.
-		slog.Error("export failed", "user", user.ID, "error", err)
+	w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+	if r.Method == http.MethodHead {
+		return
+	}
+	if _, err := temp.Seek(0, io.SeekStart); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if n, err := io.Copy(w, temp); err != nil || n != info.Size() {
 		panic(http.ErrAbortHandler)
 	}
-	slog.Info("account exported", "user", user.ID, "posts", len(manifest.Posts))
+	slog.Info("data exported", "user", user.ID, "community", community, "posts", len(manifest.Posts))
+}
+
+type exportMember struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+}
+type exportOptions struct {
+	ctx  context.Context
+	user *User
 }
 
 // writeExport writes every archive entry and then the zip directory. Close is
 // part of the archive, so its error is as fatal as any other.
-func (a *App) writeExport(archive *zip.Writer, manifest exportManifest, avatar []byte) error {
+func (a *App) writeExport(archive *zip.Writer, manifest exportManifest, avatar []byte, options ...exportOptions) error {
+	if len(options) > 0 {
+		if err := a.exportImages(archive, &manifest, options[0]); err != nil {
+			return err
+		}
+	}
 	if err := writeJSONEntry(archive, "manifest.json", manifest); err != nil {
 		return fmt.Errorf("write manifest: %w", err)
 	}

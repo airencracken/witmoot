@@ -36,8 +36,9 @@ anything someone might find objectionable.
   Keep hosting understandable, backups practical, and exports usable outside
   the application. Preserve the material and the relationships that give it
   meaning, so people can keep their contributions or move their community.
-  Both imvault and Witmoot provide account exports. A portable whole-community
-  archive and import workflows remain to be built for Witmoot.
+  Both imvault and Witmoot provide account exports. Witmoot also provides an
+  owner-only community archive that preserves private audiences and board access
+  rules. Import workflows remain to be built.
 - **Tools, not morality.** Provide moderation and governance mechanisms without
   dictating what every community must consider acceptable. Hosts and members
   establish their house rules; the software helps them administer their place.
@@ -47,9 +48,8 @@ Personal, Private, and Open change who can participate; all three share the
 same respect for attention and local control.
 
 The [data portability requirements](data-portability.md) describe what this
-means for Witmoot and a proposed imageboard. They are a working design, including
-the distinction between existing backups/member exports and a future portable
-community archive.
+means for Witmoot and a proposed imageboard. They describe existing backups and portable exports, and the remaining work
+needed for import workflows.
 
 ## Inspirations
 

@@ -249,7 +249,7 @@ shared among all owner accounts.
 | `WITMOOT_BASE_URL` | request origin | Public HTTP(S) origin for shareable invitation links |
 | `WITMOOT_DATA_DIR` | `./data` | Database, journal files, and optional imvault encryption key |
 | `WITMOOT_ADDR` | `127.0.0.1:8080` | HTTP listen address |
-| `WITMOOT_SECURE_COOKIES` | `false` | Set `true` behind HTTPS |
+| `WITMOOT_SECURE_COOKIES` | automatic for HTTPS | HTTPS base URLs force secure cookies; set `true` to require them elsewhere |
 | `WITMOOT_TRUSTED_PROXIES` | unset | Comma-separated proxy IPs/CIDRs allowed to supply client addresses |
 | `WITMOOT_IMVAULT_URL` | unset | Optional imvault server URL, such as `https://photos.example.org` |
 | `WITMOOT_SMTP_HOST` | unset | Optional SMTP relay; empty leaves mail disabled |
@@ -346,21 +346,21 @@ Do not copy only the live `.db` file while SQLite is using WAL journaling.
 Avatars live in the database, so this copy includes them.
 
 **Taking your data is a core comfyware requirement.** Under **Account**, each
-member can download their own contributions as a Zip archive: a versioned
-`manifest.json`, a readable `archive.html` that opens offline, and the
-conversation and image-reference context needed to understand them. It holds
-that member's messages and avatar only, never anyone else's, and never
-credentials. Conversation images are references to the imvault preview that was
-posted; originals come from your imvault account export. Operator backups remain
-the copy of the whole board.
+member can download a ZIP containing their own messages, context, avatar and
+available shared image previews, with a versioned `manifest.json` and readable
+`archive.html`. Other people's replies and credentials are excluded. Unavailable
+previews are marked and linked to Imvault; originals come from its account export.
 
-A portable community archive, so a whole board can move, and import workflows
-are core work still to do. See the
-[data portability requirements](docs/data-portability.md), informed by imvault's
-existing account exports.
+Owners can download a private **community archive** from Settings. It includes
+every board, conversation and author, with board access rules and available shared
+previews. An importer is still future work. See
+[data portability](docs/data-portability.md) for scope and limits. Operator backups
+remain a copy of the full data directory, including secrets.
 
-Permanent account removal and self-service account deletion are not implemented.
-Owners can suspend members and permanently remove individual messages.
+Members can delete their account with their password and typed username. Their
+messages become anonymous placeholders; other people's replies remain. The last
+owner must appoint a successor first. Owners can also suspend members and
+permanently remove individual messages.
 Account recovery covers member-initiated
 password changes, owner-issued reset links, and the local `set-password`
 command; there is no self-service email reset, and mail stays off until a relay

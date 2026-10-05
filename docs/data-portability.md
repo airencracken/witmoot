@@ -1,99 +1,75 @@
 # Taking your data with you
 
-Data portability is a core comfyware requirement. People should be able to keep
-their contributions, and communities should be able to move their shared place.
-An export should remain useful after the original server is gone.
+Members can download their contributions from Account. Owners can download the
+whole community from Settings. Both ZIPs contain `manifest.json` and a readable
+`archive.html` that works offline. Import workflows are not implemented yet.
 
-This is a working design for Witmoot and a proposed companion imageboard.
-Witmoot supports operator backups by copying its stopped data directory, and a
-member can download their own contributions as a Zip with `manifest.json` and an
-offline `archive.html`. A portable community archive and import workflows are not
-implemented yet. The imageboard is a proposal.
+## Member archives
 
-Removed messages retain their position and context in a member export, with
-`removed: true` in the version 1 manifest. Their body is the removal placeholder;
-former text and shared image references are erased. Existing exports and operator
-backups are not rewritten by a later removal.
+An account archive contains that member's messages, authorship and timestamps,
+board and conversation references, and the member's avatar when present. Other
+people's replies are excluded. Removed messages keep their position and
+`removed: true`, with only the removal placeholder and no former image references.
 
-A member who can no longer read a board or conversation still exports their own
-messages from it. The manifest keeps the board and conversation IDs but leaves
-their current names, titles, and later activity empty, and the archive page says
-the member can no longer read them. A download that fails partway is cut off
-rather than finished as a smaller, valid-looking archive.
+Members retain their own words from conversations they can no longer read.
+Those entries omit current board names, topic titles and image references, so
+an export cannot recover material whose audience has changed.
 
-## The example already in imvault
+Available Imvault shared previews are copied into `images/`, with manifest paths
+and links to their Imvault pages. Previews that cannot be retrieved keep a link
+and an explicit unavailable note. Private image attachments grant access to
+shared previews, not originals or camera metadata. Download originals through
+[Imvault's account export](https://github.com/airencracken/imvault/blob/master/docs/accounts.md#exporting-an-account).
 
-[imvault's account export](https://github.com/airencracken/imvault/blob/master/docs/accounts.md#exporting-an-account)
-downloads a ZIP containing the account's original uploads and `manifest.json`.
-The manifest describes files, names, descriptions, dates, content hashes,
-visibility, tags, and albums. Original files use `files/<id>/<name>` paths,
-preserving names without collisions. The download streams directly to the user.
+## Community archives
 
-The export excludes credentials and other accounts' material. Generated previews
-and thumbnails are omitted; the account owner receives the originals. This is
-an existing feature, separate from imvault's operator backup tooling.
+Only owners can use `/community/export`. The `witmoot-community-export` version
+1 manifest includes every board and conversation, including private and empty
+boards, all messages with author IDs and names, and available shared previews.
+It also records site mode, public contact and house rules, board descriptions,
+ordering, restricted and archived states, groups, group membership, and both
+group and individual board grants. Explicit access-denial overrides are kept.
+Moving material later must preserve these audiences rather than default to
+public access.
 
-## What portability needs to preserve
+Passwords, sessions, account email addresses, reset links and image credentials
+are excluded. Treat the archive as private: it includes the community's private
+conversations. It is a portable record, not a complete operational backup or an
+import file with a currently supported importer.
 
-- **Contributions.** Post text and the files a person is entitled to export,
-  with names, dates, descriptions, and available authorship information.
-- **Relationships.** Which boards threads belong to, reply and quote references,
-  image attachments, and their ordering. A folder of disconnected
-  files would lose much of the meaning of a conversation.
-- **Audience.** Preserve visibility and access information so moving a community
-  does not silently make private material public.
-- **Usability.** Use ordinary files and a documented, versioned manifest. A
-  readable offline view should let people browse their archive without running
-  the original application. Structured data should support other tools and
-  future imports.
+## Failures and storage
 
-An operator backup restores a running installation, including its private
-operational state. A portable export serves a different purpose: taking useful
-material elsewhere. Both are necessary, and their contents should be explicit.
+The applications prepare exports in private temporary files before successful
+download headers. A preparation failure returns an error, and a failed download
+connection is aborted. Only one export is prepared or downloaded at a time.
+Hosts need enough temporary disk space (`TMPDIR`) for the ZIP. Temporary files
+are removed after success, failure or cancellation.
 
-## Personal and community scope
+Unavailable Imvault previews are reported within a Witmoot archive instead of
+preventing the download of people's words. The manifest's `path` means bytes
+are included; `note` explains why they are not. Existing exports and backups are
+not rewritten when somebody later removes a message or deletes an account.
 
-A member should be able to export their own contributions without needing shell
-access or an operator to assemble the download. A community archive needs an
-authorized operator and a clearly stated scope. A member export must not quietly
-include other people's private posts, credentials, or account information.
+## Leaving
 
-Keep enough thread context to identify where exported posts belong. The rules
-for including other participants' contributions need to be explicit; permission
-to read a conversation and ownership of its contents are distinct questions.
+Account offers **Delete your account**. It requires the current password and
+typed username. Deletion clears sign-ins, profile information, image connections,
+invitations and access grants. The member's messages become anonymous placeholders
+and their conversation titles become "Conversation". Other people's replies
+and message positions remain. Images on Imvault are managed separately.
 
-The proposed imageboard must also resolve how anonymous posters can retrieve
-their own contributions. Posting identity and export authorization need to be
-designed together without exposing identity to other readers.
+The last owner cannot leave until another owner takes over. Existing backups,
+other people's quotations and references, and downloaded copies remain; deletion
+cannot recall them. Owners deleting an entire board see the scope and a link to
+export the community first. Archiving a board preserves its conversations.
 
-## Images must remain usable
+## Operator backups
 
-A portable archive needs image bytes within its authorized scope, with manifest
-paths linking them to the corresponding posts. Live image URLs alone stop being
-useful when the source server disappears. Missing or unavailable files must be
-reported explicitly.
+Stop Witmoot before copying the entire data directory, including `imvault.key`.
+The automatic pre-migration database snapshot is only a rollback aid, not this
+full backup. Restore with the server stopped and preserve ownership and private
+permissions. Back up Imvault separately using its verified backup command.
 
-For locally stored imageboard uploads, retain the original files and their
-relationship to the posts. For Witmoot's imvault integration, distinguish the
-owner's originals from previews shared with a conversation. Attaching a private
-image currently grants access to a preview, not to its original or camera
-metadata. Export must respect that boundary. Fetching originals requires the
-appropriate ownership or explicit permission.
-
-imvault's account export can already return a member's uploaded originals.
-Witmoot's member export records the conversations and the image references that
-connect those shared previews to their context, without carrying the originals
-or camera metadata. A community archive that carries a whole board, and
-cross-application import, remain to be designed and implemented.
-
-## Verification belongs in the feature
-
-Export tests should cover original bytes where authorized, readable manifests,
-stable references, duplicate filenames, Unicode, empty accounts, audience
-boundaries, credential exclusion, and missing media. Interrupted or incomplete
-exports must be distinguishable from successful, complete downloads.
-
-An offline archive should render without reaching back to a running instance.
-Import tests should verify preserved content, relationships, and audiences using
-an export from a separate instance. A successful download alone does not prove
-that a community can move.
+An operational backup includes credentials and private state needed to restore
+the running installation. Portable archives deliberately omit those secrets.
+Keep both private and periodically test restoration.

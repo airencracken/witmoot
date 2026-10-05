@@ -46,14 +46,15 @@ type Config struct {
 }
 
 type App struct {
-	store     *Store
-	config    Config
-	templates *template.Template
-	handler   http.Handler
-	limiter   *limiter
-	dummyHash string
-	vault     *imvault.Client
-	mailer    smtp.Sender
+	store       *Store
+	config      Config
+	templates   *template.Template
+	handler     http.Handler
+	limiter     *limiter
+	dummyHash   string
+	vault       *imvault.Client
+	mailer      smtp.Sender
+	exportSlots chan struct{}
 }
 
 type requestState struct {
@@ -129,6 +130,9 @@ func New(store *Store, config Config) (*App, error) {
 		return nil, err
 	}
 	config.BaseURL = baseURL
+	if strings.HasPrefix(baseURL, "https://") {
+		config.SecureCookies = true
+	}
 	tmpl, err := template.New("forum").Funcs(template.FuncMap{
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
@@ -157,7 +161,7 @@ func New(store *Store, config Config) (*App, error) {
 			return nil, err
 		}
 	}
-	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: newLimiter(), mailer: mailer}
+	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: newLimiter(), mailer: mailer, exportSlots: make(chan struct{}, 1)}
 	if config.ImvaultURL != "" {
 		if len(config.ImageKey) != 32 {
 			return nil, errors.New("imvault integration requires a 32-byte encryption key")
@@ -220,10 +224,13 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /invites", a.private(a.createInvite))
 	mux.HandleFunc("POST /invites/{id}/revoke", a.private(a.revokeInvite))
 	mux.HandleFunc("POST /invites/members/{id}/permission", a.owner(a.setInvitePermission))
+	mux.HandleFunc("GET /community/export", a.owner(a.handleCommunityExport))
 	mux.HandleFunc("GET /settings", a.owner(a.settings))
 	mux.HandleFunc("POST /settings", a.owner(a.saveSettings))
 	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
 	mux.HandleFunc("GET /account", a.signedIn(a.account))
+	mux.HandleFunc("GET /account/delete", a.signedIn(a.accountDeletion))
+	mux.HandleFunc("POST /account/delete", a.signedIn(a.deleteAccount))
 	mux.HandleFunc("GET /account/export", a.signedIn(a.handleAccountExport))
 	mux.HandleFunc("POST /account/password", a.signedIn(a.changePassword))
 	mux.HandleFunc("POST /account/email", a.signedIn(a.saveEmail))

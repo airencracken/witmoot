@@ -31,8 +31,9 @@
 		<button type="submit" class="secondary">Save email</button>
 	</form>
 	<h2>Take your data with you</h2>
-	<p class="muted">Download your posts, the conversations they belong to, and your image references as a Zip archive. It opens offline and needs no Witmoot server.</p>
-	<p><a class="button secondary" href="/account/export">Download your data</a></p>
+	<p class="muted">Download your posts, the conversations they belong to, and available image previews as a Zip archive. It opens offline and needs no Witmoot server.</p>
+	<p><a class="button secondary" href="/account/export" hx-boost="false">Download your data</a></p>
+ <h2>Leave this site</h2><p><a href="/account/delete">Delete your account and contributions</a>.</p>
 </section>
 {{end}}
 
@@ -96,5 +97,23 @@
 	{{if .LibraryLoaded}}<div class="image-grid">{{range .Library}}<div class="image-choice"><img src="/imvault/library/{{.ID}}/image" alt="{{.Name}}" loading="lazy"><span>{{.Name}}</span><form action="/account/avatar/imvault" method="post">{{template "csrf" $}}<input type="hidden" name="image_id" value="{{.ID}}"><button type="submit" class="secondary">Use as avatar</button></form></div>{{else}}<p class="muted">No images on this page.</p>{{end}}</div>
 	<nav class="pagination" aria-label="Image library pages">{{if gt .LibraryOffset 0}}<a class="button secondary" href="/account/avatar/imvault?q={{.Query}}&amp;offset={{add .LibraryOffset -12}}">Previous images</a>{{end}}{{if .LibraryMore}}<a class="button secondary" href="/account/avatar/imvault?q={{.Query}}&amp;offset={{add .LibraryOffset 12}}">Next images</a>{{end}}</nav>{{end}}
 	<p><a href="/account">Back to your account</a></p>
+</section>
+{{end}}
+
+{{define "delete-account"}}
+<section class="paper narrow account-card">
+  <h1>Delete your account</h1>
+  <p>This permanently removes your profile, password, email, avatar, invitations and image connection. Your messages become anonymous placeholders; other people's replies stay where they are. Your shared image links are removed. Originals in Imvault stay with your Imvault account.</p>
+  <p>Other people's messages may still mention you, and earlier backups or exports may contain your contributions. Ask an owner about this site's backup retention.</p>
+  <p><a href="/account/export" hx-boost="false">Download your data first</a>. This cannot be undone.</p>
+  {{template "error" .}}
+  <form method="post" action="/account/delete" hx-disabled-elt="find button[type='submit']">
+    {{template "csrf" .}}
+    <label for="delete-confirmation">Type your username: {{.User.Username}}</label>
+    <input id="delete-confirmation" name="confirmation" autocomplete="off" required>
+    <label for="delete-password">Current password</label>
+    <input id="delete-password" type="password" name="current_password" autocomplete="current-password" required>
+    <div class="form-footer"><a href="/account">Keep my account</a><button class="danger" type="submit">Delete my account</button></div>
+  </form>
 </section>
 {{end}}

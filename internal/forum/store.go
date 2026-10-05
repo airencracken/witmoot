@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"witmoot/internal/instance"
 
 	_ "modernc.org/sqlite"
 )
@@ -19,7 +20,10 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db    *sql.DB
+	guard io.Closer
+}
 
 type User struct {
 	ID                 int64
@@ -72,7 +76,23 @@ type Post struct {
 
 type Stats struct{ Topics, Posts, Members int }
 
-func OpenStore(path string) (*Store, error) {
+func OpenStore(path string) (*Store, error) { return openStore(path, true) }
+
+// OpenCurrentStore refuses schema changes in account and inspection commands.
+func OpenCurrentStore(path string) (*Store, error) {
+	guard, err := instance.Acquire(path, false)
+	if err != nil {
+		return nil, err
+	}
+	store, err := openStore(path, false)
+	if err != nil {
+		return nil, errors.Join(err, guard.Close())
+	}
+	store.guard = guard
+	return store, nil
+}
+
+func openStore(path string, allowMigration bool) (*Store, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -93,13 +113,32 @@ func OpenStore(path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(1)
 	s := &Store{db: db}
+	if !allowMigration {
+		var version int
+		err := db.QueryRow("PRAGMA user_version").Scan(&version)
+		if err != nil {
+			return nil, errors.Join(err, db.Close())
+		}
+		if version != len(migrationFiles) {
+			return nil, errors.Join(fmt.Errorf("database schema %d does not match this binary (%d); stop Witmoot and run witmoot migrate explicitly", version, len(migrationFiles)), db.Close())
+		}
+		return s, nil
+	}
+	if err := s.backupBeforeMigration(abs); err != nil {
+		return nil, errors.Join(err, db.Close())
+	}
 	if err := s.migrate(); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 	return s, nil
 }
 
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Close() error {
+	if s.guard != nil {
+		return errors.Join(s.db.Close(), s.guard.Close())
+	}
+	return s.db.Close()
+}
 
 // closeRows releases a result set once it has been read. Callers check
 // rows.Err for the outcome, so a failure here is only logged.
@@ -132,7 +171,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		return err
 	}
-	files := []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql", "013_community_care.sql", "014_moderation_log.sql"}
+	files := migrationFiles
+
 	if version > len(files) {
 		return fmt.Errorf("database schema %d is newer than this application supports", version)
 	}
@@ -157,7 +197,7 @@ func (s *Store) Boards(ctx context.Context, reader *User) ([]Board, error) {
 		(SELECT count(*) FROM visible_topics WHERE board_id = b.id),
 		(SELECT count(*) FROM posts p JOIN visible_topics t ON t.id = p.topic_id WHERE t.board_id = b.id),
 		coalesce(t.id, 0), coalesce(t.title, ''), coalesce(t.updated_at, 0),
-		coalesce((SELECT u.username FROM posts p JOIN users u ON u.id = p.author_id WHERE p.topic_id = t.id ORDER BY p.id DESC LIMIT 1), '')
+		coalesce((SELECT CASE WHEN u.deleted THEN 'Former member' ELSE u.username END FROM posts p JOIN users u ON u.id = p.author_id WHERE p.topic_id = t.id ORDER BY p.id DESC LIMIT 1), '')
 		FROM visible_boards b LEFT JOIN visible_topics t ON t.id = (SELECT id FROM visible_topics WHERE board_id = b.id ORDER BY updated_at DESC, id DESC LIMIT 1)
 		ORDER BY b.position`, readerArgs(reader)...)
 	if err != nil {
@@ -187,11 +227,11 @@ func readBoard(ctx context.Context, q rowQuerier, id int64, reader *User) (Board
 
 func (s *Store) Stats(ctx context.Context, reader *User) (Stats, error) {
 	var v Stats
-	err := s.db.QueryRowContext(ctx, visibleTopics+`SELECT (SELECT count(*) FROM visible_topics), (SELECT count(*) FROM posts WHERE topic_id IN (SELECT id FROM visible_topics)), (SELECT count(*) FROM users)`, readerArgs(reader)...).Scan(&v.Topics, &v.Posts, &v.Members)
+	err := s.db.QueryRowContext(ctx, visibleTopics+`SELECT (SELECT count(*) FROM visible_topics), (SELECT count(*) FROM posts WHERE topic_id IN (SELECT id FROM visible_topics)), (SELECT count(*) FROM users WHERE deleted=0)`, readerArgs(reader)...).Scan(&v.Topics, &v.Posts, &v.Members)
 	return v, err
 }
 
-const topicSelect = visibleTopics + `SELECT t.id, t.board_id, t.title, u.username, b.name, t.created_at, t.updated_at,
+const topicSelect = visibleTopics + `SELECT t.id, t.board_id, t.title, CASE WHEN u.deleted THEN 'Former member' ELSE u.username END, b.name, t.created_at, t.updated_at,
 	(SELECT count(*) - 1 FROM posts WHERE topic_id = t.id), t.audience, b.restricted, b.access, b.archived FROM visible_topics t JOIN users u ON u.id = t.author_id JOIN visible_boards b ON b.id = t.board_id `
 
 func (s *Store) Topics(ctx context.Context, boardID int64, query string, limit, offset int, reader *User) ([]Topic, bool, error) {
@@ -236,7 +276,7 @@ func (s *Store) Topic(ctx context.Context, id int64, reader *User) (Topic, error
 }
 
 func (s *Store) Posts(ctx context.Context, topicID int64, limit, offset int, reader *User) ([]Post, bool, error) {
-	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, u.username, p.created_at, u.created_at, p.author_id, p.topic_id, p.edited_at, p.revision, (SELECT EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = p.author_id)), p.removed FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
+	rows, err := s.db.QueryContext(ctx, visibleTopics+`SELECT p.id, p.body, CASE WHEN u.deleted THEN 'Former member' ELSE u.username END, p.created_at, u.created_at, p.author_id, p.topic_id, p.edited_at, p.revision, (SELECT EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = p.author_id)), p.removed FROM posts p JOIN users u ON u.id = p.author_id JOIN visible_topics t ON t.id = p.topic_id WHERE p.topic_id = ? ORDER BY p.id LIMIT ? OFFSET ?`, append(readerArgs(reader), topicID, limit+1, offset)...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -358,14 +398,14 @@ func (s *Store) CreateUser(ctx context.Context, name, hash string) (int64, error
 func (s *Store) Credentials(ctx context.Context, name string) (User, string, error) {
 	var u User
 	var hash string
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision, password_hash FROM users WHERE username = ?", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision, &hash)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision, password_hash FROM users WHERE username = ? AND deleted=0", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision, &hash)
 	return u, hash, err
 }
 
 // UserByID returns one account without its credential material.
 func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision FROM users WHERE id = ?", id).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision FROM users WHERE id = ? AND deleted=0", id).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision)
 	return u, err
 }
 

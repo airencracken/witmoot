@@ -184,7 +184,7 @@ func (s *Store) Members(ctx context.Context) ([]MemberReset, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email,
 		EXISTS(SELECT 1 FROM auth_tokens t WHERE t.user_id = u.id AND t.purpose = 'password_reset' AND t.used_at IS NULL AND t.expires_at > ?) AS pending,
 		EXISTS(SELECT 1 FROM user_avatars va WHERE va.user_id = u.id) AS has_avatar, u.suspended, u.suspension_revision
-		FROM users u ORDER BY u.role DESC, u.username COLLATE NOCASE`, time.Now().Unix())
+		FROM users u WHERE u.deleted=0 ORDER BY u.role DESC, u.username COLLATE NOCASE`, time.Now().Unix())
 	if err != nil {
 		return nil, err
 	}

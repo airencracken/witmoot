@@ -44,7 +44,7 @@ func (s *Store) ChangeMember(ctx context.Context, ownerID, memberID, revision in
 	var name, role string
 	var suspended bool
 	var current int64
-	if err := tx.QueryRowContext(ctx, "SELECT username, role, suspended, suspension_revision FROM users WHERE id = ?", memberID).Scan(&name, &role, &suspended, &current); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT username, role, suspended, suspension_revision FROM users WHERE id = ? AND deleted=0", memberID).Scan(&name, &role, &suspended, &current); err != nil {
 		return err
 	}
 	if role != "member" {
@@ -125,7 +125,7 @@ func (s *Store) RemoveMemberAvatar(ctx context.Context, ownerID, memberID int64)
 		return err
 	}
 	var name string
-	if err := tx.QueryRowContext(ctx, "SELECT username FROM users WHERE id = ?", memberID).Scan(&name); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT username FROM users WHERE id = ? AND deleted=0", memberID).Scan(&name); err != nil {
 		return err
 	}
 	result, err := tx.ExecContext(ctx, "DELETE FROM user_avatars WHERE user_id = ?", memberID)

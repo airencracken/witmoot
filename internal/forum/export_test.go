@@ -238,8 +238,11 @@ func TestExportWithholdsNamesTheMemberCanNoLongerRead(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if _, err := f.app.store.db.Exec(`INSERT INTO attachments(id,post_id,server,remote_id,credential_user_id,name,rendition) VALUES((SELECT last_id+1 FROM object_sequences WHERE kind='attachments'),(SELECT id FROM posts WHERE author_id=? AND topic_id=? LIMIT 1),'https://vault.example','private-secret',?,'secret image.png','preview')`, f.writer.ID, f.topicID, f.writer.ID); err != nil {
+		t.Fatal(err)
+	}
 	entries, _, _ = readExport(t, writer)
-	for _, hidden := range []string{"Secret party plans", "Hidden planning room", "Renamed secret room", "Renamed secret plans", "Private corners", "Owner reply"} {
+	for _, hidden := range []string{"Secret party plans", "Hidden planning room", "Renamed secret room", "Renamed secret plans", "Private corners", "Owner reply", "private-secret", "secret image.png"} {
 		if bytes.Contains(unpacked(entries), []byte(hidden)) {
 			t.Errorf("export reveals %q after access was removed", hidden)
 		}

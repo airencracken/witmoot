@@ -150,5 +150,45 @@
         "after": "mailer, _ = smtp.New(config.Mail)",
         "package": "./cmd/witmoot",
         "run": "^TestUnusableRelayStopsStartupAndTheAdminView$"
+    },
+    {
+        "name": "HTTPS base URLs force secure cookies",
+        "file": "internal/forum/web.go",
+        "before": "if strings.HasPrefix(baseURL, \"https://\") {\n\t\tconfig.SecureCookies = true\n\t}",
+        "after": "if strings.HasPrefix(baseURL, \"https://\") {\n\t\tconfig.SecureCookies = false\n\t}",
+        "package": "./internal/forum",
+        "run": "^TestHTTPSBaseURLForcesHostCookies$"
+    },
+    {
+        "name": "account commands refuse migrations",
+        "file": "internal/forum/store.go",
+        "before": "if version != len(migrationFiles) {",
+        "after": "if version < 0 {",
+        "package": "./internal/forum",
+        "run": "^TestCLIRefusesMigrationAndSnapshotKeepsOriginalSchema$"
+    },
+    {
+        "name": "pre-migration backups are required",
+        "file": "internal/forum/migration_backup.go",
+        "before": "if version == 0 || version >= len(migrationFiles) {",
+        "after": "if version >= 0 {",
+        "package": "./internal/forum",
+        "run": "^TestCLIRefusesMigrationAndSnapshotKeepsOriginalSchema$"
+    },
+    {
+        "name": "ownership cache is credential scoped",
+        "file": "internal/imvault/stream.go",
+        "before": "sha256.Sum256([]byte(token + \"\\x00\" + id))",
+        "after": "sha256.Sum256([]byte(id))",
+        "package": "./internal/imvault",
+        "run": "^TestOwnershipCacheIsBriefBoundedAndCredentialScoped$"
+    },
+    {
+        "name": "streamed images retain their memory and size boundary",
+        "file": "internal/imvault/stream.go",
+        "before": "left: MaxImageBytes",
+        "after": "left: MaxImageBytes * 2",
+        "package": "./internal/imvault",
+        "run": "^TestImagesStreamAndEnforceUnknownLengthLimit$"
     }
 ]
