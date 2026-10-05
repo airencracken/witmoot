@@ -286,3 +286,5 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .member-permission label { margin: 0; overflow-wrap: anywhere; }
 .member-permission select { width: auto; flex-shrink: 0; }
 .board-description h2, .board-description h3 { overflow-wrap: anywhere; }
+
+[data-device-timezone][hidden] { display: none; }

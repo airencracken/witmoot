@@ -190,5 +190,29 @@
         "after": "left: MaxImageBytes * 2",
         "package": "./internal/imvault",
         "run": "^TestImagesStreamAndEnforceUnknownLengthLimit$"
+    },
+    {
+        "name": "timezone preference uses the local calendar",
+        "file": "internal/forum/timezone.go",
+        "before": "time.Unix(unix, 0).In(location).Format(format)",
+        "after": "time.Unix(unix, 0).UTC().Format(format)",
+        "package": "./internal/forum",
+        "run": "^TestTimezoneValidationAndCalendarBoundaries$"
+    },
+    {
+        "name": "timezone writes ignore suspended accounts",
+        "file": "internal/forum/timezone.go",
+        "before": "AND deleted=0 AND suspended=0",
+        "after": "AND deleted=0",
+        "package": "./internal/forum",
+        "run": "^TestTimezoneWritesAreAtomicAndRejectInactiveAccounts$"
+    },
+    {
+        "name": "timezone session reload preserves preference",
+        "file": "internal/forum/store.go",
+        "before": "u.email, u.timezone FROM sessions",
+        "after": "u.email, 'UTC' FROM sessions",
+        "package": "./internal/forum",
+        "run": "^TestTimezoneAccountRoutePersistsAndIsIsolated$"
     }
 ]

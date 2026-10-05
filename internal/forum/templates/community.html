@@ -54,6 +54,6 @@
 <section class="paper">
 	<h1>Owner activity</h1>
 	<p class="muted">The latest 100 suspensions, restorations, message removals, and avatar removals. Visible to owners only.</p>
-	{{range .Events}}<article class="invitation-record"><p><strong>{{.Actor}}</strong> · {{if eq .Action "suspend"}}Suspended {{.Subject}}{{else if eq .Action "restore"}}Restored access for {{.Subject}}{{else if eq .Action "remove-avatar"}}Removed the avatar of {{.Subject}}{{else}}Removed {{if .URL}}<a href="{{.URL}}">{{.Subject}}</a>{{else}}{{.Subject}}{{end}}{{if .TitleReplaced}} and replaced the conversation title{{end}}{{end}}</p><time data-local-time class="muted" datetime="{{iso .CreatedAt}}">{{stamp .CreatedAt}}</time></article>{{else}}<p>No owner actions recorded yet.</p>{{end}}
+	{{range .Events}}<article class="invitation-record"><p><strong>{{.Actor}}</strong> · {{if eq .Action "suspend"}}Suspended {{.Subject}}{{else if eq .Action "restore"}}Restored access for {{.Subject}}{{else if eq .Action "remove-avatar"}}Removed the avatar of {{.Subject}}{{else}}Removed {{if .URL}}<a href="{{.URL}}">{{.Subject}}</a>{{else}}{{.Subject}}{{end}}{{if .TitleReplaced}} and replaced the conversation title{{end}}{{end}}</p><time class="muted" datetime="{{iso .CreatedAt}}">{{$.Stamp .CreatedAt}}</time></article>{{else}}<p>No owner actions recorded yet.</p>{{end}}
 </section>
 {{end}}

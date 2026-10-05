@@ -15,3 +15,7 @@ retain their upstream licenses.
   Lip Gloss (all MIT). They are Go dependencies pinned in `go.mod`.
 - Playwright is a development-only browser testing dependency under
   `scripts/browser/`.
+
+The binary embeds Go's `time/tzdata` fallback, which contains IANA timezone data
+from the public-domain timezone database. The host's timezone data takes
+precedence when available.

@@ -46,6 +46,7 @@ type exportSite struct {
 }
 
 type exportAccount struct {
+	Timezone  string `json:"timezone"`
 	Username  string `json:"username"`
 	Role      string `json:"role"`
 	CreatedAt string `json:"created_at"`
@@ -101,6 +102,7 @@ type exportAttachment struct {
 
 // exportView is what the offline archive page renders.
 type exportView struct {
+	timezone *time.Location
 	Manifest exportManifest
 }
 
@@ -157,6 +159,7 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request, community boo
 		ExportedAt: time.Now().UTC().Format(time.RFC3339),
 		Site:       exportSite{Name: a.siteName(r), SourceURL: a.config.SourceURL},
 		Account: exportAccount{
+			Timezone:  displayTimezone(user.Timezone).String(),
 			Username:  user.Username,
 			Role:      user.Role,
 			CreatedAt: time.Unix(user.CreatedAt, 0).UTC().Format(time.RFC3339),
@@ -278,10 +281,11 @@ func (a *App) writeExport(archive *zip.Writer, manifest exportManifest, avatar [
 	return archive.Close()
 }
 
-// humanStamp renders an RFC3339 timestamp for the offline archive.
-func humanStamp(value string) string {
-	if t, err := time.Parse(time.RFC3339, value); err == nil {
-		return t.Format("Jan 2, 2006 · 15:04 UTC")
+// Stamp uses the saved display timezone in the readable offline archive;
+// machine timestamps in the manifest remain UTC.
+func (v exportView) Stamp(value string) string {
+	if instant, err := time.Parse(time.RFC3339, value); err == nil {
+		return (Page{timezone: v.timezone}).Stamp(instant.Unix())
 	}
 	return value
 }
@@ -297,7 +301,7 @@ func (a *App) writeArchivePage(archive *zip.Writer, manifest exportManifest) err
 	if err != nil {
 		return err
 	}
-	return a.templates.ExecuteTemplate(entry, "export", exportView{Manifest: manifest})
+	return a.templates.ExecuteTemplate(entry, "export", exportView{Manifest: manifest, timezone: displayTimezone(manifest.Account.Timezone)})
 }
 
 // writeJSONEntry adds a JSON document to the archive.

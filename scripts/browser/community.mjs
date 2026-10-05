@@ -120,11 +120,8 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		await owner.getByLabel('Your reply').fill('A reply from the owner that survives departure.');
 		await owner.getByRole('button', { name: 'Post reply', exact: true }).click();
 		await owner.waitForURL(/#post-/);
-		if (javaScriptEnabled) {
-			const stamp = owner.locator('time[data-local-time]').first();
-			assert.ok(await stamp.getAttribute('datetime'), 'localized time keeps its machine-readable value');
-			assert.doesNotMatch(await stamp.innerText(), /15:04 UTC/);
-		}
+		const stamp = owner.locator('.post-content header time').first();
+		assert.ok(await stamp.getAttribute('datetime'), 'display time keeps its machine-readable value');
 		await owner.goto(origin + '/settings');
 		const downloadEvent = owner.waitForEvent('download');
 		await owner.getByRole('link', { name: 'Download community archive', exact: true }).click();

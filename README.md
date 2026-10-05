@@ -227,6 +227,8 @@ Open requires an account to post; it does not reproduce imvault's anonymous uplo
 - Optional member avatars: upload a picture or import one from your imvault
   library. Witmoot crops it square, drops any metadata, and keeps a small PNG.
 - Search across conversation titles and message text.
+- Saved display timezones in **Your account**, with UTC as the default. Dates
+  and times follow your choice on every device, including without JavaScript.
 - Owner invitations, member accounts, sign-in, and sign-out.
 - Password changes for signed-in members, single-use reset links owners hand
   over, an optional SMTP relay that can email them, and an interactive

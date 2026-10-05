@@ -113,6 +113,9 @@ type Page struct {
 	Owners                                                      []string
 	Member                                                      User
 	Events                                                      []CommunityEvent
+	TimezoneInput                                               string
+	TimezoneSuggestions                                         []string
+	timezone                                                    *time.Location
 }
 
 func New(store *Store, config Config) (*App, error) {
@@ -136,11 +139,8 @@ func New(store *Store, config Config) (*App, error) {
 	tmpl, err := template.New("forum").Funcs(template.FuncMap{
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
-		"date":        func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006") },
-		"stamp":       func(unix int64) string { return time.Unix(unix, 0).UTC().Format("Jan 2, 2006 · 15:04 UTC") },
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
 		"initial":     func(name string) string { r, _ := utf8.DecodeRuneInString(name); return strings.ToUpper(string(r)) },
-		"human":       humanStamp,
 		"audience":    func(a string) string { return Audience(a).Label() },
 		"segments":    segments,
 		"resetExpiry": func() string { return HumanDuration(ResetLinkTTL) },
@@ -234,6 +234,7 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /account/export", a.signedIn(a.handleAccountExport))
 	mux.HandleFunc("POST /account/password", a.signedIn(a.changePassword))
 	mux.HandleFunc("POST /account/email", a.signedIn(a.saveEmail))
+	mux.HandleFunc("POST /account/timezone", a.signedIn(a.saveTimezone))
 	mux.HandleFunc("POST /account/avatar", a.signedIn(a.saveAvatar))
 	mux.HandleFunc("GET /account/avatar/imvault", a.signedIn(a.avatarLibrary))
 	mux.HandleFunc("POST /account/avatar/imvault", a.signedIn(a.importAvatar))
@@ -437,6 +438,10 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 		p.Name = a.config.Name
 	}
 	p.CSRF, p.User = state(r).CSRF, state(r).User
+	p.timezone = time.UTC
+	if p.User != nil {
+		p.timezone = displayTimezone(p.User.Timezone)
+	}
 	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
 	p.CanManageInvites = state(r).User != nil && state(r).User.Role == "owner"
 	if p.Board.ID != 0 {

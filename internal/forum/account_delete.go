@@ -30,7 +30,7 @@ func (s *Store) DeleteAccount(ctx context.Context, userID int64, name, verifiedH
 	if err := clearAccountArtifacts(ctx, tx, userID, name); err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE users SET username=?, password_hash='', email='', role='member', can_invite=0,
+	_, err = tx.ExecContext(ctx, `UPDATE users SET username=?, password_hash='', email='', timezone='UTC', role='member', can_invite=0,
   invited_by=NULL, invited_by_name='', invitation_id=NULL, created_at=0, suspended=1,
   suspension_revision=suspension_revision+1, deleted=1 WHERE id=?`, "~d"+strconv.FormatInt(userID, 36), userID)
 	if err != nil {

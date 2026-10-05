@@ -16,7 +16,7 @@
 			<div class="board-symbol" aria-hidden="true">{{initial .Name}}</div>
 			<div class="board-description"><h3><a href="/boards/{{.ID}}">{{.Name}}</a></h3><p>{{.Description}}</p>{{if .Restricted}}<span class="board-access">Private board{{if eq .Access "read"}} · Read only{{end}}</span>{{end}}<span class="mobile-count">{{.Topics}} conversations · {{.Posts}} messages</span></div>
 			<div class="board-count"><strong>{{.Topics}}</strong><span>conversations</span></div>
-			<div class="board-latest">{{if .LastTopicID}}<a href="/topics/{{.LastTopicID}}">{{.LastTitle}}</a><span>{{.LastAuthor}} · <time datetime="{{iso .LastAt}}">{{date .LastAt}}</time></span>{{else}}<span>Room for a first conversation.</span>{{end}}</div>
+			<div class="board-latest">{{if .LastTopicID}}<a href="/topics/{{.LastTopicID}}">{{.LastTitle}}</a><span>{{.LastAuthor}} · <time datetime="{{iso .LastAt}}">{{$.Date .LastAt}}</time></span>{{else}}<span>Room for a first conversation.</span>{{end}}</div>
 		</article>
 		{{else}}<p class="paper">No active boards to show. You can still visit the <a href="/archive">Archive</a>.</p>{{end}}
 	</div>

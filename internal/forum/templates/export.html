@@ -32,7 +32,7 @@
 	<p class="eyebrow">Witmoot archive</p>
 	<h1>{{if eq .Manifest.Format "witmoot-community-export"}}Community archive{{else}}Your contributions{{end}}</h1>
 	{{if .Manifest.Account.HasAvatar}}<img class="avatar" src="avatar.png" alt="Avatar" width="72" height="72">{{end}}
-	<p class="meta">{{.Manifest.Account.Username}} · exported {{human .Manifest.ExportedAt}}</p>
+	<p class="meta">{{.Manifest.Account.Username}} · exported {{$.Stamp .Manifest.ExportedAt}}</p>
 </header>
 <p class="note">{{.Manifest.Note}}</p>
 {{if .Manifest.Boards}}
@@ -44,11 +44,11 @@
 {{range $topic := .Manifest.Topics}}
 <section class="topic">
 	<h2>{{if $topic.Title}}{{$topic.Title}}{{else}}A conversation you can no longer read{{end}}</h2>
-	<p class="meta">{{audience $topic.Audience}} · {{$topic.Posts}} message{{if ne $topic.Posts 1}}s{{end}} · started {{human $topic.CreatedAt}}{{if $topic.URL}} · <a href="{{$topic.URL}}">read online</a>{{end}}</p>
+	<p class="meta">{{audience $topic.Audience}} · {{$topic.Posts}} message{{if ne $topic.Posts 1}}s{{end}} · started {{$.Stamp $topic.CreatedAt}}{{if $topic.URL}} · <a href="{{$topic.URL}}">read online</a>{{end}}</p>
 	{{range $post := $.Manifest.Posts}}{{if eq $post.TopicID $topic.ID}}
 	<article class="post">
 		<h3>#{{$post.Number}}{{if $post.EditedAt}} <span class="edited">edited</span>{{end}}</h3>
-		<p class="meta">{{$post.Author}} · {{human $post.CreatedAt}}{{if $post.URL}} · <a href="{{$post.URL}}">view online</a>{{end}}</p>
+		<p class="meta">{{$post.Author}} · {{$.Stamp $post.CreatedAt}}{{if $post.URL}} · <a href="{{$post.URL}}">view online</a>{{end}}</p>
 		<div class="body">{{template "body" $post.Body}}</div>
 		{{if $post.Attachments}}<p class="meta">Images: {{range $post.Attachments}}<a href="{{.URL}}">{{.Name}}</a> ({{.Rendition}}){{if .Path}}<br><img src="{{.Path}}" alt="{{.Name}}" style="max-width:100%; height:auto">{{else if .Note}} — {{.Note}}{{end}} · {{end}}</p>{{end}}
 	</article>

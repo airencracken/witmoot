@@ -78,7 +78,7 @@ func consumeAuthToken(ctx context.Context, tx *sql.Tx, tokenHash string, purpose
 		return User{}, errAuthToken // lost a race to another request
 	}
 	var u User
-	if err := tx.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email FROM users WHERE id = ?", userID).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, timezone FROM users WHERE id = ?", userID).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Timezone); err != nil {
 		return User{}, err
 	}
 	return u, nil
@@ -89,9 +89,9 @@ func consumeAuthToken(ctx context.Context, tx *sql.Tx, tokenHash string, purpose
 // twice, so validity has to be checkable without consuming the token.
 func (s *Store) AuthTokenValid(ctx context.Context, tokenHash string, purpose TokenPurpose, at time.Time) (User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email
+	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email, u.timezone
 		FROM auth_tokens t JOIN users u ON u.id = t.user_id
-		WHERE t.token_hash = ? AND t.purpose = ? AND t.used_at IS NULL AND t.expires_at > ? AND u.suspended = 0`, tokenHash, string(purpose), at.Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
+		WHERE t.token_hash = ? AND t.purpose = ? AND t.used_at IS NULL AND t.expires_at > ? AND u.suspended = 0`, tokenHash, string(purpose), at.Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Timezone)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, errAuthToken
 	}

@@ -32,7 +32,7 @@ func TestAuthorCanEditWithTimestampEscapingAndAttachmentsPreserved(t *testing.T)
 	location, _, _ := strings.Cut(w.Header().Get("Location"), "#")
 	rendered := c.request("GET", location, nil, nil)
 	requireStatus(t, rendered, 200)
-	if !strings.Contains(rendered.Body.String(), "class=\"edited\">Edited <time data-local-time datetime=") || !strings.Contains(rendered.Body.String(), "&lt;script&gt;") || strings.Contains(rendered.Body.String(), "<script>alert") {
+	if !strings.Contains(rendered.Body.String(), "class=\"edited\">Edited <time datetime=") || !strings.Contains(rendered.Body.String(), "&lt;script&gt;") || strings.Contains(rendered.Body.String(), "<script>alert") {
 		t.Fatalf("edited text/timestamp not safely rendered: %s", rendered.Body.String())
 	}
 	p, err := readPost(ctx, f.app.store.db, f.postID, f.owner)

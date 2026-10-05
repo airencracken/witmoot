@@ -9,7 +9,9 @@ Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 - `witmoot_VERSION_source.tar.gz`: the corresponding source.
 - `witmoot_VERSION_checksums.txt`: SHA-256 checksums for all five artifacts.
 
-See [the 0.10.0 release notes](release-notes/0.10.0.md) before upgrading: it
+See [the 0.12.0 release notes](release-notes/0.12.0.md) for saved display
+timezones and its database migration. See [the 0.11.0 release notes](release-notes/0.11.0.md)
+for account deletion, archives, and pre-migration snapshots. See [the 0.10.0 release notes](release-notes/0.10.0.md) before upgrading: it
 changes mail and sandbox settings and the database schema. See
 [the 0.9.0 release notes](release-notes/0.9.0.md) for optional Bubblewrap confinement, and
 [the 0.8.0 release notes](release-notes/0.8.0.md) for owner controls, house rules, and interface refinements.
@@ -22,7 +24,7 @@ HTTPS connections to Imvault need your system's CA certificates.
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.11.0
+release_version=0.12.0
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"

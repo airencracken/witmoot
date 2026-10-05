@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN timezone TEXT NOT NULL DEFAULT 'UTC'
+ CHECK(length(timezone) BETWEEN 1 AND 64);

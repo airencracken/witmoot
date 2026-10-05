@@ -35,6 +35,7 @@ type User struct {
 	InvitedByName      string
 	InvitationID       int64
 	Email              string
+	Timezone           string
 	Suspended          bool
 	SuspensionRevision int64
 }
@@ -398,20 +399,20 @@ func (s *Store) CreateUser(ctx context.Context, name, hash string) (int64, error
 func (s *Store) Credentials(ctx context.Context, name string) (User, string, error) {
 	var u User
 	var hash string
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision, password_hash FROM users WHERE username = ? AND deleted=0", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision, &hash)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, timezone, suspended, suspension_revision, password_hash FROM users WHERE username = ? AND deleted=0", name).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Timezone, &u.Suspended, &u.SuspensionRevision, &hash)
 	return u, hash, err
 }
 
 // UserByID returns one account without its credential material.
 func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, suspended, suspension_revision FROM users WHERE id = ? AND deleted=0", id).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Suspended, &u.SuspensionRevision)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, role, created_at, can_invite, coalesce(invited_by, 0), invited_by_name, coalesce(invitation_id, 0), email, timezone, suspended, suspension_revision FROM users WHERE id = ? AND deleted=0", id).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Timezone, &u.Suspended, &u.SuspensionRevision)
 	return u, err
 }
 
 func (s *Store) Session(ctx context.Context, hash string) (*User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended = 0`, hash, time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email)
+	err := s.db.QueryRowContext(ctx, `SELECT u.id, u.username, u.role, u.created_at, u.can_invite, coalesce(u.invited_by, 0), u.invited_by_name, coalesce(u.invitation_id, 0), u.email, u.timezone FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended = 0`, hash, time.Now().Unix()).Scan(&u.ID, &u.Username, &u.Role, &u.CreatedAt, &u.CanInvite, &u.InvitedBy, &u.InvitedByName, &u.InvitationID, &u.Email, &u.Timezone)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
