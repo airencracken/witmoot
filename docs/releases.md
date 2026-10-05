@@ -22,7 +22,7 @@ HTTPS connections to Imvault need your system's CA certificates.
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.10.0
+release_version=0.11.0
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"
@@ -39,7 +39,7 @@ keeps settings in `/etc/witmoot/witmoot.env`, readable only by root.
 **The first install leaves the service stopped and disabled.** Edit that
 configuration, provision the owner, then enable the service. Native package
 defaults bind to `127.0.0.1:8082`; configure your HTTPS reverse proxy and
-secure cookies before exposing the site.
+a public HTTPS base URL before exposing the site; it enables secure cookies.
 
 In a terminal, provision the account using the same data directory. The hidden
 prompt asks for the password twice:
