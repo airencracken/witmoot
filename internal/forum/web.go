@@ -33,6 +33,8 @@ var assets embed.FS
 const pageSize = 20
 
 type Config struct {
+	// Version identifies the running build, supplied by the executable.
+	Version        string
 	Name           string
 	SourceURL      string
 	BaseURL        string
@@ -65,6 +67,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	Version, FooterVersion                                      string
+	ShowVersion                                                 bool
 	Invitations                                                 []Invitation
 	InviteMembers                                               []InviteMember
 	InviteCode, InviteLabel, InviteUses, InviteDays             string
@@ -119,6 +123,9 @@ type Page struct {
 }
 
 func New(store *Store, config Config) (*App, error) {
+	if config.Version == "" {
+		config.Version = "devel"
+	}
 	if strings.TrimSpace(config.Name) == "" {
 		config.Name = "Witmoot"
 	}
@@ -409,13 +416,18 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
+	p.Version = a.config.Version
 	brand, err := a.store.LoadBranding(r.Context(), SiteBranding{
 		Name: a.config.Name, SourceURL: a.config.SourceURL,
 		WelcomeTitle: "Good company. Conversations worth keeping.",
 		WelcomeText:  "For the plans, the little updates, and the stories that deserve more than a passing message.",
 	})
 	if err == nil {
+		if brand.ShowVersion {
+			p.FooterVersion = a.config.Version
+		}
 		if !p.BrandingDraft {
+			p.ShowVersion = brand.ShowVersion
 			p.Name, p.SourceURL, p.WelcomeTitle, p.WelcomeText = brand.Name, brand.SourceURL, brand.WelcomeTitle, brand.WelcomeText
 			p.HouseRules, p.OwnerContact = brand.HouseRules, brand.OwnerContact
 		}

@@ -26,6 +26,7 @@ import (
 
 // commandSummary describes each command for its --help output.
 var commandSummary = map[string]string{
+	"version":      "Print this binary's build version without opening a database.",
 	"migrate":      "Back up and migrate an existing database. Stop the server first. Account commands never migrate.",
 	"sandbox":      "Start the server confined by Bubblewrap. Run as the service user.\nThe data directory must already exist; see docs/sandbox.md.",
 	"serve":        "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.",

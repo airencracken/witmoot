@@ -1,6 +1,7 @@
 {{define "settings"}}
 {{template "crumb" .}}
 	<div class="page-heading"><div><h1>Site settings</h1><p class="lede">Set the welcome, membership, and house rules.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
+<p class="muted">Running Witmoot {{.Version}}.</p>
 {{if .Saved}}<p class="save-notice" role="status">Your site settings are saved.</p>{{end}}
 {{template "error" .}}
 <form class="paper settings-form" action="/settings" method="post" hx-disabled-elt="find button[type='submit']">
@@ -9,6 +10,7 @@
 		<legend>Make this place yours</legend>
 		<label for="site-name">Site name</label><input id="site-name" name="site_name" maxlength="80" value="{{.Name}}" required>
 		<label for="source-url">Source link</label><input id="source-url" name="source_url" type="url" maxlength="512" value="{{.SourceURL}}" placeholder="Leave blank to hide the link"><p class="field-help">The link appears in the footer. Use an HTTP(S) URL; blank hides it.</p>
+		<label><input type="checkbox" name="show_version" value="1" {{if .ShowVersion}}checked{{end}}> Show version in the footer</label>
 		<label for="welcome-title">Welcome heading</label><input id="welcome-title" name="welcome_title" maxlength="120" value="{{.WelcomeTitle}}">
 		<label for="welcome-text">Welcome text</label><textarea id="welcome-text" name="welcome_text" rows="4" maxlength="2000">{{.WelcomeText}}</textarea>
 	</fieldset>

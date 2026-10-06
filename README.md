@@ -42,6 +42,10 @@ beside the board.
 
 *An isolated browser-test instance, with sample conversation data.*
 
+Run `witmoot --version` to identify your binary. The site settings page also
+shows the running version. **Show version in the footer** makes it visible to
+visitors; it is off by default.
+
 ## Come on in
 
 Want to look around first? With Go 1.26 or later installed:

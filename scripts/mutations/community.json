@@ -246,5 +246,29 @@
         "after": "WHERE (b.id=0 OR b.id IN",
         "package": "./internal/forum",
         "run": "^TestCommunityExportIncludesPrivateAndEmptyBoardsButNoCredentials$"
+    },
+    {
+        "name": "version hidden unless opted in",
+        "file": "internal/forum/web.go",
+        "before": "if brand.ShowVersion {",
+        "after": "if true {",
+        "package": "./internal/forum",
+        "run": "^TestVersionDisplayDefaultsPermissionsPersistenceAndEscaping$"
+    },
+    {
+        "name": "version preference saved",
+        "file": "internal/forum/branding.go",
+        "before": "branding.OwnerContact, branding.ShowVersion)",
+        "after": "branding.OwnerContact, false)",
+        "package": "./internal/forum",
+        "run": "^TestVersionDisplayMigrationAndAtomicity$"
+    },
+    {
+        "name": "version command reports build",
+        "file": "cmd/witmoot/version.go",
+        "before": "buildVersion())",
+        "after": "\"devel\")",
+        "package": "./cmd/witmoot",
+        "run": "^TestVersionCommandIsExactAndDoesNotTouchData$"
     }
 ]

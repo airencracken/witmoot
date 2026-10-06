@@ -91,6 +91,7 @@ func (a *App) settingsDraft(r *http.Request, message string) Page {
 	page := a.settingsPage(r, message)
 	if _, submitted := r.PostForm["site_name"]; submitted {
 		page.BrandingDraft = true
+		page.ShowVersion = r.PostForm.Get("show_version") == "1"
 		page.Name = r.PostForm.Get("site_name")
 		page.SourceURL = r.PostForm.Get("source_url")
 		page.WelcomeTitle = r.PostForm.Get("welcome_title")
@@ -109,7 +110,8 @@ func (a *App) saveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, hasBranding := r.PostForm["site_name"]; hasBranding {
 		branding := SiteBranding{
-			Name: r.PostForm.Get("site_name"), SourceURL: r.PostForm.Get("source_url"),
+			ShowVersion: r.PostForm.Get("show_version") == "1",
+			Name:        r.PostForm.Get("site_name"), SourceURL: r.PostForm.Get("source_url"),
 			WelcomeTitle: r.PostForm.Get("welcome_title"), WelcomeText: r.PostForm.Get("welcome_text"),
 			HouseRules: r.PostForm.Get("house_rules"), OwnerContact: r.PostForm.Get("owner_contact"),
 		}

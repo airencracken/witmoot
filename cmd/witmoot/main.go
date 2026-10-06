@@ -88,7 +88,7 @@ func runServer() error {
 	if secure != "true" && secure != "false" {
 		return errors.New("WITMOOT_SECURE_COOKIES must be true or false")
 	}
-	config := forum.Config{Name: env("WITMOOT_NAME", "Witmoot"), SourceURL: env("WITMOOT_SOURCE_URL", "https://github.com/airencracken/witmoot"), BaseURL: os.Getenv("WITMOOT_BASE_URL"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
+	config := forum.Config{Version: buildVersion(), Name: env("WITMOOT_NAME", "Witmoot"), SourceURL: env("WITMOOT_SOURCE_URL", "https://github.com/airencracken/witmoot"), BaseURL: os.Getenv("WITMOOT_BASE_URL"), SecureCookies: secure == "true", ImvaultURL: os.Getenv("WITMOOT_IMVAULT_URL")}
 	config.TrustedProxies, err = clientip.ParseTrusted(os.Getenv("WITMOOT_TRUSTED_PROXIES"), "WITMOOT_TRUSTED_PROXIES")
 	if err != nil {
 		return err

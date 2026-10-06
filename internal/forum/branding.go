@@ -26,6 +26,7 @@ const maxBrandImageBytes = 2 << 20
 const maxImagePixels = 2048 * 2048
 
 type SiteBranding struct {
+	ShowVersion  bool
 	Name         string
 	SourceURL    string
 	WelcomeTitle string
@@ -36,8 +37,8 @@ type SiteBranding struct {
 
 func (s *Store) LoadBranding(ctx context.Context, defaults SiteBranding) (SiteBranding, error) {
 	branding := defaults
-	err := s.db.QueryRowContext(ctx, `SELECT name, source_url, welcome_title, welcome_text, house_rules, owner_contact
-		FROM instance_branding WHERE id = 1`).Scan(&branding.Name, &branding.SourceURL, &branding.WelcomeTitle, &branding.WelcomeText, &branding.HouseRules, &branding.OwnerContact)
+	err := s.db.QueryRowContext(ctx, `SELECT name, source_url, welcome_title, welcome_text, house_rules, owner_contact, show_version
+		FROM instance_branding WHERE id = 1`).Scan(&branding.Name, &branding.SourceURL, &branding.WelcomeTitle, &branding.WelcomeText, &branding.HouseRules, &branding.OwnerContact, &branding.ShowVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaults, nil
 	}
@@ -80,12 +81,12 @@ func cleanBranding(branding SiteBranding) (SiteBranding, error) {
 }
 
 func saveBranding(ctx context.Context, writer brandingWriter, branding SiteBranding) error {
-	_, err := writer.ExecContext(ctx, `INSERT INTO instance_branding(id, name, source_url, welcome_title, welcome_text, house_rules, owner_contact)
-		VALUES (1, ?, ?, ?, ?, ?, ?)
+	_, err := writer.ExecContext(ctx, `INSERT INTO instance_branding(id, name, source_url, welcome_title, welcome_text, house_rules, owner_contact, show_version)
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET name=excluded.name, source_url=excluded.source_url,
 		welcome_title=excluded.welcome_title, welcome_text=excluded.welcome_text,
-		house_rules=excluded.house_rules, owner_contact=excluded.owner_contact`,
-		branding.Name, branding.SourceURL, branding.WelcomeTitle, branding.WelcomeText, branding.HouseRules, branding.OwnerContact)
+		house_rules=excluded.house_rules, owner_contact=excluded.owner_contact, show_version=excluded.show_version`,
+		branding.Name, branding.SourceURL, branding.WelcomeTitle, branding.WelcomeText, branding.HouseRules, branding.OwnerContact, branding.ShowVersion)
 	if err != nil {
 		return err
 	}

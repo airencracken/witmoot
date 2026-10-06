@@ -22,6 +22,7 @@ const commandHelp = `witmoot - a little bulletin board for your people
 Usage: witmoot [COMMAND] [OPTIONS]
 
 Commands:
+  version        Print the running build version (also --version).
   sandbox        Start the server confined by Bubblewrap (Linux).
   serve          Start the HTTP server (also the default with no arguments).
   create-owner   Provision a new owner using a hidden prompt or stdin.
@@ -75,6 +76,13 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 	switch args[0] {
 	case "sandbox":
 		return runSandbox(args[1:], stdout)
+	case "version":
+		return printVersion(args[1:], stdout)
+	case "--version":
+		if len(args) != 1 {
+			return errors.New("usage: witmoot --version")
+		}
+		return printVersion(nil, stdout)
 	case "serve":
 		return serve(args[1:], stdout)
 	case "create-owner":

@@ -66,8 +66,8 @@
     {
         "name": "site name check before serving",
         "file": "cmd/witmoot/main.go",
-        "before": "config := forum.Config{Name: env(\"WITMOOT_NAME\", \"Witmoot\")",
-        "after": "config := forum.Config{Name: strings.NewReplacer(\"\\r\", \"\", \"\\n\", \"\", \"\\u2028\", \"\").Replace(env(\"WITMOOT_NAME\", \"Witmoot\"))",
+        "before": "config := forum.Config{Version: buildVersion(), Name: env(\"WITMOOT_NAME\", \"Witmoot\")",
+        "after": "config := forum.Config{Version: buildVersion(), Name: strings.NewReplacer(\"\\r\", \"\", \"\\n\", \"\", \"\\u2028\", \"\").Replace(env(\"WITMOOT_NAME\", \"Witmoot\"))",
         "package": "./cmd/witmoot",
         "run": "^TestStartupRejectsInvalidDeploymentConfiguration$"
     },

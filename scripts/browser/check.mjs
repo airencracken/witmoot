@@ -161,6 +161,21 @@ async function modeFlow(javaScriptEnabled) {
 	await page.waitForURL(origin + '/');
 	const guestContext = await browser.newContext({ javaScriptEnabled });
 	const guest = await guestContext.newPage();
+	await page.goto(origin + '/settings');
+	const product = (await page.locator('p').filter({ hasText: /^Running Witmoot / }).innerText()).trim().replace(/^Running /, '').replace(/\.$/, '');
+	assert.equal(product, execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim());
+	assert.equal(await page.getByLabel('Show version in the footer').isChecked(), false);
+	for (const visible of [true, false]) {
+		await page.getByLabel('Show version in the footer').setChecked(visible);
+		await page.getByRole('button', { name: 'Save settings' }).click();
+		await page.waitForURL(origin + '/settings?saved=1');
+		await page.waitForFunction(({ product, visible }) => document.querySelector('footer')?.textContent.includes(product) === visible, { product, visible });
+		assert.equal(await page.getByLabel('Show version in the footer').isChecked(), visible);
+		assert.equal((await page.locator('footer').innerText()).includes(product), visible);
+		await guest.goto(origin + '/login');
+		assert.equal((await guest.locator('footer').innerText()).includes(product), visible);
+	}
+	console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} optional version footer saves and shows for visitors`);
 	async function choose(mode) {
 		await page.goto(origin + '/settings');
 		await page.getByRole('radio', { name: new RegExp(`^${mode}`) }).check();
