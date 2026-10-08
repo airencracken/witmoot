@@ -2,9 +2,6 @@ package forum
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"io"
 	"mime"
@@ -47,9 +44,7 @@ func (a *App) expectedCSRF(w http.ResponseWriter, r *http.Request, session strin
 // this, and the derivation is one-way, so a page showing it reveals nothing.
 // It is keyed differently from the stored session digest.
 func sessionCSRFToken(session string) string {
-	mac := hmac.New(sha256.New, []byte(session))
-	mac.Write([]byte("witmoot-csrf-v1"))
-	return hex.EncodeToString(mac.Sum(nil))
+	return token.SessionCSRF(session, "witmoot-csrf-v1")
 }
 
 // isMutating reports whether a request method may change state. Every such

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Synced from github.com/airencracken/comfylib@v0.1.0 tools/mutate.py; edit it there.
+# Synced from github.com/airencracken/comfylib@v0.1.1 tools/mutate.py; edit it there.
 """Check that regression tests reject deliberate defects.
 
 Each mutation table is a JSON list of objects:

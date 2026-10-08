@@ -455,3 +455,6 @@ This program comes without any warranty.
 Third-party components retain their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).
 
 Optional Linux service confinement: [Bubblewrap setup and boundaries](docs/sandbox.md).
+
+For the coordinated Comfylib CSRF update on this branch, see
+[shared CSRF release coordination](docs/shared-csrf.md).
