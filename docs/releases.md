@@ -1,6 +1,8 @@
 # Binary releases
 
 Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
+The [prepared 0.14.0 discussion changes](release-notes/0.14.0.md) are not yet
+published and require the coordinated Comfylib release first.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
 - `witmoot_VERSION_linux_ARCH.tar.gz`: a static binary, documentation,
