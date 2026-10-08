@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Synced from github.com/airencracken/comfylib@v0.1.1 tools/mutate.py; edit it there.
+# Synced from github.com/airencracken/comfylib@v0.1.2 tools/mutate.py; edit it there.
 """Check that regression tests reject deliberate defects.
 
 Each mutation table is a JSON list of objects:
@@ -150,7 +150,7 @@ def go_env(entry):
 def go_test(checkout, entry):
     command = ["go", "test", "-count=1", "-timeout=" + TEST_TIMEOUT, "-run", entry["run"], entry["package"]]
     try:
-        return subprocess.run(command, cwd=checkout, env=go_env(entry), text=True,
+        return subprocess.run(command, cwd=checkout, env=go_env(entry), text=True, encoding="utf-8", errors="replace",
                               capture_output=True, timeout=PROCESS_TIMEOUT, check=False)
     except subprocess.TimeoutExpired as error:
         return subprocess.CompletedProcess(command, -1, error.stdout or "", "go test did not finish")

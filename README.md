@@ -461,3 +461,5 @@ For the coordinated Comfylib CSRF update on this branch, see
 
 Explicit Songstead and album discussion handoffs are documented in
 [docs/discussion-references.md](docs/discussion-references.md).
+
+[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.2 across the Comfyware apps.

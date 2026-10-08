@@ -1,15 +1,11 @@
 package forum
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	"image/png"
+	"github.com/airencracken/comfylib/brandimage"
 	"io"
 	"log/slog"
 	"net/http"
@@ -19,11 +15,11 @@ import (
 	"unicode/utf8"
 )
 
-const maxBrandImageBytes = 2 << 20
+const maxBrandImageBytes = brandimage.MaxBytes
 
 // maxImagePixels bounds the memory any uploaded image may decode into, about
 // 16 MiB of RGBA, whether it becomes a mascot, a favicon or an avatar.
-const maxImagePixels = 2048 * 2048
+const maxImagePixels = brandimage.MaxPixels
 
 type SiteBranding struct {
 	ShowVersion  bool
@@ -150,24 +146,7 @@ func (s *Store) BrandingAssetState(ctx context.Context) (mascot, favicon bool, e
 	return
 }
 
-func normalizeBrandImage(data []byte) ([]byte, error) {
-	if len(data) == 0 || len(data) > maxBrandImageBytes {
-		return nil, errors.New("choose an image no larger than 2 MiB")
-	}
-	config, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > 2048 || config.Height > 2048 || int64(config.Width)*int64(config.Height) > maxImagePixels {
-		return nil, errors.New("choose a valid image up to 2048 by 2048 pixels")
-	}
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, errors.New("choose a PNG, JPEG, or GIF image")
-	}
-	var output bytes.Buffer
-	if err := png.Encode(&output, img); err != nil {
-		return nil, fmt.Errorf("encode PNG: %w", err)
-	}
-	return output.Bytes(), nil
-}
+func normalizeBrandImage(data []byte) ([]byte, error) { return brandimage.Normalize(data) }
 
 func validSourceURL(value string) bool {
 	if value == "" {
