@@ -46,7 +46,7 @@ func TestGoModHasNoReplaceDirectives(t *testing.T) {
 func TestReplaceCheckSeesEveryForm(t *testing.T) {
 	for _, directive := range []string{
 		"replace github.com/airencracken/comfylib => ../comfylib\n",
-		"replace github.com/airencracken/comfylib v0.1.0 => github.com/example/fork v0.1.2\n",
+		"replace github.com/airencracken/comfylib v0.1.0 => github.com/example/fork v0.1.3\n",
 		"replace (\n\tgithub.com/airencracken/comfylib => ./vendor/comfylib\n)\n",
 	} {
 		path := t.TempDir() + "/go.mod"
@@ -64,8 +64,8 @@ func TestReplaceCheckSeesEveryForm(t *testing.T) {
 func TestComfylibIsPinnedToARelease(t *testing.T) {
 	for _, req := range readGoMod(t, "../go.mod").Require {
 		if req.Path == "github.com/airencracken/comfylib" {
-			if req.Version != "v0.1.2" {
-				t.Fatalf("comfylib is pinned to %s, want v0.1.2", req.Version)
+			if req.Version != "v0.1.3" {
+				t.Fatalf("comfylib is pinned to %s, want v0.1.3", req.Version)
 			}
 			return
 		}

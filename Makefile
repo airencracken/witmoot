@@ -45,7 +45,7 @@ test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 test-mutations: ## Verify community and comfylib integration regressions reject deliberate defects (needs Python 3)
 	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json
 
-check: test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
+check: test-cli test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...
 	go test -race -count=1 ./...
 	@test -z "$$(gofmt -l cmd internal contrib scripts)" || { echo 'Run gofmt on Go sources'; exit 1; }
@@ -104,3 +104,7 @@ test-sandbox: ## Require real Bubblewrap boundary and lifecycle tests (Linux)
 
 test-sandbox-mutations: ## Verify sandbox regressions reject deliberate defects (Python 3)
 	GOWORK=off python3 scripts/mutate.py scripts/mutations/sandbox.json
+
+.PHONY: test-cli
+test-cli: build ## Check hidden password prompts through an actual terminal
+	python3 scripts/check_password_cli.py --binary bin/witmoot --command create-owner --data-env WITMOOT_DATA_DIR --prompt "Owner password: " --confirmation "Confirm owner password: "
