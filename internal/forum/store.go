@@ -64,6 +64,7 @@ type Topic struct {
 }
 
 type Post struct {
+	References                            []Reference
 	ID                                    int64
 	Body, Author                          string
 	CreatedAt, JoinedAt                   int64

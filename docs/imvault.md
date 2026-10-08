@@ -149,3 +149,6 @@ it never deletes selected library files or pasted images. The two servers do
 not share a transaction. An interrupted upload response, process crash, or failed
 cleanup can leave an unattached private file in imvault. Cleanup failures with
 known IDs are logged for the operator to reconcile.
+
+Album discussion references and browser draft handoffs are documented in
+[discussion-references.md](discussion-references.md).

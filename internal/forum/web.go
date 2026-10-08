@@ -67,6 +67,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	SharedSource, AlbumTitle                                    string
+	AlbumCount                                                  int
 	Version, FooterVersion                                      string
 	ShowVersion                                                 bool
 	Invitations                                                 []Invitation
@@ -199,6 +201,8 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /join", a.joinForm)
 	mux.HandleFunc("POST /join", a.join)
 	mux.HandleFunc("POST /logout", a.signedIn(a.logout))
+	mux.HandleFunc("GET /share", a.private(a.discussionHandoff))
+	mux.HandleFunc("GET /posts/{id}/album-preview", a.readable(a.albumPreview))
 	mux.HandleFunc("GET /boards/{id}", a.readable(a.board))
 	mux.HandleFunc("GET /boards/{id}/new", a.private(a.newTopic))
 	mux.HandleFunc("POST /boards/{id}/new", a.private(a.createTopic))
@@ -648,6 +652,7 @@ func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, mess
 		a.serverError(w, r, err)
 		return
 	}
+	a.postReferences(posts)
 	p := Page{View: "topic", Title: topic.Title, Topic: topic, Posts: posts, Error: message, BodyInput: body}
 	pagination(r, &p, page, more)
 	a.render(w, r, status, p)

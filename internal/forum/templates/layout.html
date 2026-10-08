@@ -55,7 +55,9 @@
 		{{else if eq .View "board"}}{{template "board" .}}
 		{{else if or (eq .View "recent") (eq .View "search")}}{{template "listing" .}}
 		{{else if eq .View "topic"}}{{template "topic" .}}
-		{{else if eq .View "compose"}}{{template "compose" .}}
+		{{else if eq .View "share"}}{{template "share" .}}
+ {{else if eq .View "album-preview"}}{{template "album-preview" .}}
+ {{else if eq .View "compose"}}{{template "compose" .}}
 		{{else if eq .View "login"}}{{template "login" .}}
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}

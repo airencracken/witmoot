@@ -458,3 +458,6 @@ Optional Linux service confinement: [Bubblewrap setup and boundaries](docs/sandb
 
 For the coordinated Comfylib CSRF update on this branch, see
 [shared CSRF release coordination](docs/shared-csrf.md).
+
+Explicit Songstead and album discussion handoffs are documented in
+[docs/discussion-references.md](docs/discussion-references.md).
