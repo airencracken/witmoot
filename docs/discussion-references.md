@@ -34,6 +34,5 @@ readable. Revisit the preview to see updated public album titles/image counts.
 
 No new Witmoot configuration or database migration is required. Existing image
 connections, optional-service configuration, backups and disconnect semantics
-remain as documented in [imvault.md](imvault.md). Publish the Comfylib v0.1.1
-`reference` package before releasing this app; resolve real module checksums and
-run the clean release checks with GOWORK disabled.
+remain as documented in [imvault.md](imvault.md). The published Comfylib v0.1.1 `reference` package is pinned with verified
+module checksums; clean builds run with `GOWORK=off`.
