@@ -94,7 +94,8 @@ image sharing, not a general attachment store or an embedded imvault browser.
 
 Under **Account**, a member can import an image from their connected imvault
 library as their avatar. Witmoot copies the chosen preview, crops it square, and
-stores a small PNG in its own database, so the avatar keeps working even if
+stores a small PNG in its own database, along with bounded GIF animation when
+the selected rendition is animated. The avatar keeps working even if
 imvault is unreachable later or the connection is removed. This is the one place
 Witmoot keeps image bytes of its own; conversation images remain references.
 

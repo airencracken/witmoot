@@ -270,5 +270,61 @@
         "after": "\"devel\")",
         "package": "./cmd/witmoot",
         "run": "^TestVersionCommandIsExactAndDoesNotTouchData$"
+    },
+    {
+        "name": "avatar animation preference",
+        "file": "internal/forum/avatar.go",
+        "before": "if animate {",
+        "after": "if animate || !animate {",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarPolicyHTTPExportAndRemoval$"
+    },
+    {
+        "name": "avatar still request",
+        "file": "internal/forum/avatar.go",
+        "before": "r.URL.Query().Get(\"still\") != \"1\"",
+        "after": "true",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarPolicyHTTPExportAndRemoval$"
+    },
+    {
+        "name": "avatar animation replacement",
+        "file": "internal/forum/avatar.go",
+        "before": "animation = excluded.animation",
+        "after": "animation = user_avatars.animation",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarBoundsAtomicityAndSchema$"
+    },
+    {
+        "name": "avatar preference deletion",
+        "file": "internal/forum/account_delete.go",
+        "before": "DELETE FROM avatar_preferences WHERE user_id=?",
+        "after": "DELETE FROM avatar_preferences WHERE user_id=? AND 0",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarBoundsAtomicityAndSchema$"
+    },
+    {
+        "name": "avatar head contract",
+        "file": "internal/forum/avatar.go",
+        "before": "if r.Method != http.MethodHead {",
+        "after": "if true {",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarPolicyHTTPExportAndRemoval$"
+    },
+    {
+        "name": "avatar reduced motion",
+        "file": "internal/forum/templates/resets.html",
+        "before": "media=\"(prefers-reduced-motion: reduce)\" srcset=\"/avatars/{{.User.ID}}?still=1\"",
+        "after": "media=\"(prefers-reduced-motion: no-preference)\" srcset=\"/avatars/{{.User.ID}}?still=1\"",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarPolicyHTTPExportAndRemoval$"
+    },
+    {
+        "name": "avatar normalization bounds",
+        "file": "internal/forum/avatar.go",
+        "before": "picture, err := profileimage.Normalize(content)",
+        "after": "picture, err := profileimage.Normalize(content[:len(content)-1])",
+        "package": "./internal/forum",
+        "run": "^TestAnimatedAvatarPolicyHTTPExportAndRemoval$"
     }
 ]

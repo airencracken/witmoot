@@ -35,6 +35,7 @@ func (a *App) siteName(r *http.Request) string {
 func (a *App) accountPage(r *http.Request, message, notice, email string) Page {
 	page := Page{View: "account", Title: "Your account", Error: message, Notice: notice, Email: email, MailEnabled: a.mailer.Enabled()}
 	if user := state(r).User; user != nil {
+		page.AnimateAvatars, _ = a.store.AnimateAvatars(r.Context(), user.ID)
 		page.TimezoneInput = displayTimezone(user.Timezone).String()
 		page.TimezoneSuggestions = timezoneSuggestions
 		if has, err := a.store.HasAvatar(r.Context(), user.ID); err == nil {
@@ -53,6 +54,8 @@ func (a *App) account(w http.ResponseWriter, r *http.Request) {
 		notice = "Your email address has been saved."
 	case "avatar":
 		notice = "Your avatar has been saved."
+	case "animation":
+		notice = "Your avatar animation preference has been saved."
 	case "timezone":
 		notice = "Your display timezone has been saved."
 	}

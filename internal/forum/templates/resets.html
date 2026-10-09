@@ -14,16 +14,22 @@
 		<button type="button" class="secondary" data-device-timezone hidden>Use this device's timezone</button>
 		<button type="submit" class="secondary">Save timezone</button>
 	</form>
-	<h2>Your avatar</h2>
-	{{if .HasAvatar}}<p><img class="avatar large" src="/avatars/{{.User.ID}}" alt="Your current avatar"></p>{{end}}
+	<h2 id="profile-avatar">Your avatar</h2>
+	{{if .HasAvatar}}<p><picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.User.ID}}?still=1"><img class="avatar large" src="/avatars/{{.User.ID}}" alt="Your current avatar"></picture></p>{{end}}
 	<form action="/account/avatar" method="post" enctype="multipart/form-data" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
 		<label for="avatar">Choose a picture</label><input id="avatar" name="avatar" type="file" accept="image/png,image/jpeg,image/gif">
-		<p class="field-help">PNG, JPEG, or GIF up to 2 MiB. We crop it square and store a small PNG; any camera details are dropped.</p>
+		<p class="field-help">PNG or JPEG up to 2 MiB and 4 megapixels. GIFs may be up to 512 by 512 pixels and 64 frames. Camera details are removed; animated GIFs keep their animation.</p>
 		<button type="submit" class="secondary">Save avatar</button>
 	</form>
 	{{if .ImageConnected}}<p class="muted"><a href="/account/avatar/imvault">Choose an image from your imvault library</a> instead. Witmoot copies it, so the avatar keeps working even if imvault is unavailable.</p>{{end}}
 	{{if .HasAvatar}}<form action="/account/avatar" method="post"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="remove" value="1"><button type="submit" class="secondary">Remove my avatar</button></form>{{end}}
+	<form action="/account/avatar-preference" method="post" hx-disabled-elt="find button[type='submit']">
+		{{template "csrf" .}}
+		<label><input type="checkbox" name="animate" value="1" {{if .AnimateAvatars}}checked{{end}}> Show animated avatars</label>
+		<p class="field-help">Turn this off to see still pictures throughout Witmoot. Your device's reduced-motion preference also uses still pictures. Visitors see still pictures.</p>
+		<button type="submit" class="secondary">Save animation preference</button>
+	</form>
 	<h2>Change your password</h2>
 	<form action="/account/password" method="post" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
@@ -82,7 +88,7 @@
 	</div>
 	{{end}}
 	{{range .Members}}<article class="invitation-record">
-		{{if .HasAvatar}}<img class="avatar" src="/avatars/{{.ID}}" alt="">{{else}}<span class="avatar" aria-hidden="true">{{initial .Username}}</span>{{end}}
+		{{if .HasAvatar}}<picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.ID}}?still=1"><img class="avatar" src="/avatars/{{.ID}}" alt=""></picture>{{else}}<span class="avatar" aria-hidden="true">{{initial .Username}}</span>{{end}}
 		<h3>{{.Username}}{{if eq .Role "owner"}} <span class="muted">· owner</span>{{else if .Suspended}} <span class="member-status">· suspended</span>{{end}}</h3>
 		<p class="muted">{{if .Email}}{{.Email}}{{else}}No email address on file{{end}}{{if .Pending}} · reset link waiting{{end}}</p>
 		{{if not .Suspended}}<form action="/members/{{.ID}}/reset" method="post">

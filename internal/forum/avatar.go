@@ -19,6 +19,7 @@ import (
 
 	xdraw "golang.org/x/image/draw"
 
+	"github.com/airencracken/comfylib/profileimage"
 	"witmoot/internal/imvault"
 )
 
@@ -66,13 +67,32 @@ func normalizeAvatarImage(data []byte) ([]byte, error) {
 
 // SaveAvatar normalizes and stores one account's avatar.
 func (s *Store) SaveAvatar(ctx context.Context, userID int64, content []byte) error {
+	animation := []byte{}
+	_, format, err := image.DecodeConfig(bytes.NewReader(content))
+	if err == nil && format == "gif" {
+		picture, err := profileimage.Normalize(content)
+		if err != nil {
+			return err
+		}
+		if picture.Animation != nil {
+			animation = picture.Animation
+		}
+		content = picture.Still
+	}
 	clean, err := normalizeAvatarImage(content)
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO user_avatars(user_id, content, updated_at) VALUES (?, ?, ?)
-		ON CONFLICT(user_id) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`,
-		userID, clean, time.Now().Unix())
+	result, err := s.db.ExecContext(ctx, `INSERT INTO user_avatars(user_id, content, updated_at, animation) SELECT id, ?, ?, ? FROM users WHERE id=? AND deleted=0 AND suspended=0
+		ON CONFLICT(user_id) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at, animation = excluded.animation`,
+		clean, time.Now().Unix(), animation, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err == nil && rows == 0 {
+		return sql.ErrNoRows
+	}
 	return err
 }
 
@@ -110,8 +130,26 @@ func (a *App) avatar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not load the avatar", http.StatusInternalServerError)
 		return
 	}
+	kind := "image/png"
+	if r.URL.Query().Get("still") != "1" && state(r).User != nil {
+		animate, preferenceErr := a.store.AnimateAvatars(r.Context(), state(r).User.ID)
+		if preferenceErr != nil {
+			a.serverError(w, r, preferenceErr)
+			return
+		}
+		if animate {
+			animation, animationErr := a.store.AvatarAnimation(r.Context(), pathID(r))
+			if animationErr != nil {
+				a.serverError(w, r, animationErr)
+				return
+			}
+			if len(animation) > 0 {
+				content, kind = animation, "image/gif"
+			}
+		}
+	}
 	etag := fmt.Sprintf(`"%x"`, sha256.Sum256(content))
-	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Type", kind)
 	w.Header().Set("Cache-Control", "private, max-age=0, must-revalidate")
 	w.Header().Set("ETag", etag)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -119,13 +157,20 @@ func (a *App) avatar(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	_, _ = w.Write(content)
+	w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(content)
+	}
 }
 
 // saveAvatar handles the member's own upload or removal.
 func (a *App) saveAvatar(w http.ResponseWriter, r *http.Request) {
 	user := *state(r).User
 	if r.PostForm.Get("remove") == "1" {
+		if r.MultipartForm != nil && len(r.MultipartForm.File) > 0 {
+			a.render(w, r, 422, a.accountPage(r, "Choose either an upload or removal.", "", user.Email))
+			return
+		}
 		if err := a.store.DeleteAvatar(r.Context(), user.ID); err != nil {
 			a.serverError(w, r, err)
 			return
@@ -216,4 +261,45 @@ func (a *App) removeMemberAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.redirect(w, r, "/members?saved=avatar-removed")
+}
+
+// Animation preferences belong to the viewer and survive removing an avatar.
+func (s *Store) AnimateAvatars(ctx context.Context, userID int64) (bool, error) {
+	animate := true
+	err := s.db.QueryRowContext(ctx, "SELECT animate FROM avatar_preferences WHERE user_id=?", userID).Scan(&animate)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	return animate, err
+}
+
+func (s *Store) SetAnimateAvatars(ctx context.Context, userID int64, animate bool) error {
+	result, err := s.db.ExecContext(ctx, "INSERT INTO avatar_preferences(user_id,animate) SELECT id,? FROM users WHERE id=? AND deleted=0 AND suspended=0 ON CONFLICT(user_id) DO UPDATE SET animate=excluded.animate", animate, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err == nil && rows == 0 {
+		return sql.ErrNoRows
+	}
+	return err
+}
+
+func (s *Store) AvatarAnimation(ctx context.Context, userID int64) ([]byte, error) {
+	var animation []byte
+	err := s.db.QueryRowContext(ctx, "SELECT animation FROM user_avatars WHERE user_id=?", userID).Scan(&animation)
+	return animation, err
+}
+
+func (a *App) saveAvatarPreference(w http.ResponseWriter, r *http.Request) {
+	values := r.PostForm["animate"]
+	if len(values) > 1 || (len(values) == 1 && values[0] != "1") {
+		a.render(w, r, 422, a.accountPage(r, "Choose a valid animation preference.", "", state(r).User.Email))
+		return
+	}
+	if err := a.store.SetAnimateAvatars(r.Context(), state(r).User.ID, len(values) == 1); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.redirect(w, r, "/account?saved=animation#profile-avatar")
 }

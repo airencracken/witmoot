@@ -10,6 +10,7 @@ import { checkBoards } from './boards.mjs';
 import { checkGroups } from './groups.mjs';
 import { checkCommunity } from './community.mjs';
 import { checkTimezones } from './timezones.mjs';
+import { checkAvatars } from './avatars.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -241,7 +242,7 @@ async function modeFlow(javaScriptEnabled) {
 try {
 	execFileSync(binary, ['create-owner', '--username', 'alex', '--password-stdin'], { env, input: password + '\n' });
 	await startServer();
-	browser = await chromium.launch({ headless: true });
+	browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM || undefined });
 	await checkThemes(browser, origin);
 	await flow(true);
 	await flow(false);
@@ -257,7 +258,11 @@ try {
 	await checkTimezones(browser, origin, password, true);
 	await checkTimezones(browser, origin, password, false);
 	await startServer();
-	await checkCommunity(browser, origin, password, true);
+	await checkAvatars(browser, origin, password, true);
+ await startServer();
+ await checkAvatars(browser, origin, password, false);
+ await startServer();
+ await checkCommunity(browser, origin, password, true);
 	await checkCommunity(browser, origin, password, false);
 	assert.deepEqual(problems, [], 'Browser script or CSP errors');
 } finally {

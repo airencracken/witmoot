@@ -229,7 +229,8 @@ Open requires an account to post; it does not reproduce imvault's anonymous uplo
 - Optional imvault images: upload from a post, choose from your library, or
   paste an image link. Image access follows the conversation's audience.
 - Optional member avatars: upload a picture or import one from your imvault
-  library. Witmoot crops it square, drops any metadata, and keeps a small PNG.
+  library. Witmoot removes metadata, keeps a still picture and supports GIF
+  animation with a per-viewer animation preference.
 - Search across conversation titles and message text.
 - Saved display timezones in **Your account**, with UTC as the default. Dates
   and times follow your choice on every device, including without JavaScript.
@@ -332,7 +333,7 @@ their SHA-256 hashes are stored. Reset links work once and expire. Sessions
 expire after seven days. Forms require CSRF tokens and use Go's cross-origin
 protection. User text is escaped; only bare `http://` and `https://` addresses
 are turned into links, and nothing else is treated as markup. Avatars are
-re-encoded to PNG, which drops camera metadata, and are served through the same
+re-encoded locally, which drops camera metadata, and are served through the same
 audience gate as the board. Private pages send `Cache-Control: no-store` and
 disable HTMX history storage. Assets are served locally under a restrictive
 content security policy.
@@ -376,8 +377,10 @@ SQLite data is not encrypted at rest.
 Links are not embedded yet: a shared video or music URL stays a link, so opening
 a page does not contact a third party. Whether to add click-to-load players is a
 product decision still open, since an embed would mean relaxing the content
-security policy. Avatars are optional and re-encoded locally; an animated upload
-becomes a still PNG, and an owner can remove any member's avatar.
+security policy. Avatars are optional and re-encoded locally. GIFs up to 512 by 512 pixels
+and 64 frames keep their animation. Under **Your account → Your avatar**,
+you can disable animated avatars across devices. Reduced-motion preferences
+and visitors use still pictures. An owner can remove any member's avatar.
 
 ## Working on it
 
@@ -462,4 +465,4 @@ For the coordinated Comfylib CSRF update on this branch, see
 Explicit Songstead and album discussion handoffs are documented in
 [docs/discussion-references.md](docs/discussion-references.md).
 
-[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.3 across the Comfyware apps.
+[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.4, including the profile image handling shared with Songstead.

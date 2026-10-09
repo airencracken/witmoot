@@ -31,7 +31,8 @@
 <header>
 	<p class="eyebrow">Witmoot archive</p>
 	<h1>{{if eq .Manifest.Format "witmoot-community-export"}}Community archive{{else}}Your contributions{{end}}</h1>
-	{{if .Manifest.Account.HasAvatar}}<img class="avatar" src="avatar.png" alt="Avatar" width="72" height="72">{{end}}
+	{{if .Manifest.Account.HasAnimatedAvatar}}<p><a href="avatar.gif">Download animated avatar</a></p>{{end}}
+ {{if .Manifest.Account.HasAvatar}}<img class="avatar" src="avatar.png" alt="Avatar" width="72" height="72">{{end}}
 	<p class="meta">{{.Manifest.Account.Username}} · exported {{$.Stamp .Manifest.ExportedAt}}</p>
 </header>
 <p class="note">{{.Manifest.Note}}</p>

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-var migrationFiles = []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql", "013_community_care.sql", "014_moderation_log.sql", "015_account_deletion.sql", "016_display_timezone.sql", "017_version_display.sql"}
+var migrationFiles = []string{"001_initial.sql", "002_access_modes.sql", "003_imvault.sql", "004_invitations.sql", "005_board_access_and_edits.sql", "006_board_lifecycle.sql", "007_user_groups.sql", "008_invite_attribution.sql", "009_instance_branding.sql", "010_auth_tokens.sql", "011_user_email.sql", "012_user_avatars.sql", "013_community_care.sql", "014_moderation_log.sql", "015_account_deletion.sql", "016_display_timezone.sql", "017_version_display.sql", "018_avatar_animation.sql"}
 
 func (s *Store) backupBeforeMigration(database string) (err error) {
 	var version int

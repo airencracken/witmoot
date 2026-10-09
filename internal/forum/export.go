@@ -46,12 +46,14 @@ type exportSite struct {
 }
 
 type exportAccount struct {
-	Timezone  string `json:"timezone"`
-	Username  string `json:"username"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"created_at"`
-	Email     string `json:"email,omitempty"`
-	HasAvatar bool   `json:"has_avatar"`
+	Timezone          string `json:"timezone"`
+	Username          string `json:"username"`
+	Role              string `json:"role"`
+	CreatedAt         string `json:"created_at"`
+	Email             string `json:"email,omitempty"`
+	HasAvatar         bool   `json:"has_avatar"`
+	AnimateAvatars    *bool  `json:"animate_avatars,omitempty"`
+	HasAnimatedAvatar bool   `json:"has_animated_avatar,omitempty"`
 }
 
 type exportBoard struct {
@@ -262,6 +264,29 @@ func (a *App) writeExport(archive *zip.Writer, manifest exportManifest, avatar [
 		if err := a.exportImages(archive, &manifest, options[0]); err != nil {
 			return err
 		}
+	}
+	if len(options) > 0 && len(avatar) > 0 {
+		animation, err := a.store.AvatarAnimation(options[0].ctx, options[0].user.ID)
+		if err != nil {
+			return err
+		}
+		if len(animation) > 0 {
+			entry, err := archive.Create("avatar.gif")
+			if err != nil {
+				return err
+			}
+			if _, err := entry.Write(animation); err != nil {
+				return err
+			}
+			manifest.Account.HasAnimatedAvatar = true
+		}
+	}
+	if len(options) > 0 && manifest.Format != "witmoot-community-export" {
+		animate, err := a.store.AnimateAvatars(options[0].ctx, options[0].user.ID)
+		if err != nil {
+			return err
+		}
+		manifest.Account.AnimateAvatars = &animate
 	}
 	if err := writeJSONEntry(archive, "manifest.json", manifest); err != nil {
 		return fmt.Errorf("write manifest: %w", err)

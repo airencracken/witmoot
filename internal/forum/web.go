@@ -115,6 +115,7 @@ type Page struct {
 	ResetEmailed                                                bool
 	Members                                                     []MemberReset
 	HasAvatar                                                   bool
+	AnimateAvatars                                              bool
 	HouseRules, OwnerContact, CommunityAction                   string
 	Owners                                                      []string
 	Member                                                      User
@@ -247,6 +248,7 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /account/email", a.signedIn(a.saveEmail))
 	mux.HandleFunc("POST /account/timezone", a.signedIn(a.saveTimezone))
 	mux.HandleFunc("POST /account/avatar", a.signedIn(a.saveAvatar))
+	mux.HandleFunc("POST /account/avatar-preference", a.signedIn(a.saveAvatarPreference))
 	mux.HandleFunc("GET /account/avatar/imvault", a.signedIn(a.avatarLibrary))
 	mux.HandleFunc("POST /account/avatar/imvault", a.signedIn(a.importAvatar))
 	mux.HandleFunc("GET /avatars/{id}", a.readable(a.avatar))

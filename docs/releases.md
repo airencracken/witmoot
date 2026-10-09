@@ -1,8 +1,8 @@
 # Binary releases
 
 Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The [prepared 0.14.0 discussion changes](release-notes/0.14.0.md) are not yet
-published and require the coordinated Comfylib release first.
+The latest release is [0.15.0](release-notes/0.15.0.md), with animated avatars
+and saved animation preferences.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
 - `witmoot_VERSION_linux_ARCH.tar.gz`: a static binary, documentation,
@@ -26,7 +26,7 @@ HTTPS connections to Imvault need your system's CA certificates.
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.12.0
+release_version=0.15.0
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"

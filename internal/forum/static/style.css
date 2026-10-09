@@ -288,3 +288,5 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .board-description h2, .board-description h3 { overflow-wrap: anywhere; }
 
 [data-device-timezone][hidden] { display: none; }
+
+.avatar-picture { display: contents; }
