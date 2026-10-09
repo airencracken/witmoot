@@ -290,3 +290,7 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 [data-device-timezone][hidden] { display: none; }
 
 .avatar-picture { display: contents; }
+
+.member-profile { overflow-wrap:anywhere; }
+.profile-bio { white-space:pre-wrap; }
+.profile-link-fields { display:grid; gap:.5rem; min-width:0; margin-block:1rem; padding:1rem; }

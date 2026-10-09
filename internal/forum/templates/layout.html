@@ -61,7 +61,9 @@
 		{{else if eq .View "login"}}{{template "login" .}}
 		{{else if eq .View "join"}}{{template "join" .}}
 		{{else if eq .View "invites"}}{{template "invites" .}}
-		{{else if eq .View "account"}}{{template "account" .}}
+		{{else if eq .View "member-profile"}}{{template "member-profile" .}}
+{{else if eq .View "profile-settings"}}{{template "profile-settings" .}}
+{{else if eq .View "account"}}{{template "account" .}}
 		{{else if eq .View "delete-account"}}{{template "delete-account" .}}
 		{{else if eq .View "reset"}}{{template "reset" .}}
 		{{else if eq .View "avatar-library"}}{{template "avatar-library" .}}

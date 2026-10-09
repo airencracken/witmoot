@@ -13,6 +13,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/airencracken/comfylib/memberprofile"
 )
 
 // exportFormat and exportVersion identify the archive so an importer, or a
@@ -46,14 +48,15 @@ type exportSite struct {
 }
 
 type exportAccount struct {
-	Timezone          string `json:"timezone"`
-	Username          string `json:"username"`
-	Role              string `json:"role"`
-	CreatedAt         string `json:"created_at"`
-	Email             string `json:"email,omitempty"`
-	HasAvatar         bool   `json:"has_avatar"`
-	AnimateAvatars    *bool  `json:"animate_avatars,omitempty"`
-	HasAnimatedAvatar bool   `json:"has_animated_avatar,omitempty"`
+	Profile           *memberprofile.Profile `json:"profile,omitempty"`
+	Timezone          string                 `json:"timezone"`
+	Username          string                 `json:"username"`
+	Role              string                 `json:"role"`
+	CreatedAt         string                 `json:"created_at"`
+	Email             string                 `json:"email,omitempty"`
+	HasAvatar         bool                   `json:"has_avatar"`
+	AnimateAvatars    *bool                  `json:"animate_avatars,omitempty"`
+	HasAnimatedAvatar bool                   `json:"has_animated_avatar,omitempty"`
 }
 
 type exportBoard struct {
@@ -154,6 +157,15 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request, community boo
 		return
 	}
 
+	var biography *memberprofile.Profile
+	if !community {
+		profile, err := a.store.MemberProfile(ctx, user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		biography = &profile.Biography
+	}
 	origin := a.origin(r)
 	manifest := exportManifest{
 		Format:     exportFormat,
@@ -161,6 +173,7 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request, community boo
 		ExportedAt: time.Now().UTC().Format(time.RFC3339),
 		Site:       exportSite{Name: a.siteName(r), SourceURL: a.config.SourceURL},
 		Account: exportAccount{
+			Profile:   biography,
 			Timezone:  displayTimezone(user.Timezone).String(),
 			Username:  user.Username,
 			Role:      user.Role,

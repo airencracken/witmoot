@@ -64,8 +64,8 @@ func TestReplaceCheckSeesEveryForm(t *testing.T) {
 func TestComfylibIsPinnedToARelease(t *testing.T) {
 	for _, req := range readGoMod(t, "../go.mod").Require {
 		if req.Path == "github.com/airencracken/comfylib" {
-			if req.Version != "v0.1.4" {
-				t.Fatalf("comfylib is pinned to %s, want v0.1.4", req.Version)
+			if req.Version != "v0.1.5" {
+				t.Fatalf("comfylib is pinned to %s, want v0.1.5", req.Version)
 			}
 			return
 		}

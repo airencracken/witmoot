@@ -326,5 +326,37 @@
         "after": "picture, err := profileimage.Normalize(content[:len(content)-1])",
         "package": "./internal/forum",
         "run": "^TestAnimatedAvatarPolicyHTTPExportAndRemoval$"
-    }
+    },
+  {
+    "name": "member profile authentication",
+    "file": "internal/forum/web.go",
+    "before": "a.signedIn(a.memberProfile)",
+    "after": "a.memberProfile",
+    "package": "./internal/forum",
+    "run": "^TestMemberProfileRoutesOwnershipPrivacyAndExport$"
+  },
+  {
+    "name": "member profile actor ownership",
+    "file": "internal/forum/member_profiles.go",
+    "before": "a.store.SetMemberProfile(r.Context(), state(r).User.ID, p)",
+    "after": "a.store.SetMemberProfile(r.Context(), state(r).User.ID+1, p)",
+    "package": "./internal/forum",
+    "run": "^TestMemberProfileRoutesOwnershipPrivacyAndExport$"
+  },
+  {
+    "name": "member profile active write boundary",
+    "file": "internal/forum/member_profiles.go",
+    "before": "SELECT id,?,?,? FROM users WHERE id=? AND suspended=0 AND deleted=0",
+    "after": "SELECT id,?,?,? FROM users WHERE id=?",
+    "package": "./internal/forum",
+    "run": "^TestMemberProfileStorageAtomicitySchemaAndProperties$"
+  },
+  {
+    "name": "member profile normalization before write",
+    "file": "internal/forum/member_profiles.go",
+    "before": "p, err := memberprofile.Normalize(p)",
+    "after": "p, err := p, error(nil)",
+    "package": "./internal/forum",
+    "run": "^TestMemberProfileStorageAtomicitySchemaAndProperties$"
+  }
 ]

@@ -4,7 +4,8 @@
 	<p class="muted">Signed in as <strong>{{.User.Username}}</strong>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="save-notice" role="status">{{.Notice}}</p>{{end}}
-	<h2>Times and dates</h2>
+	<h2>Your profile</h2><p><a href="/members/{{.User.ID}}">View your profile</a> · <a href="/account/profile">Edit your profile</a></p>
+<h2>Times and dates</h2>
 	<form action="/account/timezone" method="post" hx-push-url="false" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
 		<label for="timezone">Display timezone</label>

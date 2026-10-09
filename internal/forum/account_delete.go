@@ -71,6 +71,7 @@ func clearAccountArtifacts(ctx context.Context, tx *sql.Tx, userID int64, name s
 		"DELETE FROM sessions WHERE user_id=?",
 		"DELETE FROM auth_tokens WHERE user_id=?",
 		"DELETE FROM user_avatars WHERE user_id=?",
+		"DELETE FROM member_profiles WHERE user_id=?",
 		"DELETE FROM avatar_preferences WHERE user_id=?",
 		"DELETE FROM imvault_connections WHERE user_id=?",
 		"DELETE FROM board_members WHERE user_id=?",

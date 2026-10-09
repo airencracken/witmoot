@@ -465,4 +465,13 @@ For the coordinated Comfylib CSRF update on this branch, see
 Explicit Songstead and album discussion handoffs are documented in
 [docs/discussion-references.md](docs/discussion-references.md).
 
-[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.4, including the profile image handling shared with Songstead.
+[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.5, including the profile image handling shared with Songstead.
+
+## Member profiles
+
+In Your account, open Edit your profile to optionally add a name, a short
+plain-text bio and up to five labeled web links. Profile pages require sign-in
+and are linked from conversation authors. Usernames stay unchanged; clearing the
+fields removes them. Profiles do not show email, private settings or posting
+history. Your own account export includes your profile. See the
+[0.16.0 release notes](docs/release-notes/0.16.0.md) before the schema 19 upgrade.

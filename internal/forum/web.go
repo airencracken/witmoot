@@ -21,6 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/airencracken/comfylib/memberprofile"
 	"github.com/airencracken/comfylib/smtp"
 	"github.com/airencracken/comfylib/token"
 
@@ -67,6 +68,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	Biography                                                   memberprofile.Profile
+	ProfileMember                                               MemberProfile
 	SharedSource, AlbumTitle                                    string
 	AlbumCount                                                  int
 	Version, FooterVersion                                      string
@@ -146,7 +149,7 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.HasPrefix(baseURL, "https://") {
 		config.SecureCookies = true
 	}
-	tmpl, err := template.New("forum").Funcs(template.FuncMap{
+	tmpl, err := template.New("forum").Funcs(template.FuncMap{"linkNumber": func(i int) int { return i + 1 },
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -240,6 +243,9 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /settings", a.owner(a.settings))
 	mux.HandleFunc("POST /settings", a.owner(a.saveSettings))
 	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
+	mux.HandleFunc("GET /members/{id}", a.signedIn(a.memberProfile))
+	mux.HandleFunc("GET /account/profile", a.signedIn(a.editMemberProfile))
+	mux.HandleFunc("POST /account/profile", a.signedIn(a.saveMemberProfile))
 	mux.HandleFunc("GET /account", a.signedIn(a.account))
 	mux.HandleFunc("GET /account/delete", a.signedIn(a.accountDeletion))
 	mux.HandleFunc("POST /account/delete", a.signedIn(a.deleteAccount))

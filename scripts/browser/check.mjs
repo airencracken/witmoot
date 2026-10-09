@@ -11,6 +11,7 @@ import { checkGroups } from './groups.mjs';
 import { checkCommunity } from './community.mjs';
 import { checkTimezones } from './timezones.mjs';
 import { checkAvatars } from './avatars.mjs';
+import { checkProfiles } from './profiles.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -262,6 +263,8 @@ try {
  await startServer();
  await checkAvatars(browser, origin, password, false);
  await startServer();
+ await checkProfiles(browser, origin, password, true);
+ await checkProfiles(browser, origin, password, false);
  await checkCommunity(browser, origin, password, true);
 	await checkCommunity(browser, origin, password, false);
 	assert.deepEqual(problems, [], 'Browser script or CSP errors');
