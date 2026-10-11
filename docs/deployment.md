@@ -293,3 +293,6 @@ the native init script uses [OpenRC's standard service functions](https://github
 
 See [Linux confinement](sandbox.md) for OpenRC settings, systemd overrides,
 custom paths and verification. Existing startup remains unchanged by default.
+
+The running service also makes bounded compressed backups automatically; see
+[automatic backups](automatic-backups.md) for defaults, status and recovery.

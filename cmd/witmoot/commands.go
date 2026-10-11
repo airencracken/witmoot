@@ -34,6 +34,8 @@ Commands:
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
   help [COMMAND] Show help; COMMAND --help also works.
 
+Built-in backups: WITMOOT_BACKUP_INTERVAL (24h; 0 disables), WITMOOT_BACKUP_KEEP (7),
+WITMOOT_BACKUP_MAX_BYTES (10 GiB), WITMOOT_BACKUP_COPY_MAX_BYTES (5 GiB).
 Server configuration uses environment variables:
   WITMOOT_ADDR            Listen address (binary default: 127.0.0.1:8080).
   WITMOOT_DATA_DIR        Database directory (default: ./data).

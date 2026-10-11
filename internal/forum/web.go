@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/airencracken/comfylib/autobackup"
 	"html/template"
 	"io"
 	"io/fs"
@@ -34,6 +35,8 @@ var assets embed.FS
 const pageSize = 20
 
 type Config struct {
+	Backups *autobackup.Runner
+
 	// Version identifies the running build, supplied by the executable.
 	Version        string
 	Name           string
@@ -68,6 +71,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	Backups autobackup.Status
+
 	Biography                                                   memberprofile.Profile
 	ProfileMember                                               MemberProfile
 	SharedSource, AlbumTitle                                    string

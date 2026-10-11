@@ -214,5 +214,29 @@
         "after": "u.email, 'UTC' FROM sessions",
         "package": "./internal/forum",
         "run": "^TestTimezoneAccountRoutePersistsAndIsIsolated$"
+    },
+    {
+        "name": "automatic snapshot database cap",
+        "file": "internal/forum/automatic_backup.go",
+        "before": "autobackup.CheckDatabase(ctx, s.db, limit-32)",
+        "after": "autobackup.CheckDatabase(ctx, s.db, 1<<62)",
+        "package": "./internal/forum",
+        "run": "^TestAutomaticBackupPreservesConnectionsAndPrivateDatabase$"
+    },
+    {
+        "name": "automatic snapshot missing connection key",
+        "file": "internal/forum/automatic_backup.go",
+        "before": "return validateSnapshotConnections(ctx, path, nil)",
+        "after": "return nil",
+        "package": "./internal/forum",
+        "run": "^TestAutomaticBackupPreservesConnectionsAndPrivateDatabase$"
+    },
+    {
+        "name": "automatic snapshot foreign key verification",
+        "file": "internal/forum/automatic_backup.go",
+        "before": "if rows.Next() {",
+        "after": "if false && rows.Next() {",
+        "package": "./internal/forum",
+        "run": "^TestAutomaticBackupRejectsInvalidForeignKeys$"
     }
 ]

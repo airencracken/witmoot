@@ -1,8 +1,7 @@
 # Binary releases
 
 Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The latest release is [0.15.0](release-notes/0.15.0.md), with animated avatars
-and saved animation preferences.
+The latest release is [0.17.0](release-notes/0.17.0.md), with automatic compressed backups, bounded retention and owner-only status.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
 - `witmoot_VERSION_linux_ARCH.tar.gz`: a static binary, documentation,

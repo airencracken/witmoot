@@ -82,7 +82,7 @@ func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) settingsPage(r *http.Request, message string) Page {
-	return Page{View: "settings", Title: "Site settings", Saved: r.URL.Query().Get("saved") == "1", Error: message}
+	return Page{Backups: a.config.Backups.Status(), View: "settings", Title: "Site settings", Saved: r.URL.Query().Get("saved") == "1", Error: message}
 }
 
 // settingsDraft redisplays a rejected settings form with what was submitted.

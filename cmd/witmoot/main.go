@@ -103,6 +103,11 @@ func runServer() error {
 			return err
 		}
 	}
+	backups, err := automaticBackups(store, dataDir)
+	if err != nil {
+		return err
+	}
+	config.Backups = backups
 	app, err := forum.New(store, config)
 	if err != nil {
 		return err
@@ -110,6 +115,10 @@ func runServer() error {
 	server := newHTTPServer(env("WITMOOT_ADDR", "127.0.0.1:8080"), app)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	backupCtx, cancelBackups := context.WithCancel(ctx)
+	backupsDone := make(chan struct{})
+	go func() { defer close(backupsDone); backups.Run(backupCtx) }()
+	defer func() { cancelBackups(); <-backupsDone }()
 	warnUntrustedProxy(server.Addr, config.TrustedProxies)
 	done := make(chan error, 1)
 	go func() {
