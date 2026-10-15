@@ -626,7 +626,24 @@ func (a *App) topicList(w http.ResponseWriter, r *http.Request, p Page, boardID 
 }
 
 func (a *App) recent(w http.ResponseWriter, r *http.Request) {
-	a.topicList(w, r, Page{View: "recent", Title: "Recent conversations"}, 0, "")
+	page, err := pageNumber(r)
+	if err != nil {
+		a.fail(w, r, 400, "That page number is not valid.")
+		return
+	}
+	posts, more, err := a.store.RecentPosts(r.Context(), pageSize, (page-1)*pageSize, state(r).User)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := a.store.PostImages(r.Context(), posts); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.postReferences(posts)
+	p := Page{View: "recent", Title: "Recent posts", Posts: posts}
+	pagination(r, &p, page, more)
+	a.render(w, r, 200, p)
 }
 
 func (a *App) search(w http.ResponseWriter, r *http.Request) {

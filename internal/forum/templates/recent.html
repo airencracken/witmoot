@@ -1,0 +1,20 @@
+{{define "recent"}}
+{{template "crumb" .}}
+<div class="page-heading"><div><h1>Recent posts</h1><p class="lede">Messages and replies from your boards, newest first. Catch up in your own time.</p></div></div>
+{{template "pager" .}}
+<section class="recent-posts" aria-label="Recent posts">
+{{range .Posts}}
+<article class="paper recent-post" id="recent-post-{{.ID}}">
+  <header class="recent-post-header">
+    <div class="recent-post-author">{{if .HasAvatar}}<picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.AuthorID}}?still=1"><img class="avatar" src="/avatars/{{.AuthorID}}" alt="" loading="lazy"></picture>{{else}}<span class="avatar" aria-hidden="true">{{initial .Author}}</span>{{end}}<a href="/members/{{.AuthorID}}">{{.Author}}</a></div>
+    <div class="recent-post-time"><a href="{{.URL}}" hx-boost="false" aria-label="Message {{.Number}} in {{.Topic.Title}}"><time datetime="{{iso .CreatedAt}}">{{$.Stamp .CreatedAt}}</time></a>{{if .EditedAt}}<span class="edited">Edited <time datetime="{{iso .EditedAt}}">{{$.Stamp .EditedAt}}</time></span>{{end}}</div>
+  </header>
+  <p class="muted recent-post-context"><a href="/boards/{{.Topic.BoardID}}">{{.Topic.BoardName}}</a> · {{.Topic.AudienceLabel}}</p>
+  <h2><a href="{{.URL}}" hx-boost="false">{{.Topic.Title}}</a></h2>
+  {{template "message-content" .}}
+  <footer><a href="{{.URL}}" hx-boost="false">Read in conversation</a></footer>
+</article>
+{{else}}<div class="paper empty-state"><span class="empty-mark" aria-hidden="true">w</span><h2>No posts yet.</h2><p>When someone starts a conversation or replies, it will appear here.</p><a href="/">Find a place to start</a></div>{{end}}
+</section>
+{{template "pager" .}}
+{{end}}

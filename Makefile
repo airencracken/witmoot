@@ -43,7 +43,7 @@ test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 	go test -tags=proxyintegration -count=1 -timeout=60s ./contrib/proxy
 
 test-mutations: ## Verify community and comfylib integration regressions reject deliberate defects (needs Python 3)
-	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json
+	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json scripts/mutations/recent.json
 
 check: test-cli test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...

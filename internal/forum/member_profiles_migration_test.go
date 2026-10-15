@@ -16,7 +16,7 @@ func TestMemberProfileMigrationPreservesAccounts(t *testing.T) {
 	if err := s.db.QueryRow("SELECT username,password_hash FROM users WHERE id=?", id).Scan(&beforeName, &beforeHash); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.db.Exec("DROP TABLE member_profiles; PRAGMA user_version=18"); err != nil {
+	if _, err := s.db.Exec("DROP INDEX posts_recent; DROP TABLE member_profiles; PRAGMA user_version=18"); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.db.Close(); err != nil {

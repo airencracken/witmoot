@@ -1,0 +1,58 @@
+[
+    {
+        "name": "feed conversation audience",
+        "file": "internal/forum/recent.go",
+        "before": "JOIN visible_topics t ON t.id = p.topic_id",
+        "after": "JOIN topics t ON t.id = p.topic_id",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsAccessIsFilteredBeforePagination$"
+    },
+    {
+        "name": "feed archives",
+        "file": "internal/forum/recent.go",
+        "before": "WHERE b.archived = 0 AND p.removed = 0",
+        "after": "WHERE p.removed = 0",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsRemovalArchivesAndAtomicWrites$"
+    },
+    {
+        "name": "feed removed messages",
+        "file": "internal/forum/recent.go",
+        "before": "WHERE b.archived = 0 AND p.removed = 0",
+        "after": "WHERE b.archived = 0",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsRemovalArchivesAndAtomicWrites$"
+    },
+    {
+        "name": "feed chronological order",
+        "file": "internal/forum/recent.go",
+        "before": "ORDER BY p.created_at DESC, p.id DESC",
+        "after": "ORDER BY p.id DESC",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsOrderPaginationAndPermalinks$"
+    },
+    {
+        "name": "feed deterministic ties",
+        "file": "internal/forum/recent.go",
+        "before": "ORDER BY p.created_at DESC, p.id DESC",
+        "after": "ORDER BY p.created_at DESC, p.id ASC",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsOrderPaginationAndPermalinks$"
+    },
+    {
+        "name": "feed pagination lookahead",
+        "file": "internal/forum/recent.go",
+        "before": "limit+1, offset",
+        "after": "limit, offset",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsOrderPaginationAndPermalinks$"
+    },
+    {
+        "name": "feed message numbering",
+        "file": "internal/forum/recent.go",
+        "before": "earlier.id <= p.id",
+        "after": "earlier.id < p.id",
+        "package": "./internal/forum",
+        "run": "^TestRecentPostsOrderPaginationAndPermalinks$"
+    }
+]

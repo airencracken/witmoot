@@ -79,6 +79,17 @@ async function flow(javaScriptEnabled) {
 	await page.waitForURL(/#post-/);
 	assert.equal(await page.locator('.post').count(), 2);
 	assert.match(await page.locator('.post-body').last().innerText(), /bring bread/);
+	await page.getByRole('link', { name: 'Recent', exact: true }).click();
+	await page.getByRole('heading', { name: 'Recent posts', exact: true }).waitFor();
+	const feedPosts = page.locator('.recent-post').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+	await feedPosts.first().waitFor();
+	assert.equal(await feedPosts.count(), 2, 'Original post and reply appear individually');
+	assert.match(await feedPosts.first().locator('.post-body').innerText(), /bring bread/);
+	assert.match(await feedPosts.last().locator('.post-body').innerText(), /bring soup/);
+	await feedPosts.first().getByRole('link', { name: 'Read in conversation', exact: true }).click();
+	await page.waitForURL(/\?page=1#post-/);
+	assert.equal(await page.locator('h1').innerText(), title);
+	assert.match(await page.locator(':target .post-body').innerText(), /bring bread/);
 	if (javaScriptEnabled) {
 		// Trigger server-side validation and verify HTMX displays the error and keeps the form usable.
 		await page.getByLabel('Your reply').fill('   ');
@@ -87,6 +98,39 @@ async function flow(javaScriptEnabled) {
 		assert.match(await page.getByRole('alert').innerText(), /Write a reply/);
 		assert.equal(await page.getByRole('alert').evaluate(el => el === document.activeElement), true);
 		await page.goto(topicURL);
+		// Cross a conversation page boundary and follow that message from Recent.
+		const csrf = await page.locator('form[action="/logout"] input[name="csrf"]').inputValue();
+		for (let i = 0; i < 19; i++) {
+			const reply = await page.request.post(`${topicURL}/replies`, { form: { csrf, body: `Feed pagination reply ${i}` } });
+			assert.equal(reply.status(), 200, 'Seed reply through the normal authenticated posting route');
+		}
+		await page.getByRole('link', { name: 'Recent', exact: true }).click();
+		await page.locator('.recent-post').first().waitFor();
+		assert.equal(await page.locator('.recent-post').count(), 20);
+		assert.match(await page.locator('.recent-post').first().locator('.post-body').innerText(), /Feed pagination reply 18/);
+		const latestLink = await page.locator('.recent-post').first().getByRole('link', { name: 'Read in conversation', exact: true }).getAttribute('href');
+		assert.match(latestLink, /\?page=2#post-/);
+		if (process.env.WITMOOT_SCREENSHOT_DIR) {
+			await mkdir(process.env.WITMOOT_SCREENSHOT_DIR, { recursive: true });
+			await page.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, 'recent-desktop.png'), fullPage: true });
+		}
+		for (const width of [768, 390, 320]) {
+			await page.setViewportSize({ width, height: 844 });
+			assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Recent overflows at ${width}px`);
+		}
+		await page.setViewportSize({ width: 390, height: 844 });
+		if (process.env.WITMOOT_SCREENSHOT_DIR) await page.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, 'recent-mobile.png'), fullPage: true });
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.getByRole('link', { name: 'Next page', exact: true }).first().click();
+		await page.waitForURL(/\/recent\?page=2$/);
+		await page.getByRole('link', { name: 'Previous page', exact: true }).first().waitFor();
+		assert.equal(await page.locator('.recent-post').count(), 1);
+		await page.getByRole('link', { name: 'Previous page', exact: true }).first().click();
+		await page.waitForURL(/\/recent\?page=1$/);
+		await page.locator('.recent-post').first().getByText('Feed pagination reply 18', { exact: true }).waitFor();
+		await page.locator('.recent-post').first().getByRole('link', { name: 'Read in conversation', exact: true }).click();
+		await page.waitForURL(/\?page=2#post-/);
+		assert.match(await page.locator(':target .post-body').innerText(), /Feed pagination reply 18/);
 	}
 	await page.getByRole('link', { name: 'Search', exact: true }).click();
 	await page.getByLabel('Search conversations and messages').fill(title);

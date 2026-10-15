@@ -169,6 +169,13 @@ apply when the site is Open. Existing shared boards keep their current access.
 Witmoot's image URLs follow board access; linking a public image from imvault
 does not change the original image's visibility there.
 
+**Recent** is a feed of individual posts and replies from boards you can read,
+newest first. Read the message, see who wrote it and where it belongs, then
+choose **Read in conversation** to reach that exact message. Shared images and
+discussion links come along. Pages have twenty posts and an end; editing a
+message does not bump it to the top. Removed messages and archived boards stay
+out of Recent, and private board and conversation audiences still apply.
+
 Board settings also offer **Archive board**, **Restore board**, and **Delete
 board permanently**. Archiving moves a board off the home page and Recent into
 the **Archive**. Its conversations and images remain readable by the same
