@@ -1,7 +1,8 @@
 # Binary releases
 
 Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The latest release is [0.18.0](release-notes/0.18.0.md), with a feed of individual posts and replies. Read the release notes before the schema 20 index upgrade.
+The latest release is [0.18.1](release-notes/0.18.1.md), adding tested multi-platform container images.
+Read the [0.18.0 notes](release-notes/0.18.0.md) for the individual-post feed and schema 20 index upgrade.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
 - `witmoot_VERSION_linux_ARCH.tar.gz`: a static binary, documentation,
@@ -25,7 +26,7 @@ HTTPS connections to Imvault need your system's CA certificates.
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.18.0
+release_version=0.18.1
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"
@@ -76,8 +77,8 @@ Download the archive and checksum file for your architecture, verify them as
 above, and extract the archive:
 
 ```sh
-tar -xzf witmoot_0.18.0_linux_amd64.tar.gz
-cd witmoot_0.18.0_linux_amd64
+tar -xzf witmoot_0.18.1_linux_amd64.tar.gz
+cd witmoot_0.18.1_linux_amd64
 sudo install -m 0755 witmoot /usr/local/bin/witmoot
 sudo install -d /usr/local/share/doc/witmoot
 sudo install -m 0644 LICENSE README.md THIRD_PARTY_NOTICES.txt /usr/local/share/doc/witmoot/
@@ -160,3 +161,8 @@ an already published release.
 
 The workflow uses GitHub's repository token with write access confined to
 the publishing job; no separate release token is needed.
+
+## Published container images
+
+See [Docker installation and operations](containers.md) for multi-platform images,
+Compose setup, version pins, backups, upgrades, and restore instructions.

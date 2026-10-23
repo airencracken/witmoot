@@ -260,7 +260,7 @@ There is no imvault container dependency; point at your existing server if
 you want images.
 
 ```bash
-docker compose build
+docker compose pull
 docker compose run --rm --no-deps witmoot \
 	create-owner --username alex --password-prompt
 docker compose up -d
@@ -296,3 +296,8 @@ custom paths and verification. Existing startup remains unchanged by default.
 
 The running service also makes bounded compressed backups automatically; see
 [automatic backups](automatic-backups.md) for defaults, status and recovery.
+
+## Published container images
+
+See [Docker installation and operations](containers.md) for multi-platform images,
+Compose setup, version pins, backups, upgrades, and restore instructions.

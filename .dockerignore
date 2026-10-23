@@ -2,8 +2,16 @@
 .gitignore
 .env
 .env.*
+.private
+.agents
+.codex
+.aws
 bin
 data
+demo-data
+dist
+.release
+container-artifacts
 node_modules
 **/node_modules
 *.db
@@ -12,3 +20,5 @@ node_modules
 coverage.out
 go.work
 go.work.sum
+__pycache__
+**/__pycache__
