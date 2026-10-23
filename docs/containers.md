@@ -51,6 +51,7 @@ The following full-volume backup also preserves keys, uploaded files, and
 scheduling state. Stop the server before taking it:
 
 ```sh
+umask 077
 docker compose stop witmoot
 docker compose run --rm --no-deps -T --entrypoint tar witmoot -C /data -cf - . > witmoot-before-upgrade.tar
 ```
