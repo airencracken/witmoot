@@ -1,12 +1,12 @@
 {{define "groups"}}
-<div class="page-heading"><div><p class="eyebrow">A few familiar faces</p><h1>Manage groups</h1><p class="lede">Gather people into groups, then grant board access to the whole group.</p></div><a class="button" href="/groups/new">Create a group</a></div>
+<div class="page-heading"><div><h1>Manage groups</h1><p class="lede">Gather people into groups, then grant board access to the whole group.</p></div><a class="button" href="/groups/new">Create a group</a></div>
 {{if .Deleted}}<p class="save-notice" role="status">The group and its board grants have been deleted. Accounts and conversations are unchanged.</p>{{end}}
 {{range .Groups}}<article class="board-row"><div class="board-description"><h2><a href="/groups/{{.ID}}">{{.Name}}</a></h2><p>{{.Description}}</p><p>{{.Members}} members · {{.Boards}} boards</p></div><a class="button secondary small" href="/groups/{{.ID}}" aria-label="Manage {{.Name}}">Manage</a></article>{{else}}<p class="paper">No groups yet. Try Family, Book club, or The soup committee.</p>{{end}}
 {{end}}
 
 {{define "group-settings"}}
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/groups">Manage groups</a><span aria-hidden="true">/</span><span>{{if .Group.ID}}{{.Group.Name}}{{else}}{{.Title}}{{end}}</span></nav>
-<div class="page-heading"><div><p class="eyebrow">Your people, together</p><h1>{{.Title}}</h1><p class="lede">Membership changes apply immediately to every board using this group.</p></div></div>
+<div class="page-heading"><div><h1>{{.Title}}</h1><p class="lede">Membership changes apply immediately to every board using this group.</p></div></div>
 {{if .Saved}}<p class="save-notice" role="status">Your group settings are saved.</p>{{end}}
 {{template "error" .}}
 <form class="paper settings-form" action="{{if .Group.ID}}/groups/{{.Group.ID}}{{else}}/groups/new{{end}}" method="post" hx-disabled-elt="find button[type='submit']">

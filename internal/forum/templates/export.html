@@ -8,7 +8,6 @@
 	:root { color-scheme: light dark; }
 	body { margin: 0 auto; max-width: 46rem; padding: 2rem 1.25rem 4rem; font: 16px/1.6 system-ui, sans-serif; }
 	h1, h2, h3 { line-height: 1.25; }
-	.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; opacity: .7; }
 	.meta { color: #667; font-size: .85rem; }
 	.note { border-left: 3px solid #b9c; padding: .5rem .9rem; background: #f4f4f8; font-size: .9rem; }
 	.topic { margin-top: 2.5rem; border-top: 1px solid #dde; padding-top: 1.25rem; }
@@ -29,7 +28,7 @@
 </head>
 <body>
 <header>
-	<p class="eyebrow">Witmoot archive</p>
+	<p>Witmoot archive</p>
 	<h1>{{if eq .Manifest.Format "witmoot-community-export"}}Community archive{{else}}Your contributions{{end}}</h1>
 	{{if .Manifest.Account.HasAnimatedAvatar}}<p><a href="avatar.gif">Download animated avatar</a></p>{{end}}
  {{if .Manifest.Account.HasAvatar}}<img class="avatar" src="avatar.png" alt="Avatar" width="72" height="72">{{end}}

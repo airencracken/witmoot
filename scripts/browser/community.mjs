@@ -56,13 +56,13 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		assert.equal(await visitor.getByRole('link', { name: 'Edit rules and contact details' }).count(), 0);
 		await screenshot(visitor, 'house-rules');
 		await owner.goto(origin + '/invites');
-		await owner.getByRole('button', { name: 'Create an invitation', exact: true }).click();
+		await owner.getByRole('button', { name: 'Create invitation', exact: true }).click();
 		const invitation = await owner.getByRole('link', { name: 'Invitation link', exact: true }).getAttribute('href');
 		const member = await newPage();
 		await member.goto(invitation);
 		await member.getByLabel('Username', { exact: true }).fill(username);
 		await member.getByLabel('Password', { exact: true }).fill(password);
-		await member.getByRole('button', { name: 'Join our board', exact: true }).click();
+		await member.getByRole('button', { name: 'Create account', exact: true }).click();
 		await member.waitForURL(origin + '/');
 		await member.getByRole('link', { name: 'Your account', exact: true }).waitFor({ state: 'visible' });
 		await member.goto(origin + '/boards/1/new');

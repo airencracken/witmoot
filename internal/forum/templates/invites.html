@@ -1,0 +1,83 @@
+{{define "invites"}}
+{{template "crumb" .}}
+<section class="invitation-page">
+  <header class="invitation-header">
+    <h1>Invitations</h1>
+    <p class="muted">Create a link to invite someone to join. New accounts join as members; owner-only conversations stay with the owners.</p>
+  </header>
+  {{if eq .Mode "open"}}<p class="muted">Registration is currently <strong>open</strong>, so people can also <a href="/join">join without an invitation</a>.</p>{{end}}
+  {{template "error" .}}
+  {{if .Saved}}<p class="save-notice" role="status">Invitation revoked. It can no longer be used to join.</p>{{end}}
+  {{if .InviteLink}}
+  <section class="invitation-result" role="status" aria-labelledby="invitation-ready">
+    <h2 id="invitation-ready">Copy this invitation now</h2>
+    <p class="muted">Send the link privately to the person you're inviting. It cannot be shown again.</p>
+    <label for="invite-link">Invitation link</label>
+    <input id="invite-link" readonly data-invitation="{{.InviteLink}}" value="{{.InviteLink}}">
+    <p><a href="{{.InviteLink}}">Invitation link</a></p>
+    <label for="invite-code">Invitation code</label>
+    <input id="invite-code" type="text" readonly value="{{.InviteCode}}">
+  </section>
+  {{end}}
+  <div class="invitation-layout">
+    <section class="invitation-create" aria-labelledby="create-invitation">
+      <h2 id="create-invitation">Create an invitation</h2>
+      <form action="/invites" method="post" hx-disabled-elt="find button[type='submit']">
+        {{template "csrf" .}}
+        <div class="invitation-field">
+          <label for="invite-label">Label (optional)</label>
+          <input id="invite-label" name="label" maxlength="64" value="{{.InviteLabel}}" placeholder="e.g. for Sam">
+        </div>
+        <div class="invitation-fields">
+          <div class="invitation-field">
+            <label for="invite-uses">Uses</label>
+            <input id="invite-uses" name="max_uses" type="number" min="0" max="10000" value="{{.InviteUses}}" required aria-describedby="invite-uses-help">
+            <p id="invite-uses-help" class="muted">0 for no limit.</p>
+          </div>
+          <div class="invitation-field">
+            <label for="invite-days">Expires after (days)</label>
+            <input id="invite-days" name="expires_days" type="number" min="0" max="3650" value="{{.InviteDays}}" placeholder="Never" aria-describedby="invite-days-help">
+            <p id="invite-days-help" class="muted">Blank or 0 for no expiry.</p>
+          </div>
+        </div>
+        <button type="submit">Create invitation</button>
+      </form>
+    </section>
+    <section class="invitation-list" aria-labelledby="existing-invitations">
+      <h2 id="existing-invitations">Existing invitations</h2>
+      {{range .Invitations}}
+      <article class="invitation-record">
+        <div class="invitation-record-head">
+          <h3>{{if .Label}}{{.Label}}{{else}}Invitation #{{.ID}}{{end}}</h3>
+          <span class="invitation-status">{{.Status}}</span>
+        </div>
+        <dl class="invitation-meta">
+          <div><dt>Uses</dt><dd>{{.UsesLabel}}</dd></div>
+          <div><dt>Expires</dt><dd>{{if .ExpiresAt.Valid}}<time datetime="{{iso .ExpiresAt.Int64}}">{{$.Stamp .ExpiresAt.Int64}}</time>{{else}}Never{{end}}</dd></div>
+          <div><dt>Created by</dt><dd>{{.Creator}}</dd></div>
+          <div><dt>Code prefix</dt><dd><code>{{.Prefix}}</code></dd></div>
+          <div><dt>Accounts joined</dt><dd>{{.Invitees}}</dd></div>
+        </dl>
+        {{if eq .Status "open"}}<form action="/invites/{{.ID}}/revoke" method="post" hx-disabled-elt="find button[type='submit']"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button type="submit" class="secondary" aria-label="Revoke invitation {{if .Label}}{{.Label}}{{else}}#{{.ID}}{{end}}">Revoke invitation</button></form>{{end}}
+      </article>
+      {{else}}<p class="muted invitation-empty">No invitations yet. Create one to invite someone to join.</p>{{end}}
+      {{template "pager" .}}
+    </section>
+  </div>
+  {{if .CanManageInvites}}
+  <section class="invitation-permissions" aria-labelledby="invitation-permissions-heading">
+    <h2 id="invitation-permissions-heading">Members who can invite</h2>
+    <p class="muted">Grant invitation access to individual members. Each new account records the person who issued its invitation. Removing access also revokes their open invitations; granting it again does not restore them.</p>
+    {{range .InviteMembers}}<article class="invitation-record">
+      <h3>{{.Username}}</h3>
+      <p class="muted">{{if .InvitedByName}}Joined from an invitation by {{.InvitedByName}}{{else}}No invitation attribution recorded{{end}}</p>
+      <form action="/invites/members/{{.ID}}/permission" method="post">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <input type="hidden" name="enabled" value="{{if .CanInvite}}0{{else}}1{{end}}">
+        <button type="submit" class="secondary" aria-label="{{if .CanInvite}}Remove invite access for {{.Username}}{{else}}Allow this member to invite: {{.Username}}{{end}}">{{if .CanInvite}}Remove invite access{{else}}Allow this member to invite{{end}}</button>
+      </form>
+    </article>{{else}}<p class="muted">There are no member accounts yet.</p>{{end}}
+  </section>
+  {{end}}
+</section>
+{{end}}

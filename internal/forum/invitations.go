@@ -74,7 +74,7 @@ func (a *App) renderInvites(w http.ResponseWriter, r *http.Request, status int, 
 		a.serverError(w, r, err)
 		return
 	}
-	p.View, p.Title, p.Invitations = "invites", "Invite someone in", list
+	p.View, p.Title, p.Invitations = "invites", "Invitations", list
 	if user.Role == "owner" {
 		p.InviteMembers, err = a.store.InviteMembers(r.Context())
 		if err != nil {

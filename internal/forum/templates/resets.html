@@ -1,6 +1,6 @@
 {{define "account"}}
 <section class="paper narrow account-card">
-	<p class="eyebrow">Your place here</p><h1>Your account.</h1>
+	<h1>Your account.</h1>
 	<p class="muted">Signed in as <strong>{{.User.Username}}</strong>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="save-notice" role="status">{{.Notice}}</p>{{end}}
@@ -56,7 +56,7 @@
 
 {{define "reset"}}
 <section class="paper narrow account-card">
-	<p class="eyebrow">A fresh start</p><h1>Choose a new password.</h1>
+	<h1>Choose a new password.</h1>
 	{{if .ResetUser}}<p class="muted">For <strong>{{.ResetUser}}</strong>.</p>{{end}}
 	{{template "error" .}}
 	{{if .ResetUser}}
@@ -107,7 +107,7 @@
 {{define "avatar-library"}}
 {{template "crumb" .}}
 <section class="paper">
-	<p class="eyebrow">A face for your name</p><h1>Choose an avatar.</h1>
+	<h1>Choose an avatar.</h1>
 	<p>Pick an image from your imvault library. Witmoot copies it, crops it square, and scales it down; your original stays in imvault.</p>
 	<form class="search-form" method="get" action="/account/avatar/imvault" hx-boost="false"><label for="avatar-search">Search your library</label><div><input id="avatar-search" name="q" type="search" value="{{.Query}}" maxlength="100"><button type="submit">Find images</button></div></form>
 	{{template "error" .}}{{if .ImageError}}<p role="alert">{{.ImageError}}</p>{{end}}

@@ -1,12 +1,12 @@
 {{define "boards"}}
-<div class="page-heading"><div><p class="eyebrow">Rooms for your people</p><h1>Manage boards</h1><p class="lede">Make a shared space or keep a conversation among selected people.</p></div><a class="button" href="/boards/new">Create a board</a></div>
+<div class="page-heading"><div><h1>Manage boards</h1><p class="lede">Make a shared space or keep a conversation among selected people.</p></div><a class="button" href="/boards/new">Create a board</a></div>
 {{if .Deleted}}<p class="save-notice" role="status">The board and its conversations have been permanently deleted.</p>{{end}}
 {{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Category}} · {{if .Restricted}}Selected members{{else}}Site access rules{{end}}{{if .Archived}} · Archived{{end}}</p></div><a class="button secondary small" href="/boards/{{.ID}}/settings" aria-label="Manage {{.Name}}">Manage</a></article>{{else}}<p class="paper">No boards yet. Create a board to give your people a place to talk.</p>{{end}}
 {{end}}
 
 {{define "board-settings"}}
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><span>{{.Title}}</span></nav>
-<div class="page-heading"><div><p class="eyebrow">A place at the table</p><h1>{{.Title}}</h1><p class="lede">Choose who can see this board and who can join in.</p></div>{{if .Board.ID}}<a href="/boards/{{.Board.ID}}">View {{.Board.Name}}</a>{{end}}</div>
+<div class="page-heading"><div><h1>{{.Title}}</h1><p class="lede">Choose who can see this board and who can join in.</p></div>{{if .Board.ID}}<a href="/boards/{{.Board.ID}}">View {{.Board.Name}}</a>{{end}}</div>
 {{if .Saved}}<p class="save-notice" role="status">Your board settings are saved.</p>{{end}}
 {{if .Board.Archived}}{{template "archive-notice" .}}{{end}}
 {{template "error" .}}
@@ -35,7 +35,7 @@
 {{end}}
 
 {{define "archive"}}
-{{template "crumb" .}}<div class="page-heading"><div><p class="eyebrow">Conversations worth keeping</p><h1>Archived boards</h1><p class="lede">A quieter shelf for past conversations. The same access rules apply, and everything here is read only.</p></div></div>
+{{template "crumb" .}}<div class="page-heading"><div><h1>Archived boards</h1><p class="lede">A quieter shelf for past conversations. The same access rules apply, and everything here is read only.</p></div></div>
 {{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Description}}</p><p>{{.Topics}} conversations · {{.Posts}} messages{{if .Restricted}} · Private board{{end}}</p></div></article>{{else}}<p class="paper">No archived boards to show.</p>{{end}}
 {{end}}
 
@@ -43,7 +43,7 @@
 
 {{define "board-action"}}
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><a href="/boards/{{.Board.ID}}/settings">{{.Board.Name}}</a></nav>
-<section class="paper narrow board-confirmation"><p class="eyebrow">{{.Board.Name}}</p><h1>{{.Title}}</h1>
+<section class="paper narrow board-confirmation"><h1>{{.Title}}</h1>
 {{if eq .BoardAction "delete"}}<p>This permanently removes <strong>{{.Board.Name}}</strong>, including all {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}}, {{.BoardContents.Posts}} message{{if ne .BoardContents.Posts 1}}s{{end}}, and {{.BoardContents.Images}} attachment link{{if ne .BoardContents.Images 1}}s{{end}}. This cannot be undone.</p><p>This also deletes other members' messages. <a href="/community/export" hx-boost="false">Download a community archive first</a>, or archive the board to keep it readable.</p><p>Original images in imvault stay there. Archive the board instead if you want to keep its conversations.</p>
 {{else if eq .BoardAction "archive"}}<p>Move <strong>{{.Board.Name}}</strong> to the Archive. Its {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}} and {{.BoardContents.Posts}} message{{if ne .BoardContents.Posts 1}}s{{end}} stay readable by the same people. Posting and editing will stop for everyone, including owners.</p><p>You can restore the board whenever you like.</p>
 {{else}}<p>Bring <strong>{{.Board.Name}}</strong> back to the board list and Recent. Posting and editing will resume with the same member permissions.</p>{{end}}

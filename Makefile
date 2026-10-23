@@ -45,7 +45,7 @@ test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 test-mutations: ## Verify community and comfylib integration regressions reject deliberate defects (needs Python 3)
 	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json scripts/mutations/recent.json
 
-check: test-containers test-cli test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
+check: test-design-mutations test-containers test-cli test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...
 	go test -race -count=1 ./...
 	@test -z "$$(gofmt -l cmd internal contrib scripts)" || { echo 'Run gofmt on Go sources'; exit 1; }
@@ -119,3 +119,7 @@ test-container-lifecycle: ## Exercise a local image (build it first; needs Docke
 .PHONY: test-container-registry
 test-container-registry: ## Exercise real multi-platform publication in an isolated local registry
 	python3 scripts/containers/check_registry.py
+
+.PHONY: test-design-mutations
+test-design-mutations: ## Verify invitation design regressions reject deliberate defects
+	GOWORK=off python3 scripts/mutate.py scripts/mutations/design.json
