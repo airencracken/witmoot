@@ -1,6 +1,6 @@
 {
   "app": "witmoot",
-  "previous": "0.18.0",
+  "previous": "0.18.1",
   "port": 8082,
   "tmp_mb": 128,
   "owner_command": "create-owner"
