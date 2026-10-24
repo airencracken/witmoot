@@ -25,6 +25,7 @@ import (
 	"github.com/airencracken/comfylib/memberprofile"
 	"github.com/airencracken/comfylib/smtp"
 	"github.com/airencracken/comfylib/token"
+	"github.com/airencracken/comfylib/ui"
 
 	"witmoot/internal/imvault"
 )
@@ -195,6 +196,7 @@ func New(store *Store, config Config) (*App, error) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	mux.Handle("GET /static/comfyware/", http.StripPrefix("/static/comfyware/", http.FileServerFS(ui.Assets())))
 	mux.HandleFunc("GET /branding/{name}", a.brandingAsset)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

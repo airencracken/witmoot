@@ -1,7 +1,7 @@
 # Binary releases
 
 Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The latest release is [0.18.2](release-notes/0.18.2.md), aligning invitation and account screens across Comfyware.
+The latest release is [0.18.3](release-notes/0.18.3.md), sharing invitation styles and availability through Comfylib v0.1.7.
 Read the [0.18.0 notes](release-notes/0.18.0.md) for the individual-post feed and schema 20 index upgrade.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
@@ -26,7 +26,7 @@ HTTPS connections to Imvault need your system's CA certificates.
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.18.2
+release_version=0.18.3
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"
@@ -77,8 +77,8 @@ Download the archive and checksum file for your architecture, verify them as
 above, and extract the archive:
 
 ```sh
-tar -xzf witmoot_0.18.2_linux_amd64.tar.gz
-cd witmoot_0.18.2_linux_amd64
+tar -xzf witmoot_0.18.3_linux_amd64.tar.gz
+cd witmoot_0.18.3_linux_amd64
 sudo install -m 0755 witmoot /usr/local/bin/witmoot
 sudo install -d /usr/local/share/doc/witmoot
 sudo install -m 0644 LICENSE README.md THIRD_PARTY_NOTICES.txt /usr/local/share/doc/witmoot/

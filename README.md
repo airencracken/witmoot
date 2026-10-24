@@ -474,7 +474,7 @@ For the coordinated Comfylib CSRF update on this branch, see
 Explicit Songstead and album discussion handoffs are documented in
 [docs/discussion-references.md](docs/discussion-references.md).
 
-[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.6, including the profile image handling shared with Songstead.
+[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.7, including the profile image handling shared with Songstead.
 
 ## Member profiles
 
@@ -492,3 +492,11 @@ available and gzip otherwise. It keeps at most seven copies within a 10 GiB
 archive cap and bounds each uncompressed copy to 5 GiB. Owners can check status
 in instance settings. See [automatic backups](docs/automatic-backups.md) for
 configuration, retention, off-host copies and recovery.
+
+## Shared forms
+
+Invitation and account layouts use Comfylib's embedded `ui` styles, loaded after
+the app stylesheet so controls and responsive spacing stay aligned across the
+Comfyware apps. Comfylib also supplies invitation status calculation and shared
+browser assertions. Templates, palettes, permissions and atomic redemption remain
+in the application.

@@ -1,6 +1,6 @@
 # Run Witmoot with Docker
 
-Published images are available at `ghcr.io/airencracken/witmoot:v0.18.2` for
+Published images are available at `ghcr.io/airencracken/witmoot:v0.18.3` for
 Linux amd64 and arm64. Docker selects the matching architecture. Images contain
 the same version-stamped static binary as the native release, CA certificates,
 timezone data, and zstd for automatic backups.
@@ -34,12 +34,12 @@ Override the probe if you bind to a specific non-loopback address.
 Set `WITMOOT_IMAGE` in `.env` to choose an explicit version or digest:
 
 ```dotenv
-WITMOOT_IMAGE=ghcr.io/airencracken/witmoot:v0.18.2
+WITMOOT_IMAGE=ghcr.io/airencracken/witmoot:v0.18.3
 ```
 
 For a digest pin, use the registry's full multi-platform index digest, such as
 `ghcr.io/airencracken/witmoot@sha256:...`, obtained with
-`docker buildx imagetools inspect ghcr.io/airencracken/witmoot:v0.18.2`.
+`docker buildx imagetools inspect ghcr.io/airencracken/witmoot:v0.18.3`.
 Exact version tags are preserved. We publish no moving `latest`, major, or minor
 aliases, so pulling an image never opts you into a later database migration.
 
@@ -90,7 +90,7 @@ the original volume. Treat backup files as trusted private inputs.
 A source checkout supports an explicit developer build:
 
 ```sh
-VERSION=0.18.2 docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
+VERSION=0.18.3 docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
 ```
 
 The override builds `witmoot:local`; it does not fetch the published app image.
@@ -127,6 +127,6 @@ Local checks:
 
 ```sh
 make test-containers
-docker build --build-arg VERSION=0.18.2 -t witmoot:local .
-make test-container-lifecycle VERSION=0.18.2
+docker build --build-arg VERSION=0.18.3 -t witmoot:local .
+make test-container-lifecycle VERSION=0.18.3
 ```

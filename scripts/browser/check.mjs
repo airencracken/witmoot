@@ -17,7 +17,7 @@ import { checkProfiles } from './profiles.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const binary = resolve(root, 'bin/witmoot');
-const data = await mkdtemp(join(tmpdir(), 'witmoot-browser-'));
+const data = await mkdtemp(join(tmpdir(), 'witmoot-browser-long-directory-'.padEnd(120, 'x')));
 const socket = createServer();
 await new Promise((done, reject) => { socket.once('error', reject); socket.listen(0, '127.0.0.1', done); });
 const port = socket.address().port;
@@ -66,7 +66,7 @@ async function flow(javaScriptEnabled) {
 	await page.getByRole('button', { name: 'Sign in' }).click();
 	await page.waitForURL(origin + '/');
 	assert.match(await page.locator('h1').innerText(), /Good to see you, alex/);
-	if (javaScriptEnabled) await checkInvitations(browser, origin, await context.storageState(), { app: 'witmoot', screenshots: process.env.WITMOOT_SCREENSHOT_DIR });
+	if (javaScriptEnabled) await checkInvitations(browser, origin, await context.storageState(), { app: 'witmoot', revokePath: '/invites?saved=1', screenshots: process.env.WITMOOT_SCREENSHOT_DIR });
 	await page.getByRole('link', { name: 'The kitchen table', exact: true }).click();
 	await page.getByRole('link', { name: 'Start a conversation', exact: true }).click();
 	const title = javaScriptEnabled ? 'Sunday lunch together' : 'An afternoon in the garden';

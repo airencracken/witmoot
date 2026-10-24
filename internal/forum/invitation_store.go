@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/airencracken/comfylib/invitation"
 )
 
 type InvitationOptions struct {
@@ -32,16 +34,12 @@ type InviteMember struct {
 }
 
 func (i Invitation) Status() string {
-	switch {
-	case i.RevokedAt.Valid:
-		return "revoked"
-	case i.ExpiresAt.Valid && i.ExpiresAt.Int64 <= time.Now().Unix():
-		return "expired"
-	case i.MaxUses > 0 && i.Uses >= i.MaxUses:
-		return "used up"
-	default:
-		return "open"
+	var expiry *time.Time
+	if i.ExpiresAt.Valid {
+		value := time.Unix(i.ExpiresAt.Int64, 0)
+		expiry = &value
 	}
+	return string((invitation.State{Revoked: i.RevokedAt.Valid, ExpiresAt: expiry, Uses: i.Uses, MaxUses: i.MaxUses}).Status(time.Now()))
 }
 
 func (i Invitation) UsesLabel() string {

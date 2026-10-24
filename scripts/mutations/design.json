@@ -22,5 +22,21 @@
     "after": "<p class=\"eyebrow\">Invite people</p><h2 id=\"create-invitation\">",
     "package": "./internal/forum",
     "run": "^TestPageHeadingsAvoidDecorativeEyebrows$"
+  },
+  {
+    "name": "shared account stylesheet route",
+    "file": "internal/forum/web.go",
+    "before": "\"GET /static/comfyware/\"",
+    "after": "\"GET /static/missing-comfyware/\"",
+    "package": "./internal/forum",
+    "run": "^TestSharedAccountAssets$"
+  },
+  {
+    "name": "shared stylesheet cascade order",
+    "file": "internal/forum/templates/layout.html",
+    "before": "<link rel=\"stylesheet\" href=\"/static/comfyware/accounts.css\">",
+    "after": "",
+    "package": "./internal/forum",
+    "run": "^TestSharedAccountAssets$"
   }
 ]
