@@ -13,6 +13,7 @@ import { checkCommunity } from './community.mjs';
 import { checkTimezones } from './timezones.mjs';
 import { checkAvatars } from './avatars.mjs';
 import { checkProfiles } from './profiles.mjs';
+import { checkReplies } from './replies.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -187,6 +188,7 @@ async function flow(javaScriptEnabled) {
 		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Mobile page overflows');
 		if (screenshotDir) await page.screenshot({ path: join(screenshotDir, 'board-mobile.png'), fullPage: true });
 	}
+	await checkReplies(page, javaScriptEnabled);
 	await page.getByRole('button', { name: 'Sign out' }).click();
 	await page.waitForURL(origin + '/');
 	await page.getByRole('heading', { name: /Good company/ }).waitFor();

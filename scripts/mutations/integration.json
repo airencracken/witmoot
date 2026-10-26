@@ -238,5 +238,29 @@
         "after": "if false && rows.Next() {",
         "package": "./internal/forum",
         "run": "^TestAutomaticBackupRejectsInvalidForeignKeys$"
+    },
+    {
+        "name": "reply same-document refresh",
+        "file": "internal/forum/web.go",
+        "before": "w.Header().Set(\"HX-Refresh\", \"true\")",
+        "after": "w.Header().Set(\"HX-Refresh\", \"false\")",
+        "package": "./internal/forum",
+        "run": "^(TestHTMXRedirectRefreshesFragmentDestinations|TestRepliesRefreshSavedPostAcrossPages)$"
+    },
+    {
+        "name": "reply navigation to another page",
+        "file": "internal/forum/web.go",
+        "before": "current.RequestURI() == target.RequestURI()",
+        "after": "current.RequestURI() != target.RequestURI()",
+        "package": "./internal/forum",
+        "run": "^TestHTMXRedirectRefreshesFragmentDestinations$"
+    },
+    {
+        "name": "reply duplicate submission guard",
+        "file": "internal/forum/templates/conversations.html",
+        "before": "hx-sync=\"this:drop\"",
+        "after": "hx-sync=\"this:queue\"",
+        "package": "./internal/forum",
+        "run": "^TestRepliesRefreshSavedPostAcrossPages$"
     }
 ]

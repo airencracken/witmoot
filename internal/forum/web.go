@@ -16,6 +16,7 @@ import (
 	"mime"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -428,6 +429,14 @@ func (a *App) private(next http.HandlerFunc) http.HandlerFunc { return a.signedI
 func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 	if r.Header.Get("HX-Request") == "true" {
 		w.Header().Set("HX-Redirect", path)
+		// Fragment navigation does not fetch the saved content. Reload only when
+		// staying on this document; reloading a different one can cancel navigation.
+		currentURL := r.Header.Get("HX-Current-URL")
+		current, currentErr := url.Parse(currentURL)
+		target, targetErr := url.Parse(path)
+		if currentURL != "" && currentErr == nil && targetErr == nil && current.RequestURI() == target.RequestURI() {
+			w.Header().Set("HX-Refresh", "true")
+		}
 		w.WriteHeader(http.StatusOK)
 		return
 	}
