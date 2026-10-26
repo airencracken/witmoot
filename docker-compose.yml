@@ -1,6 +1,6 @@
 services:
   witmoot:
-    image: ${WITMOOT_IMAGE:-ghcr.io/airencracken/witmoot:v0.18.3}
+    image: ${WITMOOT_IMAGE:-ghcr.io/airencracken/witmoot:v0.18.4}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WITMOOT_PORT:-8082}:8080"
