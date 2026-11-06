@@ -122,8 +122,8 @@
     {
         "name": "admin settings in re-run commands",
         "file": "cmd/witmoot/provisioning.go",
-        "before": "\t\tif command != \"reset-link\" && command != \"admin\" {",
-        "after": "\t\tif command != \"reset-link\" {",
+        "before": "\t\tif command != \"reset-link\" && command != \"admin\" && command != \"setup\" {",
+        "after": "\t\tif command != \"reset-link\" && command != \"setup\" {",
         "package": "./cmd/witmoot",
         "run": "^TestProvisioningChildSettingsFollowTheServiceConfiguration$"
     },

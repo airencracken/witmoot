@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/airencracken/comfylib/password"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ Commands:
   version        Print the running build version (also --version).
   sandbox        Start the server confined by Bubblewrap (Linux).
   serve          Start the HTTP server (also the default with no arguments).
+  setup          Show the private key for browser setup.
   create-owner   Provision a new owner using a hidden prompt or stdin.
   set-password   Replace an account's password and end its sessions.
   reset-link     Make a single-use link an account can use to choose a password.
@@ -87,6 +89,8 @@ func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 		return printVersion(nil, stdout)
 	case "serve":
 		return serve(args[1:], stdout)
+	case "setup":
+		return setupCommand(args[1:], stdout, servicePaths())
 	case "create-owner":
 		return createOwner(args[1:], stdin, stdout)
 	case "set-password":
@@ -152,19 +156,19 @@ func createOwner(args []string, stdin io.Reader, stdout io.Writer) error {
 
 func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths svcconfig.Paths) error {
 	flags := commandFlags("create-owner", stdout)
+	data := flags.String("data-dir", "", "private data directory (defaults to the installed service)")
 	username := flags.String("username", "", "owner username (required)")
-	passwordPrompt := flags.Bool("password-prompt", false, "prompt twice without echoing (requires a terminal)")
-	passwordStdin := flags.Bool("password-stdin", false, "read the password from standard input")
+	source := password.Flags(flags)
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err
 	}
-	if flags.NArg() != 0 || *username == "" || *passwordPrompt == *passwordStdin {
-		return errors.New("usage: witmoot create-owner --username NAME (--password-prompt | --password-stdin)")
+	if flags.NArg() != 0 || *username == "" {
+		return errors.New("usage: witmoot create-owner --username NAME [--password-prompt | --password-stdin | --password-file PATH] [--data-dir DIRECTORY]")
 	}
-	value, err := readProvisionedPassword(*passwordPrompt, stdin)
+	value, err := source.Read(stdin, stdout)
 	if err != nil {
 		return err
 	}
@@ -175,7 +179,7 @@ func createOwnerWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer
 	if err != nil {
 		return err
 	}
-	dataDir, err := paths.DataDir("WITMOOT_DATA_DIR")
+	dataDir, err := accountDataDirectory(paths, *data)
 	if err != nil {
 		return err
 	}

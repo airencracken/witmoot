@@ -112,12 +112,21 @@ func runServer() error {
 	if err != nil {
 		return err
 	}
-	server := newHTTPServer(env("WITMOOT_ADDR", "127.0.0.1:8080"), app)
+	wizard, err := firstSetup(store, dataDir, config.BaseURL, env("WITMOOT_ADDR", "127.0.0.1:8080"))
+	if err != nil {
+		return err
+	}
+	server := newHTTPServer(env("WITMOOT_ADDR", "127.0.0.1:8080"), wizard.Wrap(app))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	backupCtx, cancelBackups := context.WithCancel(ctx)
 	backupsDone := make(chan struct{})
-	go func() { defer close(backupsDone); backups.Run(backupCtx) }()
+	go func() {
+		defer close(backupsDone)
+		if wizard.Wait(backupCtx) == nil {
+			backups.Run(backupCtx)
+		}
+	}()
 	defer func() { cancelBackups(); <-backupsDone }()
 	warnUntrustedProxy(server.Addr, config.TrustedProxies)
 	done := make(chan error, 1)

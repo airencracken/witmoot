@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/airencracken/comfylib/password"
 	"io"
 	"log/slog"
 	"os"
@@ -26,6 +27,7 @@ import (
 
 // commandSummary describes each command for its --help output.
 var commandSummary = map[string]string{
+	"setup":        "Show the private first-owner setup key and browser address.",
 	"version":      "Print this binary's build version without opening a database.",
 	"migrate":      "Back up and migrate an existing database. Stop the server first. Account commands never migrate.",
 	"sandbox":      "Start the server confined by Bubblewrap. Run as the service user.\nThe data directory must already exist; see docs/sandbox.md.",
@@ -49,7 +51,11 @@ var instanceSettings = []string{
 // refuses to create one, so a mistyped command cannot leave an empty board
 // behind; start or provision the board first.
 func openProvisioningStore(paths svcconfig.Paths) (*forum.Store, error) {
-	dataDir, err := paths.DataDir("WITMOOT_DATA_DIR")
+	return openProvisioningStoreIn(paths, "")
+}
+
+func openProvisioningStoreIn(paths svcconfig.Paths, selected string) (*forum.Store, error) {
+	dataDir, err := accountDataDirectory(paths, selected)
 	if err != nil {
 		return nil, err
 	}
@@ -76,26 +82,26 @@ func setPassword(args []string, stdin io.Reader, stdout io.Writer) error {
 
 func setPasswordWithConfigPaths(args []string, stdin io.Reader, stdout io.Writer, paths svcconfig.Paths) error {
 	flags := commandFlags("set-password", stdout)
+	data := flags.String("data-dir", "", "private data directory (defaults to the installed service)")
 	username := flags.String("username", "", "account username (required)")
-	passwordPrompt := flags.Bool("password-prompt", false, "prompt twice without echoing (requires a terminal)")
-	passwordStdin := flags.Bool("password-stdin", false, "read the new password from standard input")
+	source := password.Flags(flags)
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err
 	}
-	if flags.NArg() != 0 || strings.TrimSpace(*username) == "" || *passwordPrompt == *passwordStdin {
-		return errors.New("usage: witmoot set-password --username NAME (--password-prompt | --password-stdin)")
+	if flags.NArg() != 0 || strings.TrimSpace(*username) == "" {
+		return errors.New("usage: witmoot set-password --username NAME [--password-prompt | --password-stdin | --password-file PATH] [--data-dir DIRECTORY]")
 	}
-	password, err := readProvisionedPassword(*passwordPrompt, stdin)
+	password, err := source.Read(stdin, stdout)
 	if err != nil {
 		return err
 	}
 	if message := forum.ValidatePassword(password); message != "" {
 		return errors.New(message)
 	}
-	store, err := openProvisioningStore(paths)
+	store, err := openProvisioningStoreIn(paths, *data)
 	if err != nil {
 		return err
 	}

@@ -171,7 +171,7 @@ func TestAccountCommandInputValidation(t *testing.T) {
 		{"unknown account", []string{"set-password", "--username", "nobody", "--password-stdin"}, "a long enough password", "no account named"},
 		{"short password", []string{"set-password", "--username", "alex", "--password-stdin"}, "short", "at least 12 characters"},
 		{"missing username", []string{"set-password", "--password-stdin"}, "a long enough password", "usage:"},
-		{"both password sources", []string{"set-password", "--username", "alex", "--password-prompt", "--password-stdin"}, "x", "usage:"},
+		{"both password sources", []string{"set-password", "--username", "alex", "--password-prompt", "--password-stdin"}, "x", "choose only one"},
 		{"unknown account link", []string{"reset-link", "--username", "nobody"}, "", "no account named"},
 		{"bad expiry", []string{"reset-link", "--username", "alex", "--expires", "0s"}, "", "--expires"},
 		{"extra argument", []string{"list-users", "extra"}, "", "usage:"},

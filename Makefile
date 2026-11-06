@@ -43,7 +43,7 @@ test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 	go test -tags=proxyintegration -count=1 -timeout=60s ./contrib/proxy
 
 test-mutations: ## Verify community and comfylib integration regressions reject deliberate defects (needs Python 3)
-	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json scripts/mutations/recent.json
+	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json scripts/mutations/recent.json scripts/mutations/setup.json
 
 check: test-design-mutations test-containers test-cli test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...
@@ -107,7 +107,8 @@ test-sandbox-mutations: ## Verify sandbox regressions reject deliberate defects 
 
 .PHONY: test-cli
 test-cli: build ## Check hidden password prompts through an actual terminal
-	python3 scripts/check_password_cli.py --binary bin/witmoot --command create-owner --data-env WITMOOT_DATA_DIR --prompt "Owner password: " --confirmation "Confirm owner password: "
+	python3 "$$(go list -m -f '{{.Dir}}' github.com/airencracken/comfylib)/tools/check_password_cli.py" --binary bin/witmoot --command create-owner --data-env WITMOOT_DATA_DIR --prompt "Password: " --confirmation "Confirm password: "
+	python3 "$$(go list -m -f '{{.Dir}}' github.com/airencracken/comfylib)/tools/check_setup.py" --binary bin/witmoot --app witmoot
 
 .PHONY: test-containers test-container-lifecycle
 test-containers: ## Check container release, schema, mutation and publication contracts

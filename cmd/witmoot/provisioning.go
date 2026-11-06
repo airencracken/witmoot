@@ -10,6 +10,7 @@ import (
 // provisioningCommands are the local commands that touch the database and so
 // should run as the service user when invoked with root.
 var provisioningCommands = map[string]bool{
+	"setup":        true,
 	"create-owner": true,
 	"set-password": true,
 	"reset-link":   true,
@@ -46,9 +47,13 @@ func provisioningRequest(args []string, paths svcconfig.Paths) privdrop.Request 
 // read from the root-only configuration.
 func provisioningChildSettings(paths svcconfig.Paths) func(command, dataDir string) (map[string]string, error) {
 	return func(command, _ string) (map[string]string, error) {
-		if command != "reset-link" && command != "admin" {
+		if command != "reset-link" && command != "admin" && command != "setup" {
 			return nil, nil
 		}
-		return paths.Settings(instanceSettings...)
+		keys := instanceSettings
+		if command == "setup" {
+			keys = append(append([]string{}, keys...), "WITMOOT_ADDR")
+		}
+		return paths.Settings(keys...)
 	}
 }
