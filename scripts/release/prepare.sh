@@ -9,10 +9,7 @@ sed -e "s|/usr/local/bin/$app|/usr/bin/$app|g" \
 	"contrib/systemd/$app.service" > "$out/$app.service" || exit 1
 # The packaged defaults already bind only to loopback. Existing conffiles
 # remain dpkg-managed.
-{
-	printf '%s\n' '# Debian package defaults.'
-	cat "contrib/systemd/$app.env" || exit 1
-} > "$out/$app.env" || exit 1
+cp "contrib/systemd/$app.env" "$out/$app.env" || exit 1
 
 # Include notices from the modules actually linked on either supported platform.
 : > "$out/modules.unsorted" || exit 1

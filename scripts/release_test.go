@@ -32,7 +32,7 @@ func TestReleasePreparationWritesEachDefaultOnce(t *testing.T) {
 			t.Errorf("packaged environment sets %s %d times", name, count)
 		}
 	}
-	if settings["WITMOOT_ADDR"] != 1 || !strings.Contains(string(env), "WITMOOT_ADDR=127.0.0.1:8082\n") {
+	if settings["WITMOOT_ADDR"] != 1 || !strings.Contains(string(env), "WITMOOT_ADDR=\"127.0.0.1:8082\"\n") {
 		t.Fatalf("packaged environment does not bind to loopback once: %s", env)
 	}
 	unit, err := os.ReadFile(filepath.Join(out, "witmoot.service"))

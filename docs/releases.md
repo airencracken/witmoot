@@ -5,7 +5,7 @@ For first-run accounts, use [browser or command-line setup](setup.md). Run
 for a hidden terminal prompt.
 
 Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The latest release is [0.19.0](release-notes/0.19.0.md), fixing thread refresh after replies and dropping repeated submissions while a reply is pending.
+The latest release is [0.19.1](release-notes/0.19.1.md), standardizing service configuration and checking packaged defaults.
 Read the [0.18.0 notes](release-notes/0.18.0.md) for the individual-post feed and schema 20 index upgrade.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
@@ -30,7 +30,7 @@ HTTPS connections to Imvault need your system's CA certificates.
 Select the version and architecture you want. For example:
 
 ```sh
-release_version=0.19.0
+release_version=0.19.1
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"
@@ -81,8 +81,8 @@ Download the archive and checksum file for your architecture, verify them as
 above, and extract the archive:
 
 ```sh
-tar -xzf witmoot_0.19.0_linux_amd64.tar.gz
-cd witmoot_0.19.0_linux_amd64
+tar -xzf witmoot_0.19.1_linux_amd64.tar.gz
+cd witmoot_0.19.1_linux_amd64
 sudo install -m 0755 witmoot /usr/local/bin/witmoot
 sudo install -d /usr/local/share/doc/witmoot
 sudo install -m 0644 LICENSE README.md THIRD_PARTY_NOTICES.txt /usr/local/share/doc/witmoot/

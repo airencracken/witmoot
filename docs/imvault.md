@@ -23,12 +23,12 @@ Use separate data directories, service accounts, and loopback ports. For a
 native installation with imvault on `127.0.0.1:8080`, Witmoot can use:
 
 ```sh
-WITMOOT_ADDR=127.0.0.1:8082
-WITMOOT_BASE_URL=https://board.example.org
-WITMOOT_DATA_DIR=/var/lib/witmoot
-WITMOOT_SECURE_COOKIES=true
-WITMOOT_TRUSTED_PROXIES=127.0.0.1/32,::1/128
-WITMOOT_IMVAULT_URL=https://photos.example.org
+WITMOOT_ADDR="127.0.0.1:8082"
+WITMOOT_BASE_URL="https://board.example.org"
+WITMOOT_DATA_DIR="/var/lib/witmoot"
+WITMOOT_SECURE_COOKIES="true"
+WITMOOT_TRUSTED_PROXIES="127.0.0.1/32,::1/128"
+WITMOOT_IMVAULT_URL="https://photos.example.org"
 ```
 
 Set these in the environment of the Witmoot service and restart it. Add a

@@ -15,7 +15,7 @@ to hide an error.
 Add this to `/etc/conf.d/witmoot`, then restart the service:
 
 ```sh
-WITMOOT_SANDBOX=true
+WITMOOT_SANDBOX="true"
 ```
 
 The service continues to use its existing user, data directory and log file.

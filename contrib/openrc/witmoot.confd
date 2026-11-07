@@ -1,3 +1,7 @@
+# OpenRC configuration: /etc/conf.d/witmoot
+# Use KEY="value" for every setting; no export statements are needed.
+# systemd uses /etc/witmoot/witmoot.env instead.
+
 # /etc/conf.d/witmoot -- shell syntax; restart Witmoot after editing.
 # Native services use 8082 to leave imvault's usual 8080 available.
 WITMOOT_ADDR="127.0.0.1:8082"
@@ -22,7 +26,7 @@ WITMOOT_NAME="Witmoot"
 # SSL_CERT_FILE="/etc/witmoot/ca-bundle.pem"
 
 # Optional Linux confinement; see docs/sandbox.md.
-# WITMOOT_SANDBOX=true
+# WITMOOT_SANDBOX="true"
 
 # Built-in compressed backups: daily, seven copies, 10 GiB archive cap,
 # 5 GiB maximum uncompressed snapshot. Set interval to 0 to disable.
