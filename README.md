@@ -48,9 +48,12 @@ visitors; it is off by default.
 
 Run a published image with Docker Compose: [container installation, upgrades, and backups](docs/containers.md).
 
+Use a current Go security patch when building: Go 1.26.11 or later on the
+1.26 series, or Go 1.27.4 or later on the 1.27 series.
+
 ## Come on in
 
-Want to look around first? With Go 1.26 or later installed:
+Want to look around first? With Go 1.26.11 or later installed:
 
 ```sh
 make demo
@@ -95,7 +98,7 @@ Use `nginx` or `apache` in place of `caddy` for those servers. The
 [proxy guide](docs/reverse-proxies.md#generate-a-site-configuration) covers
 custom ports, certificates, and installation.
 
-Requires Go 1.26 or later. Dependencies are pinned in `go.mod`; HTMX 2.0.10 and
+Requires Go 1.26.11 or later. Dependencies are pinned in `go.mod`; HTMX 2.0.10 and
 its license are included locally. The first build downloads Go dependencies.
 
 ```bash

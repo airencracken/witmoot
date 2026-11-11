@@ -84,12 +84,16 @@ func TestGoVersionIsConsistent(t *testing.T) {
 	}
 	module := read("../go.mod")
 	want := find("go.mod", module, `(?m)^go (1\.\d+)\.\d+$`)
+	if strings.Contains(module, "\ntoolchain ") {
+		if got := find("go.mod", module, `(?m)^toolchain go(1\.\d+)\.\d+$`); got != want {
+			t.Errorf("toolchain uses Go %s, but go.mod requires Go %s", got, want)
+		}
+	}
 	for name, got := range map[string]string{
-		"go.mod toolchain": find("go.mod", module, `(?m)^toolchain go(1\.\d+)\.\d+$`),
 		"Dockerfile":       find("Dockerfile", read("../Dockerfile"), `(?m)^FROM golang:(1\.\d+)(?:\.\d+)?-alpine\b`),
 		"release workflow": find("release.yml", read("../.github/workflows/release.yml"), `go-version: "(1\.\d+)\.x"`),
-		"README":           find("README.md", read("../README.md"), `Requires Go (1\.\d+) or later`),
-		"deployment guide": find("docs/deployment.md", read("../docs/deployment.md"), `Go (1\.\d+) or later`),
+		"README":           find("README.md", read("../README.md"), `Requires Go (1\.\d+)(?:\.\d+)? or later`),
+		"deployment guide": find("docs/deployment.md", read("../docs/deployment.md"), `Go (1\.\d+)(?:\.\d+)? or later`),
 	} {
 		if got != want {
 			t.Errorf("%s uses Go %s, but go.mod requires Go %s", name, got, want)

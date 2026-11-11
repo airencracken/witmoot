@@ -12,7 +12,7 @@ still defaults to `127.0.0.1:8080` and `./data`.
 ## Source install on Gentoo / OpenRC
 
 From the source checkout, create the service account first, then install as
-root. You need Go 1.26 or later, Make, and the normal install tools; the first
+root. You need Go 1.26.11 or later, Make, and the normal install tools; the first
 build downloads the pinned Go dependencies. Install `app-admin/logrotate` and
 `app-misc/ca-certificates` through Portage too.
 
