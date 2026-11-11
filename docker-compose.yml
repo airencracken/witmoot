@@ -1,6 +1,6 @@
 services:
   witmoot:
-    image: ${WITMOOT_IMAGE:-ghcr.io/airencracken/witmoot:v0.20.0}
+    image: ${WITMOOT_IMAGE:-ghcr.io/airencracken/witmoot:v0.20.1}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WITMOOT_PORT:-8082}:8080"
@@ -16,6 +16,10 @@ services:
       - no-new-privileges:true
     stop_grace_period: 20s
     environment:
+      WITMOOT_APPS: "${WITMOOT_APPS:-}"
+      WITMOOT_SHARED_ISSUER: "${WITMOOT_SHARED_ISSUER:-}"
+      WITMOOT_SHARED_CLIENT_ID: "${WITMOOT_SHARED_CLIENT_ID:-}"
+      WITMOOT_SHARED_CLIENT_SECRET: "${WITMOOT_SHARED_CLIENT_SECRET:-}"
       WITMOOT_NAME: "${WITMOOT_NAME:-Witmoot}"
       WITMOOT_BASE_URL: "${WITMOOT_BASE_URL:-http://localhost:${WITMOOT_PORT:-8082}}"
       WITMOOT_SECURE_COOKIES: "${WITMOOT_SECURE_COOKIES:-false}"

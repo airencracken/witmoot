@@ -1,4 +1,5 @@
 #!/sbin/openrc-run
+export WITMOOT_APPS WITMOOT_SHARED_ISSUER WITMOOT_SHARED_CLIENT_ID WITMOOT_SHARED_CLIENT_SECRET
 # openrc-run reads the service variables below, and its shells provide local.
 # shellcheck shell=sh disable=SC2034,SC3043
 
