@@ -1,3 +1,4 @@
+import { act } from '../browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
@@ -10,27 +11,27 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 	const staleDelete = await owner.context().newPage();
 	await staleDelete.goto(boardURL + '/delete');
 	await owner.goto(settingsURL);
-	await owner.getByRole('link', { name: 'Archive board', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Archive board', exact: true }), 'click');
 	await owner.getByRole('heading', { name: 'Archive board', exact: true }).waitFor();
-	await owner.getByRole('link', { name: 'Cancel', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Cancel', exact: true }), 'click');
 	await owner.waitForURL(settingsURL);
 	assert.equal(await owner.locator('.archive-notice').count(), 0);
-	await owner.getByRole('link', { name: 'Archive board', exact: true }).click();
-	await owner.getByRole('button', { name: 'Archive board', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Archive board', exact: true }), 'click');
+	await act(owner.getByRole('button', { name: 'Archive board', exact: true }), 'click');
 	await owner.waitForURL(settingsURL);
 	await owner.locator('.archive-notice').waitFor();
-	await staleDelete.getByLabel('Type the board name to confirm', { exact: true }).fill(name);
-	await staleDelete.getByRole('button', { name: 'Delete board permanently', exact: true }).click();
+	await act(staleDelete.getByLabel('Type the board name to confirm', { exact: true }), 'fill', name);
+	await act(staleDelete.getByRole('button', { name: 'Delete board permanently', exact: true }), 'click');
 	await staleDelete.getByRole('alert').waitFor();
 	assert.match(await staleDelete.getByRole('alert').innerText(), /reload the confirmation page/);
-	await draft.getByLabel('Your message', { exact: true }).fill('An edit submitted after archiving');
-	await draft.getByRole('button', { name: 'Save changes', exact: true }).click();
+	await act(draft.getByLabel('Your message', { exact: true }), 'fill', 'An edit submitted after archiving');
+	await act(draft.getByRole('button', { name: 'Save changes', exact: true }), 'click');
 	await draft.getByRole('alert').waitFor();
 	assert.match(await draft.getByRole('alert').innerText(), /board is archived/);
 
 	await reader.goto(origin + '/');
 	assert.equal(await reader.getByRole('link', { name, exact: true }).count(), 0);
-	await reader.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Archive', exact: true }).click();
+	await act(reader.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Archive', exact: true }), 'click');
 	await reader.getByRole('link', { name, exact: true }).waitFor();
 	await reader.goto(origin + '/recent');
 	assert.equal(await reader.getByRole('link', { name: 'A surprise for our friends', exact: true }).count(), 0);
@@ -49,8 +50,8 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 		assert.equal(await allowed.getByRole('link', { name: /^Edit message/ }).count(), 0);
 	}
 	await owner.goto(settingsURL);
-	await owner.getByRole('link', { name: 'Restore board', exact: true }).click();
-	await owner.getByRole('button', { name: 'Restore board', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Restore board', exact: true }), 'click');
+	await act(owner.getByRole('button', { name: 'Restore board', exact: true }), 'click');
 	await owner.waitForURL(settingsURL);
 	assert.equal(await owner.locator('.archive-notice').count(), 0);
 	await owner.goto(topicURL);
@@ -60,21 +61,21 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 	assert.equal(await reader.getByRole('button', { name: 'Post reply', exact: true }).count(), 0);
 
 	await owner.goto(settingsURL);
-	await owner.getByRole('link', { name: 'Delete board permanently', exact: true }).click();
-	await owner.getByLabel('Type the board name to confirm', { exact: true }).fill('Wrong name');
-	await owner.getByRole('button', { name: 'Delete board permanently', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Delete board permanently', exact: true }), 'click');
+	await act(owner.getByLabel('Type the board name to confirm', { exact: true }), 'fill', 'Wrong name');
+	await act(owner.getByRole('button', { name: 'Delete board permanently', exact: true }), 'click');
 	await owner.getByRole('alert').waitFor();
 	assert.match(await owner.getByRole('alert').innerText(), /type the board name exactly/);
 	assert.match(await owner.locator('.board-confirmation').innerText(), /1 conversation, 2 messages, and 0 attachment links/);
 	if (javaScriptEnabled) assert.equal(await owner.getByRole('alert').evaluate(el => el === document.activeElement), true);
 	assert.equal(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Board deletion form overflows');
 	if (process.env.WITMOOT_SCREENSHOT_DIR) await owner.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, `board-delete-${javaScriptEnabled ? 'dark' : 'nojs'}.png`), fullPage: true });
-	await owner.getByRole('link', { name: 'Cancel', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Cancel', exact: true }), 'click');
 	await owner.waitForURL(settingsURL);
 	assert.equal((await reader.goto(topicURL)).status(), 200);
-	await owner.getByRole('link', { name: 'Delete board permanently', exact: true }).click();
-	await owner.getByLabel('Type the board name to confirm', { exact: true }).fill(name);
-	await owner.getByRole('button', { name: 'Delete board permanently', exact: true }).click();
+	await act(owner.getByRole('link', { name: 'Delete board permanently', exact: true }), 'click');
+	await act(owner.getByLabel('Type the board name to confirm', { exact: true }), 'fill', name);
+	await act(owner.getByRole('button', { name: 'Delete board permanently', exact: true }), 'click');
 	await owner.waitForURL(origin + '/boards/manage?deleted=1');
 	assert.match(await owner.getByRole('status').innerText(), /permanently deleted/);
 	assert.equal(await owner.getByRole('link', { name, exact: true }).count(), 0);

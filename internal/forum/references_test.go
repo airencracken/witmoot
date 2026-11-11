@@ -7,6 +7,7 @@ import (
 	"github.com/airencracken/comfylib/reference"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"witmoot/internal/imvault"
@@ -144,3 +145,31 @@ func TestAlbumPreviewFollowsCurrentRemotePermissions(t *testing.T) {
 type previewTransport func(*http.Request) (*http.Response, error)
 
 func (f previewTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestDiscussionReturnAfterExplicitPostAndConfiguredSource(t *testing.T) {
+	t.Setenv("WITMOOT_APPS", `[{"id":"songstead","url":"https://music.example"}]`)
+	a, c := newTestApp(t, false)
+	signInTest(t, a, c, true)
+	a.config.BaseURL = "https://board.example"
+	source := "https://music.example/recommendations/8"
+	callback := source + "/discussion-return?state=" + strings.Repeat("a", 64)
+	query := url.Values{"source": {source}, "title": {"An album"}, "body": {"A listening link"}, "return_to": {callback}, "board": {"1"}}
+	w := c.request("GET", "/share?"+query.Encode(), nil, nil)
+	requireStatus(t, w, 200)
+	if !strings.Contains(w.Body.String(), `name="return_to"`) || !strings.Contains(w.Body.String(), "Who can read this") {
+		t.Fatal("return draft lost confirmation", w.Body.String())
+	}
+	w = c.post("/boards/1/new", url.Values{"title": {"An album"}, "body": {"A listening link"}, "audience": {"members"}, "return_to": {callback}})
+	requireStatus(t, w, 200)
+	if !strings.Contains(w.Body.String(), "Your discussion is posted") || !strings.Contains(w.Body.String(), "thread=https%3A%2F%2Fboard.example%2Ftopics%2F") {
+		t.Fatal("missing reviewed return", w.Body.String())
+	}
+	query.Set("return_to", "https://evil.example/discussion-return?state="+strings.Repeat("a", 64))
+	w = c.request("GET", "/share?"+query.Encode(), nil, nil)
+	requireStatus(t, w, 400)
+	// Forging a posted hidden field never produces an external redirect.
+	w = c.post("/boards/1/new", url.Values{"title": {"Another album"}, "body": {"Words"}, "audience": {"members"}, "return_to": {"https://evil.example/discussion-return"}})
+	if w.Code != 303 || strings.HasPrefix(w.Header().Get("Location"), "https:") {
+		t.Fatal("external return accepted", w.Code, w.Header())
+	}
+}

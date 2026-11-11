@@ -1,10 +1,11 @@
+import { act } from '../browser-controls.mjs';
 import assert from 'node:assert/strict';
 
 export async function checkReplies(page, javaScriptEnabled) {
 	await page.goto(new URL('/boards/1/new', page.url()).href);
-	await page.getByLabel('Give it a title').fill(`Reply refresh ${javaScriptEnabled ? 'with HTMX' : 'without JavaScript'}`);
-	await page.getByLabel('Your message').fill('Starting a conversation for reply regression coverage.');
-	await page.getByRole('button', { name: 'Start conversation', exact: true }).click();
+	await act(page.getByLabel('Give it a title'), 'fill', `Reply refresh ${javaScriptEnabled ? 'with HTMX' : 'without JavaScript'}`);
+	await act(page.getByLabel('Your message'), 'fill', 'Starting a conversation for reply regression coverage.');
+	await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 	await page.waitForURL(/\/topics\/\d+$/);
 	const topicURL = page.url();
 	const replyURL = `${topicURL}/replies`;
@@ -13,8 +14,8 @@ export async function checkReplies(page, javaScriptEnabled) {
 		if (request.method() === 'POST' && request.url() === replyURL) submissions++;
 	});
 	async function reply(body, count) {
-		await page.getByLabel('Your reply').fill(body);
-		await page.getByRole('button', { name: 'Post reply', exact: true }).click();
+		await act(page.getByLabel('Your reply'), 'fill', body);
+		await act(page.getByRole('button', { name: 'Post reply', exact: true }), 'click');
 		await page.locator(':target .post-body').filter({ hasText: body }).waitFor();
 		assert.equal(await page.locator('.post').count(), count);
 		assert.equal(await page.getByLabel('Your reply').inputValue(), '', 'Successful reply clears the draft');
@@ -36,9 +37,9 @@ export async function checkReplies(page, javaScriptEnabled) {
 			await heldResponse;
 			await route.fulfill({ response });
 		});
-		await page.getByLabel('Your reply').fill('One submission while the response is pending.');
+		await act(page.getByLabel('Your reply'), 'fill', 'One submission while the response is pending.');
 		const before = submissions;
-		await page.getByRole('button', { name: 'Post reply', exact: true }).click();
+		await act(page.getByRole('button', { name: 'Post reply', exact: true }), 'click');
 		await ready;
 		try {
 			assert.equal(await page.getByRole('button', { name: 'Post reply', exact: true }).isDisabled(), true);

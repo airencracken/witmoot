@@ -1,5 +1,5 @@
 {{define "layout"}}<!doctype html>
-<html lang="en">
+<html lang="en" data-comfy-app="witmoot">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,40 +13,32 @@
 	<script src="/static/htmx.min.js" defer></script>
 	<script src="/static/timezone-picker.js" defer></script>
 	<script src="/static/app.js" defer></script>
-</head>
+<link rel="stylesheet" href="/static/comfy-components.css"><script src="/static/comfy-suite.js"></script></head>
 <body hx-boost="true" hx-history="false">
 	<a class="skip-link" href="#main">Skip to content</a>
 	<header class="site-header">
 		<div class="header-inner">
 			<a class="brand" href="/" aria-label="{{.Name}} home"><span class="brand-mark" aria-hidden="true">w</span><span>{{.Name}}<small>a place for your people</small></span></a>
-			<nav aria-label="Main navigation">
+			<nav aria-label="Main navigation">{{with suiteApps}}<details class="comfy-menu comfy-apps"><summary>Apps</summary><div class="comfy-menu-panel"><p class="comfy-menu-label">Your Comfyware apps</p>{{range .}}<a href="{{.URL}}" hx-boost="false" rel="noreferrer">{{.Name}}</a>{{end}}</div></details>{{end}}
 				{{if .CanRead}}
 				<a href="/" {{if eq .View "home"}}aria-current="page"{{end}}>Our board</a>
 				<a href="/recent" {{if eq .View "recent"}}aria-current="page"{{end}}>Recent</a>
 				<a href="/archive" {{if eq .View "archive"}}aria-current="page"{{end}}>Archive</a>
 				<a href="/search" {{if eq .View "search"}}aria-current="page"{{end}}>Search</a>
 				{{end}}
-				{{if .User}}
-				{{if eq .User.Role "owner"}}
-				<details class="owner-menu"><summary>Manage</summary><div class="owner-links">
-				<a href="/boards/manage">Manage boards</a>
-				<a href="/groups" {{if or (eq .View "groups") (eq .View "group-settings") (eq .View "group-delete")}}aria-current="page"{{end}}>Manage groups</a>
-				<a href="/members" {{if eq .View "members"}}aria-current="page"{{end}}>Members</a>
-				<a href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}}>Settings</a>
-				</div></details>
-				{{end}}
-				{{if and (ne .Mode "personal") (or (eq .User.Role "owner") .User.CanInvite)}}<a href="/invites" {{if eq .View "invites"}}aria-current="page"{{end}}>Invites</a>{{end}}
-				{{if .ImagesEnabled}}<a href="/account/imvault">Images</a>{{end}}
-				<a href="/account" class="signed-in" aria-label="Your account" {{if eq .View "account"}}aria-current="page"{{end}}>{{.User.Username}}</a>
-				<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form>
-				{{else}}{{if eq .Mode "open"}}<a href="/join">Join our board</a>{{end}}<a href="/login" class="button small">Sign in</a>{{end}}
-				<label class="theme-picker" hidden>Theme
+{{if .User}}<details class="comfy-menu comfy-account"><summary>Account</summary><div class="comfy-menu-panel">{{if sharedSignIn}}<a href="/auth/shared/manage" hx-boost="false">Community sign-in</a>{{end}}<p class="comfy-menu-label">Signed in as {{.User.Username}}</p><a href="/account" {{if eq .View "account"}}aria-current="page"{{end}}>Your account</a>{{if eq .User.Role "owner"}}<a href="/boards/manage">Manage boards</a><a href="/groups">Manage groups</a><a href="/members">Members</a><a href="/settings">Settings</a>{{end}}{{if and (ne .Mode "personal") (or (eq .User.Role "owner") .User.CanInvite)}}<a href="/invites">Invites</a>{{end}}{{if .ImagesEnabled}}<a href="/account/imvault">Images</a>{{end}}				<label class="theme-picker" hidden>Theme
 					<select data-theme-select aria-label="Color theme">
 						<option value="system">System</option>
 						<option value="light">Light</option>
 						<option value="dark">Dark</option>
 					</select>
-				</label>
+				</label><hr><form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="text-button" type="submit">Sign out</button></form></div></details>{{else}}{{if eq .Mode "open"}}<a href="/join">Join our board</a>{{end}}<a href="/login" class="button small">Sign in</a>				<label class="theme-picker" hidden>Theme
+					<select data-theme-select aria-label="Color theme">
+						<option value="system">System</option>
+						<option value="light">Light</option>
+						<option value="dark">Dark</option>
+					</select>
+				</label>{{end}}
 			</nav>
 		</div>
 	</header>
@@ -57,6 +49,7 @@
 		{{else if eq .View "recent"}}{{template "recent" .}}
 		{{else if eq .View "search"}}{{template "listing" .}}
 		{{else if eq .View "topic"}}{{template "topic" .}}
+		{{else if eq .View "discussion-done"}}{{template "discussion-done" .}}
 		{{else if eq .View "share"}}{{template "share" .}}
  {{else if eq .View "album-preview"}}{{template "album-preview" .}}
  {{else if eq .View "compose"}}{{template "compose" .}}

@@ -1,3 +1,4 @@
+import { act } from '../browser-controls.mjs';
 import assert from 'node:assert/strict';
 
 export async function checkTimezones(browser, origin, password, javaScriptEnabled) {
@@ -9,9 +10,9 @@ export async function checkTimezones(browser, origin, password, javaScriptEnable
   const page = await context.newPage();
   page.on('pageerror', error => problems.push(error.message));
   await page.goto(origin + '/login');
-  await page.getByLabel('Username', { exact: true }).fill('alex');
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await act(page.getByLabel('Username', { exact: true }), 'fill', 'alex');
+  await act(page.getByLabel('Password', { exact: true }), 'fill', password);
+  await act(page.getByRole('button', { name: 'Sign in', exact: true }), 'click');
   await page.waitForURL(origin + '/');
   return page;
  }
@@ -26,8 +27,8 @@ export async function checkTimezones(browser, origin, password, javaScriptEnable
    await page.reload();
    assert.equal(await page.getByLabel('Display timezone', { exact: true }).inputValue(), 'UTC', 'device button does not save');
   } else { assert.equal(await device.isVisible(), false); }
-  await page.getByLabel('Display timezone', { exact: true }).fill('Asia/Kolkata');
-  await page.getByRole('button', { name: 'Save timezone', exact: true }).click();
+  await act(page.getByLabel('Display timezone', { exact: true }), 'fill', 'Asia/Kolkata');
+  await act(page.getByRole('button', { name: 'Save timezone', exact: true }), 'click');
   await page.waitForURL(origin + '/account?saved=timezone');
   const other = await open('Pacific/Honolulu');
   await other.goto(origin + '/account');
@@ -43,14 +44,14 @@ export async function checkTimezones(browser, origin, password, javaScriptEnable
   await page.goto(other.url());
   assert.equal(await page.locator('.post-content header time').first().innerText(), await stamp.innerText());
   await page.goto(origin + '/account');
-  await page.getByLabel('Display timezone', { exact: true }).fill('../UTC');
-  await page.getByRole('button', { name: 'Save timezone', exact: true }).click();
+  await act(page.getByLabel('Display timezone', { exact: true }), 'fill', '../UTC');
+  await act(page.getByRole('button', { name: 'Save timezone', exact: true }), 'click');
   await page.getByRole('alert').waitFor();
   assert.match(await page.getByRole('alert').innerText(), /Choose a timezone/);
   await page.goto(origin + '/account');
   assert.equal(await page.getByLabel('Display timezone', { exact: true }).inputValue(), 'Asia/Kolkata');
-  await page.getByLabel('Display timezone', { exact: true }).fill('UTC');
-  await page.getByRole('button', { name: 'Save timezone', exact: true }).click();
+  await act(page.getByLabel('Display timezone', { exact: true }), 'fill', 'UTC');
+  await act(page.getByRole('button', { name: 'Save timezone', exact: true }), 'click');
   await page.waitForURL(origin + '/account?saved=timezone');
   assert.deepEqual(problems, []);
   console.log(`PASS: ${javaScriptEnabled ? 'HTMX' : 'JavaScript disabled'} saved display timezone across devices`);

@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+	"witmoot/internal/suite"
 
 	"github.com/airencracken/comfylib/memberprofile"
 	"github.com/airencracken/comfylib/smtp"
@@ -78,6 +79,7 @@ type Page struct {
 	Biography                                                   memberprofile.Profile
 	ProfileMember                                               MemberProfile
 	SharedSource, AlbumTitle                                    string
+	DiscussionReturn                                            string
 	AlbumCount                                                  int
 	Version, FooterVersion                                      string
 	ShowVersion                                                 bool
@@ -136,6 +138,10 @@ type Page struct {
 }
 
 func New(store *Store, config Config) (*App, error) {
+	suiteFuncs, suiteErr := suite.TemplateFuncs("WITMOOT_")
+	if suiteErr != nil {
+		return nil, suiteErr
+	}
 	if config.Version == "" {
 		config.Version = "devel"
 	}
@@ -156,7 +162,7 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.HasPrefix(baseURL, "https://") {
 		config.SecureCookies = true
 	}
-	tmpl, err := template.New("forum").Funcs(template.FuncMap{"linkNumber": func(i int) int { return i + 1 },
+	tmpl, err := template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"linkNumber": func(i int) int { return i + 1 },
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -282,6 +288,9 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /imvault/library", a.private(a.library))
 	mux.HandleFunc("GET /imvault/library/{id}/image", a.private(a.libraryImage))
 	mux.HandleFunc("GET /images/{id}", a.readable(a.image))
+	if err = a.registerSharedSignIn(mux); err != nil {
+		return nil, err
+	}
 	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(mux))
 	return a, nil
 }
@@ -445,6 +454,14 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
 	p.Version = a.config.Version
+	// Rendering a refused upload must never parse or drain its multipart body.
+	p.DiscussionReturn = r.PostForm.Get("return_to")
+	if r.Method == http.MethodGet {
+		p.DiscussionReturn = r.URL.Query().Get("return_to")
+	}
+	if len(p.DiscussionReturn) > 4096 {
+		p.DiscussionReturn = ""
+	}
 	brand, err := a.store.LoadBranding(r.Context(), SiteBranding{
 		Name: a.config.Name, SourceURL: a.config.SourceURL,
 		WelcomeTitle: "Good company. Conversations worth keeping.",
@@ -766,6 +783,9 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 		a.storeError(w, r, err)
 		return
 	}
+	if a.completeDiscussion(w, r, fmt.Sprintf("/topics/%d", id)) {
+		return
+	}
 	a.redirect(w, r, fmt.Sprintf("/topics/%d", id))
 }
 
@@ -802,6 +822,9 @@ func (a *App) reply(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.storeError(w, r, err)
+		return
+	}
+	if a.completeDiscussion(w, r, fmt.Sprintf("/topics/%d", topic.ID)) {
 		return
 	}
 	a.redirect(w, r, fmt.Sprintf("/topics/%d?page=%d#post-%d", topic.ID, (count-1)/pageSize+1, id))

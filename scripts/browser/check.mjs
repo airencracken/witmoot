@@ -1,3 +1,4 @@
+import { act, checkSuiteControls } from '../browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
@@ -24,7 +25,7 @@ await new Promise((done, reject) => { socket.once('error', reject); socket.liste
 const port = socket.address().port;
 await new Promise(done => socket.close(done));
 const origin = `http://127.0.0.1:${port}`;
-const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_BASE_URL: origin, WITMOOT_TRUSTED_PROXIES: '', WITMOOT_SECURE_COOKIES: 'false', WITMOOT_IMVAULT_URL: '' };
+const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_BASE_URL: origin, WITMOOT_TRUSTED_PROXIES: '', WITMOOT_SECURE_COOKIES: 'false', WITMOOT_IMVAULT_URL: '', WITMOOT_APPS: '[{"id":"songstead","url":"https://suite.example.org"}]' };
 let server;
 let browser;
 const password = 'a friendly browser test password';
@@ -61,28 +62,29 @@ async function flow(javaScriptEnabled) {
 	page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|Refused to/.test(message.text())) problems.push(message.text()); });
 	await page.goto(origin);
 	assert.match(await page.locator('h1').innerText(), /Good company/);
-	await page.getByRole('link', { name: 'Sign in', exact: false }).first().click();
-	await page.getByLabel('Username', { exact: true }).fill('alex');
-	await page.getByLabel('Password', { exact: true }).fill(password);
-	await page.getByRole('button', { name: 'Sign in' }).click();
+	await act(page.getByRole('link', { name: 'Sign in', exact: false }).first(), 'click');
+	await act(page.getByLabel('Username', { exact: true }), 'fill', 'alex');
+	await act(page.getByLabel('Password', { exact: true }), 'fill', password);
+	await act(page.getByRole('button', { name: 'Sign in' }), 'click');
 	await page.waitForURL(origin + '/');
+	await checkSuiteControls(page, { apps: true, javascript: javaScriptEnabled });
 	assert.match(await page.locator('h1').innerText(), /Good to see you, alex/);
 	if (javaScriptEnabled) await checkInvitations(browser, origin, await context.storageState(), { app: 'witmoot', revokePath: '/invites?saved=1', screenshots: process.env.WITMOOT_SCREENSHOT_DIR });
-	await page.getByRole('link', { name: 'The kitchen table', exact: true }).click();
-	await page.getByRole('link', { name: 'Start a conversation', exact: true }).click();
+	await act(page.getByRole('link', { name: 'The kitchen table', exact: true }), 'click');
+	await act(page.getByRole('link', { name: 'Start a conversation', exact: true }), 'click');
 	const title = javaScriptEnabled ? 'Sunday lunch together' : 'An afternoon in the garden';
-	await page.getByLabel('Give it a title').fill(title);
-	await page.getByLabel('Your message').fill('Shall we get together this weekend?\nI can bring soup.');
-	await page.getByRole('button', { name: 'Start conversation', exact: true }).click();
+	await act(page.getByLabel('Give it a title'), 'fill', title);
+	await act(page.getByLabel('Your message'), 'fill', 'Shall we get together this weekend?\nI can bring soup.');
+	await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 	await page.waitForURL(/\/topics\/\d+$/);
 	const topicURL = page.url();
 	assert.equal(await page.locator('h1').innerText(), title);
-	await page.getByLabel('Your reply').fill('That sounds lovely. I will bring bread.');
-	await page.getByRole('button', { name: 'Post reply' }).click();
+	await act(page.getByLabel('Your reply'), 'fill', 'That sounds lovely. I will bring bread.');
+	await act(page.getByRole('button', { name: 'Post reply' }), 'click');
 	await page.waitForURL(/#post-/);
 	assert.equal(await page.locator('.post').count(), 2);
 	assert.match(await page.locator('.post-body').last().innerText(), /bring bread/);
-	await page.getByRole('link', { name: 'Recent', exact: true }).click();
+	await act(page.getByRole('link', { name: 'Recent', exact: true }), 'click');
 	await page.getByRole('heading', { name: 'Recent posts', exact: true }).waitFor();
 	const feedPosts = page.locator('.recent-post').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
 	await feedPosts.first().waitFor();
@@ -95,8 +97,8 @@ async function flow(javaScriptEnabled) {
 	assert.match(await page.locator(':target .post-body').innerText(), /bring bread/);
 	if (javaScriptEnabled) {
 		// Trigger server-side validation and verify HTMX displays the error and keeps the form usable.
-		await page.getByLabel('Your reply').fill('   ');
-		await page.getByRole('button', { name: 'Post reply' }).click();
+		await act(page.getByLabel('Your reply'), 'fill', '   ');
+		await act(page.getByRole('button', { name: 'Post reply' }), 'click');
 		await page.getByRole('alert').waitFor();
 		assert.match(await page.getByRole('alert').innerText(), /Write a reply/);
 		assert.equal(await page.getByRole('alert').evaluate(el => el === document.activeElement), true);
@@ -107,7 +109,7 @@ async function flow(javaScriptEnabled) {
 			const reply = await page.request.post(`${topicURL}/replies`, { form: { csrf, body: `Feed pagination reply ${i}` } });
 			assert.equal(reply.status(), 200, 'Seed reply through the normal authenticated posting route');
 		}
-		await page.getByRole('link', { name: 'Recent', exact: true }).click();
+		await act(page.getByRole('link', { name: 'Recent', exact: true }), 'click');
 		await page.locator('.recent-post').first().waitFor();
 		assert.equal(await page.locator('.recent-post').count(), 20);
 		assert.match(await page.locator('.recent-post').first().locator('.post-body').innerText(), /Feed pagination reply 18/);
@@ -124,27 +126,27 @@ async function flow(javaScriptEnabled) {
 		await page.setViewportSize({ width: 390, height: 844 });
 		if (process.env.WITMOOT_SCREENSHOT_DIR) await page.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, 'recent-mobile.png'), fullPage: true });
 		await page.setViewportSize({ width: 1280, height: 900 });
-		await page.getByRole('link', { name: 'Next page', exact: true }).first().click();
+		await act(page.getByRole('link', { name: 'Next page', exact: true }).first(), 'click');
 		await page.waitForURL(/\/recent\?page=2$/);
 		await page.getByRole('link', { name: 'Previous page', exact: true }).first().waitFor();
 		assert.equal(await page.locator('.recent-post').count(), 1);
-		await page.getByRole('link', { name: 'Previous page', exact: true }).first().click();
+		await act(page.getByRole('link', { name: 'Previous page', exact: true }).first(), 'click');
 		await page.waitForURL(/\/recent\?page=1$/);
 		await page.locator('.recent-post').first().getByText('Feed pagination reply 18', { exact: true }).waitFor();
-		await page.locator('.recent-post').first().getByRole('link', { name: 'Read in conversation', exact: true }).click();
+		await act(page.locator('.recent-post').first().getByRole('link', { name: 'Read in conversation', exact: true }), 'click');
 		await page.waitForURL(/\?page=2#post-/);
 		assert.match(await page.locator(':target .post-body').innerText(), /Feed pagination reply 18/);
 	}
-	await page.getByRole('link', { name: 'Search', exact: true }).click();
-	await page.getByLabel('Search conversations and messages').fill(title);
-	await page.getByRole('button', { name: 'Search', exact: true }).click();
+	await act(page.getByRole('link', { name: 'Search', exact: true }), 'click');
+	await act(page.getByLabel('Search conversations and messages'), 'fill', title);
+	await act(page.getByRole('button', { name: 'Search', exact: true }), 'click');
 	await page.getByRole('link', { name: title, exact: true }).waitFor();
-	await page.getByRole('link', { name: 'Invites', exact: true }).click();
+	await act(page.getByRole('link', { name: 'Invites', exact: true }), 'click');
 	const inviteLabel = javaScriptEnabled ? 'Sunday guests' : 'Garden guests';
-	await page.getByLabel('Label (optional)', { exact: true }).fill(inviteLabel);
-	await page.getByLabel('Uses', { exact: true }).fill('2');
-	await page.getByLabel('Expires after (days)', { exact: true }).fill('14');
-	await page.getByRole('button', { name: 'Create invitation' }).click();
+	await act(page.getByLabel('Label (optional)', { exact: true }), 'fill', inviteLabel);
+	await act(page.getByLabel('Uses', { exact: true }), 'fill', '2');
+	await act(page.getByLabel('Expires after (days)', { exact: true }), 'fill', '14');
+	await act(page.getByRole('button', { name: 'Create invitation' }), 'click');
 	const invite = await page.getByRole('link', { name: 'Invitation link', exact: true }).getAttribute('href');
 	assert.equal(new URL(invite).origin, origin);
 	assert.match(new URL(invite).search, /^\?invite=[a-f0-9]{64}$/);
@@ -152,44 +154,44 @@ async function flow(javaScriptEnabled) {
 	const guest = await browser.newContext({ javaScriptEnabled });
 	const guestPage = await guest.newPage();
 	await guestPage.goto(invite);
-	await guestPage.getByLabel('Username', { exact: true }).fill(javaScriptEnabled ? 'jules' : 'sam');
-	await guestPage.getByLabel('Password', { exact: true }).fill(password);
-	await guestPage.getByRole('button', { name: 'Create account' }).click();
+	await act(guestPage.getByLabel('Username', { exact: true }), 'fill', javaScriptEnabled ? 'jules' : 'sam');
+	await act(guestPage.getByLabel('Password', { exact: true }), 'fill', password);
+	await act(guestPage.getByRole('button', { name: 'Create account' }), 'click');
 	await guestPage.waitForURL(origin + '/');
 	assert.equal(await guestPage.getByRole('link', { name: 'Invites', exact: true }).count(), 0);
 	await guest.close();
 	await page.goto(origin + '/invites');
 	const invitation = page.locator('.invitation-record').filter({ has: page.getByRole('heading', { name: inviteLabel, exact: true }) });
 	assert.match(await invitation.innerText(), /1 of 2 used/);
-	await invitation.getByRole('button', { name: `Revoke invitation ${inviteLabel}`, exact: true }).click();
+	await act(invitation.getByRole('button', { name: `Revoke invitation ${inviteLabel}`, exact: true }), 'click');
 	await page.waitForURL(origin + '/invites?saved=1');
 	assert.match(await invitation.innerText(), /revoked/i);
 	const lateGuest = await browser.newContext({ javaScriptEnabled });
 	const latePage = await lateGuest.newPage();
 	await latePage.goto(invite);
-	await latePage.getByLabel('Username', { exact: true }).fill(javaScriptEnabled ? 'latejules' : 'latesam');
-	await latePage.getByLabel('Password', { exact: true }).fill(password);
-	await latePage.getByRole('button', { name: 'Create account' }).click();
+	await act(latePage.getByLabel('Username', { exact: true }), 'fill', javaScriptEnabled ? 'latejules' : 'latesam');
+	await act(latePage.getByLabel('Password', { exact: true }), 'fill', password);
+	await act(latePage.getByRole('button', { name: 'Create account' }), 'click');
 	await latePage.getByRole('alert').waitFor();
 	assert.match(await latePage.getByRole('alert').innerText(), /revoked/);
 	await lateGuest.close();
-	await page.getByRole('link', { name: 'Our board', exact: true }).first().click();
+	await act(page.getByRole('link', { name: 'Our board', exact: true }).first(), 'click');
 	await page.getByRole('heading', { name: 'Good to see you, alex.', exact: true }).waitFor();
 	if (javaScriptEnabled) {
 		const screenshotDir = process.env.WITMOOT_SCREENSHOT_DIR;
 		if (screenshotDir) {
 			await mkdir(screenshotDir, { recursive: true });
 			await page.screenshot({ path: join(screenshotDir, 'board-desktop.png'), fullPage: true });
-			await page.getByRole('combobox', { name: 'Color theme' }).selectOption('light');
+			await act(page.getByRole('combobox', { name: 'Color theme' }), 'selectOption', 'light');
 			await page.screenshot({ path: join(screenshotDir, 'board-light.png'), fullPage: true });
-			await page.getByRole('combobox', { name: 'Color theme' }).selectOption('dark');
+			await act(page.getByRole('combobox', { name: 'Color theme' }), 'selectOption', 'dark');
 		}
 		await page.setViewportSize({ width: 390, height: 844 });
 		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'Mobile page overflows');
 		if (screenshotDir) await page.screenshot({ path: join(screenshotDir, 'board-mobile.png'), fullPage: true });
 	}
 	await checkReplies(page, javaScriptEnabled);
-	await page.getByRole('button', { name: 'Sign out' }).click();
+	await act(page.getByRole('button', { name: 'Sign out' }), 'click');
 	await page.waitForURL(origin + '/');
 	await page.getByRole('heading', { name: /Good company/ }).waitFor();
 	await page.goto(topicURL);
@@ -205,9 +207,9 @@ async function modeFlow(javaScriptEnabled) {
 	page.on('pageerror', error => problems.push(error.message));
 	page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|Refused to/.test(message.text())) problems.push(message.text()); });
 	await page.goto(origin + '/login');
-	await page.getByLabel('Username', { exact: true }).fill('alex');
-	await page.getByLabel('Password', { exact: true }).fill(password);
-	await page.getByRole('button', { name: 'Sign in' }).click();
+	await act(page.getByLabel('Username', { exact: true }), 'fill', 'alex');
+	await act(page.getByLabel('Password', { exact: true }), 'fill', password);
+	await act(page.getByRole('button', { name: 'Sign in' }), 'click');
 	await page.waitForURL(origin + '/');
 	const guestContext = await browser.newContext({ javaScriptEnabled });
 	const guest = await guestContext.newPage();
@@ -217,7 +219,7 @@ async function modeFlow(javaScriptEnabled) {
 	assert.equal(await page.getByLabel('Show version in the footer').isChecked(), false);
 	for (const visible of [true, false]) {
 		await page.getByLabel('Show version in the footer').setChecked(visible);
-		await page.getByRole('button', { name: 'Save settings' }).click();
+		await act(page.getByRole('button', { name: 'Save settings' }), 'click');
 		await page.waitForURL(origin + '/settings?saved=1');
 		await page.waitForFunction(({ product, visible }) => document.querySelector('footer')?.textContent.includes(product) === visible, { product, visible });
 		assert.equal(await page.getByLabel('Show version in the footer').isChecked(), visible);
@@ -229,7 +231,7 @@ async function modeFlow(javaScriptEnabled) {
 	async function choose(mode) {
 		await page.goto(origin + '/settings');
 		await page.getByRole('radio', { name: new RegExp(`^${mode}`) }).check();
-		await page.getByRole('button', { name: 'Save settings' }).click();
+		await act(page.getByRole('button', { name: 'Save settings' }), 'click');
 		await page.waitForURL(origin + '/settings?saved=1');
 		assert.equal(await page.getByRole('radio', { name: new RegExp(`^${mode}`) }).isChecked(), true);
 		assert.match(await page.getByRole('status').innerText(), /settings are saved/);
@@ -241,9 +243,9 @@ async function modeFlow(javaScriptEnabled) {
 	await page.goto(origin + '/boards/1/new');
 	assert.match(await page.locator('.audience-note').innerText(), /Public/);
 	const title = javaScriptEnabled ? 'An open picnic' : 'A public garden day';
-	await page.getByLabel('Give it a title').fill(title);
-	await page.getByLabel('Your message').fill('Come along and bring a friend.');
-	await page.getByRole('button', { name: 'Start conversation', exact: true }).click();
+	await act(page.getByLabel('Give it a title'), 'fill', title);
+	await act(page.getByLabel('Your message'), 'fill', 'Come along and bring a friend.');
+	await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 	await page.waitForURL(/\/topics\/\d+$/);
 	const publicURL = page.url();
 	await guest.goto(publicURL);
@@ -252,14 +254,14 @@ async function modeFlow(javaScriptEnabled) {
 	await guest.goto(origin + '/search?q=' + encodeURIComponent(title));
 	await guest.getByRole('link', { name: title, exact: true }).waitFor();
 	await guest.goto(origin + '/join');
-	await guest.getByLabel('Username', { exact: true }).fill(javaScriptEnabled ? 'robin' : 'taylor');
-	await guest.getByLabel('Password', { exact: true }).fill(password);
-	await guest.getByRole('button', { name: 'Create account' }).click();
+	await act(guest.getByLabel('Username', { exact: true }), 'fill', javaScriptEnabled ? 'robin' : 'taylor');
+	await act(guest.getByLabel('Password', { exact: true }), 'fill', password);
+	await act(guest.getByRole('button', { name: 'Create account' }), 'click');
 	await guest.waitForURL(origin + '/');
 	assert.equal(await guest.getByRole('link', { name: 'Settings', exact: true }).count(), 0);
 	await guest.goto(publicURL);
-	await guest.getByLabel('Your reply').fill('Count me in.');
-	await guest.getByRole('button', { name: 'Post reply' }).click();
+	await act(guest.getByLabel('Your reply'), 'fill', 'Count me in.');
+	await act(guest.getByRole('button', { name: 'Post reply' }), 'click');
 	await guest.waitForURL(/#post-/);
 	assert.match(await guest.locator('.post-body').last().innerText(), /Count me in/);
 	await choose('Personal');
@@ -279,7 +281,7 @@ async function modeFlow(javaScriptEnabled) {
 	await choose('Private');
 	await guest.goto(publicURL);
 	assert.equal(await guest.locator('h1').innerText(), title); // Existing account access is restored.
-	await guest.getByRole('button', { name: 'Sign out' }).click();
+	await act(guest.getByRole('button', { name: 'Sign out' }), 'click');
 	await guest.waitForURL(origin + '/');
 	await guest.getByRole('heading', { name: /Good company/ }).waitFor();
 	await guest.goto(publicURL);

@@ -5,8 +5,10 @@ import (
 	"github.com/airencracken/comfylib/reference"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"witmoot/internal/suite"
 )
 
 type Reference struct{ URL, Label, Preview string }
@@ -15,6 +17,10 @@ func (a *App) discussionHandoff(w http.ResponseWriter, r *http.Request) {
 	d, err := reference.Read(r.URL.Query())
 	if err != nil {
 		a.fail(w, r, 400, "That discussion draft is not valid.")
+		return
+	}
+	if _, err = suite.DiscussionReturn(r.URL.Query().Get("return_to"), d.Source, os.Getenv("WITMOOT_APPS")); err != nil {
+		a.fail(w, r, 400, "Your host must configure this source app before discussion links can return there.")
 		return
 	}
 	body := strings.TrimSpace(d.Body) + "\n\n" + d.Source
@@ -136,4 +142,14 @@ func (a *App) albumPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	a.render(w, r, 200, Page{View: "album-preview", Title: "Album preview", AlbumTitle: album.Title, AlbumCount: album.ImageCount, SharedSource: raw})
+}
+
+func (a *App) completeDiscussion(w http.ResponseWriter, r *http.Request, path string) bool {
+	destination, err := suite.ConfiguredDiscussionReturn(r.PostForm.Get("return_to"), os.Getenv("WITMOOT_APPS"))
+	if err != nil || destination == "" || a.config.BaseURL == "" {
+		return false
+	}
+	link := suite.DiscussionResult(destination, strings.TrimRight(a.config.BaseURL, "/")+path)
+	a.render(w, r, 200, Page{View: "discussion-done", Title: "Discussion posted", SharedSource: link})
+	return true
 }

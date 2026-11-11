@@ -1,4 +1,4 @@
-{{define "login"}}
+{{define "login"}}{{if sharedSignIn}}<p class="community-signin"><a class="button" href="/auth/shared/start" hx-boost="false">Sign in with your community account</a></p>{{end}}
 <section class="paper narrow account-card account-page">
 	<h1>Sign in</h1>
 	<p class="muted">{{if eq .Mode "personal"}}Sign in with an owner account to open your personal board.{{else}}Sign in to see what your people have been up to.{{end}}</p>

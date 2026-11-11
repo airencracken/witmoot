@@ -1,3 +1,4 @@
+import { act } from '../browser-controls.mjs';
 import assert from 'node:assert/strict';
 
 export async function checkThemes(browser, origin) {
@@ -20,7 +21,7 @@ export async function checkThemes(browser, origin) {
 
 		// Navigation replaces the body through HTMX, including the theme selector.
 		await page.evaluate(() => { window.themeNavigationMarker = true; });
-		await page.getByRole('link', { name: 'Sign in', exact: false }).first().click();
+		await act(page.getByRole('link', { name: 'Sign in', exact: false }).first(), 'click');
 		await page.waitForURL(origin + '/login');
 		await picker.waitFor({ state: 'visible' });
 		assert.equal(await page.evaluate(() => window.themeNavigationMarker), true);
@@ -33,7 +34,7 @@ export async function checkThemes(browser, origin) {
 
 		const other = await context.newPage();
 		await other.goto(origin);
-		await other.getByRole('combobox', { name: 'Color theme' }).selectOption('dark');
+		await act(other.getByRole('combobox', { name: 'Color theme' }), 'selectOption', 'dark');
 		await page.waitForFunction(() => document.querySelector('[data-theme-select]').value === 'dark');
 		assert.equal(await background(), 'rgb(23, 31, 26)');
 		await picker.selectOption('system');

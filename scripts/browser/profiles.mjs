@@ -1,3 +1,4 @@
+import { act } from '../browser-controls.mjs';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import assert from 'node:assert/strict';
 
@@ -8,22 +9,22 @@ export async function checkProfiles(browser, origin, password, javaScriptEnabled
  page.on('pageerror',e=>problems.push(e.message));
  try {
   await page.goto(origin+'/login');
-  await page.getByLabel('Username',{exact:true}).fill('alex');
-  await page.getByLabel('Password',{exact:true}).fill(password);
-  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await act(page.getByLabel('Username',{exact:true}), 'fill', 'alex');
+  await act(page.getByLabel('Password',{exact:true}), 'fill', password);
+  await act(page.getByRole('button',{name:'Sign in',exact:true}), 'click');
   await page.waitForURL(origin+'/');
-  await page.getByRole('link',{name:'Your account',exact:true}).click();
-  await page.getByRole('link',{name:'Edit your profile',exact:true}).click();
+  await act(page.getByRole('link',{name:'Your account',exact:true}), 'click');
+  await act(page.getByRole('link',{name:'Edit your profile',exact:true}), 'click');
   await page.waitForURL(origin+'/account/profile');
-  await page.getByLabel('Name (optional)',{exact:true}).fill('A demo name');
-  await page.getByLabel('Bio (optional)',{exact:true}).fill('A short bio.\nBooks and rainy walks.');
-  await page.locator('input[name="profile_link_label"]').first().fill('My site');
-  await page.locator('input[name="profile_link_url"]').first().fill('https://example.org/');
-  await page.getByRole('button',{name:'Save profile',exact:true}).click();
+  await act(page.getByLabel('Name (optional)',{exact:true}), 'fill', 'A demo name');
+  await act(page.getByLabel('Bio (optional)',{exact:true}), 'fill', 'A short bio.\nBooks and rainy walks.');
+  await act(page.locator('input[name="profile_link_label"]').first(), 'fill', 'My site');
+  await act(page.locator('input[name="profile_link_url"]').first(), 'fill', 'https://example.org/');
+  await act(page.getByRole('button',{name:'Save profile',exact:true}), 'click');
   await page.getByRole('status').filter({hasText:'Your profile has been saved.'}).waitFor();
   assert.equal(await page.getByLabel('Name (optional)',{exact:true}).inputValue(),'A demo name');
   const profile=await page.getByRole('link',{name:'View your profile',exact:true}).getAttribute('href');
-  await page.getByRole('link',{name:'View your profile',exact:true}).click();
+  await act(page.getByRole('link',{name:'View your profile',exact:true}), 'click');
   await page.waitForURL(origin+profile);
   assert.equal(await page.getByRole('heading',{name:'alex',exact:true}).count(),1);
   assert.ok((await page.locator('main').innerText()).includes('Books and rainy walks.'));
@@ -39,11 +40,11 @@ export async function checkProfiles(browser, origin, password, javaScriptEnabled
     }
    }
   }
-  await page.getByLabel('Name (optional)',{exact:true}).fill('');
-  await page.getByLabel('Bio (optional)',{exact:true}).fill('');
-  await page.locator('input[name="profile_link_label"]').first().fill('');
-  await page.locator('input[name="profile_link_url"]').first().fill('');
-  await page.getByRole('button',{name:'Save profile',exact:true}).click();
+  await act(page.getByLabel('Name (optional)',{exact:true}), 'fill', '');
+  await act(page.getByLabel('Bio (optional)',{exact:true}), 'fill', '');
+  await act(page.locator('input[name="profile_link_label"]').first(), 'fill', '');
+  await act(page.locator('input[name="profile_link_url"]').first(), 'fill', '');
+  await act(page.getByRole('button',{name:'Save profile',exact:true}), 'click');
   await page.getByRole('status').waitFor();
   await page.goto(origin+profile);
   assert.ok((await page.locator('main').innerText()).includes('hasn’t added a bio'));
