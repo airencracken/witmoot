@@ -3,7 +3,7 @@ module witmoot
 go 1.26.11
 
 require (
-	github.com/airencracken/comfylib v0.1.8
+	github.com/airencracken/comfylib v0.2.0
 	github.com/charmbracelet/bubbles v0.21.1
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
