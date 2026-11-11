@@ -28,7 +28,7 @@ func TestWorkflowCommandsCheckTheirStatus(t *testing.T) {
 		if trimmed == "run: |" {
 			for i++; i < len(lines); i++ {
 				command := strings.TrimSpace(lines[i])
-				if command == "" {
+				if command == "" || strings.HasPrefix(command, "#") {
 					continue
 				}
 				if len(lines[i])-len(strings.TrimLeft(lines[i], " ")) <= indent {
@@ -91,7 +91,7 @@ func TestGoVersionIsConsistent(t *testing.T) {
 	}
 	for name, got := range map[string]string{
 		"Dockerfile":       find("Dockerfile", read("../Dockerfile"), `(?m)^FROM golang:(1\.\d+)(?:\.\d+)?-alpine\b`),
-		"release workflow": find("release.yml", read("../.github/workflows/release.yml"), `go-version: "(1\.\d+)\.x"`),
+		"release workflow": find("release.yml", read("../.github/workflows/release.yml"), `go-version: "(1\.\d+)\.(?:x|\d+)"`),
 		"README":           find("README.md", read("../README.md"), `Requires Go (1\.\d+)(?:\.\d+)? or later`),
 		"deployment guide": find("docs/deployment.md", read("../docs/deployment.md"), `Go (1\.\d+)(?:\.\d+)? or later`),
 	} {
