@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -59,12 +60,35 @@ func makeDryRun(t *testing.T, path string, args ...string) string {
 	}
 	cmd := exec.Command(makeBinary, append([]string{"-n", "--no-print-directory"}, args...)...)
 	cmd.Dir = work
-	cmd.Env = append(os.Environ(), "PATH="+path)
+	cmd.Env = slices.DeleteFunc(os.Environ(), func(setting string) bool {
+		name, _, _ := strings.Cut(setting, "=")
+		switch name {
+		case "GORELEASER", "VERSION", "MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS":
+			return true
+		}
+		return false
+	})
+	cmd.Env = append(cmd.Env, "PATH="+path)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("make -n %v: %s (%v)", args, out, err)
 	}
 	return string(out)
+}
+
+func TestMakeDryRunIsolatesCallerOverrides(t *testing.T) {
+	t.Setenv("GORELEASER", "/caller/goreleaser")
+	t.Setenv("VERSION", "caller-version")
+	t.Setenv("MAKEFLAGS", "GORELEASER=/caller/makeflags")
+	t.Setenv("MAKEOVERRIDES", "VERSION=caller-override")
+	t.Setenv("MFLAGS", "-s")
+	path := t.TempDir()
+	if out := makeDryRun(t, path, "release-check"); !strings.HasPrefix(out, "GOWORK=off go run ") || strings.Contains(out, "caller") {
+		t.Fatalf("caller environment changed tool discovery: %q", out)
+	}
+	if out := makeDryRun(t, path, "release-check", "GORELEASER=/selected/tool"); out != "GOWORK=off /selected/tool check\n" {
+		t.Fatalf("explicit override was lost: %q", out)
+	}
 }
 
 // make check validates the release configuration with the installed
