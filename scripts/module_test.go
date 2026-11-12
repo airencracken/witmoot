@@ -62,15 +62,21 @@ func TestReplaceCheckSeesEveryForm(t *testing.T) {
 // Each app pins an exact comfylib release, never a pseudo-version of an
 // unreleased commit.
 func TestComfylibIsPinnedToARelease(t *testing.T) {
+	expected := map[string]string{
+		"github.com/airencracken/comfylib":      "v0.3.0",
+		"github.com/airencracken/comfylib/oidc": "v0.1.0",
+	}
 	for _, req := range readGoMod(t, "../go.mod").Require {
-		if req.Path == "github.com/airencracken/comfylib" {
-			if req.Version != "v0.2.0" {
-				t.Fatalf("comfylib is pinned to %s, want v0.2.0", req.Version)
+		if version, ok := expected[req.Path]; ok {
+			if req.Version != version {
+				t.Fatalf("%s is pinned to %s, want %s", req.Path, req.Version, version)
 			}
-			return
+			delete(expected, req.Path)
 		}
 	}
-	t.Fatal("go.mod does not require comfylib")
+	if len(expected) != 0 {
+		t.Fatalf("missing shared module requirements: %v", expected)
+	}
 }
 
 // A workspace file is for one developer's checkout; committed, it would
