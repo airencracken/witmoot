@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/airencracken/comfylib/analytics"
 	"net/http"
 	"strconv"
 
@@ -64,6 +65,10 @@ func checkAccountDeletion(ctx context.Context, tx *sql.Tx, userID int64, name, v
 }
 
 func clearAccountArtifacts(ctx context.Context, tx *sql.Tx, userID int64, name string) error {
+	if err := analytics.ForgetMember(ctx, tx, analytics.MemberID(userID)); err != nil {
+		return err
+	}
+
 	for _, query := range []string{
 		"DELETE FROM attachments WHERE post_id IN (SELECT id FROM posts WHERE author_id=?) OR credential_user_id=?",
 		"UPDATE posts SET body='This message was deleted by its author.', revision=revision+1 WHERE author_id=? AND removed=0",

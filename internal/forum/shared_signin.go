@@ -22,17 +22,8 @@ func (a *App) registerSharedSignIn(mux *http.ServeMux) error {
 			}
 			return u.ID, binding
 		},
-		CSRF: func(r *http.Request) (string, string) { return "csrf", state(r).CSRF },
-		SignIn: func(w http.ResponseWriter, r *http.Request, id int64) (string, error) {
-			u, err := a.store.UserByID(r.Context(), id)
-			if err != nil || u.Suspended || state(r).Mode == ModePersonal && u.Role != "owner" {
-				return "", fmt.Errorf("account unavailable")
-			}
-			if err = a.startSession(w, r, id); err != nil {
-				return "", err
-			}
-			return "/", nil
-		},
+		CSRF:   func(r *http.Request) (string, string) { return "csrf", state(r).CSRF },
+		SignIn: a.sharedSignIn,
 	})
 	if err != nil {
 		return err
@@ -41,4 +32,15 @@ func (a *App) registerSharedSignIn(mux *http.ServeMux) error {
 		auth.Register(mux)
 	}
 	return nil
+}
+
+func (a *App) sharedSignIn(w http.ResponseWriter, r *http.Request, id int64) (string, error) {
+	u, err := a.store.UserByID(r.Context(), id)
+	if err != nil || u.Suspended || state(r).Mode == ModePersonal && u.Role != "owner" {
+		return "", fmt.Errorf("account unavailable")
+	}
+	if err = a.startSession(w, r, id, true); err != nil {
+		return "", err
+	}
+	return "/", nil
 }

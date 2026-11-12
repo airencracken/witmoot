@@ -36,5 +36,5 @@
 {{end}}
 
 {{define "message-content"}}
-{{if .Removed}}<p class="removed-message">{{.Body}}</p>{{else}}<div class="post-body" hx-disable>{{template "body" .Body}}</div>{{end}}{{range .References}}<aside class="paper reference"><p><strong>{{.Label}}</strong></p><a href="{{.URL}}" hx-boost="false" rel="noreferrer">Open source</a>{{if .Preview}} · <a href="{{.Preview}}">View current public album preview</a>{{end}}</aside>{{end}}{{if .Images}}<div class="post-images">{{range .Images}}<figure><a href="/images/{{.ID}}" target="_blank" rel="noopener" hx-boost="false"><img src="/images/{{.ID}}" alt="{{.Name}}" loading="lazy"></a><figcaption>{{.Name}}</figcaption></figure>{{end}}</div>{{end}}
+{{if .Removed}}<p class="removed-message">{{.Body}}</p>{{else}}<div class="post-body" hx-disable>{{template "body" .Body}}</div>{{end}}{{range .References}}<aside class="paper reference"><p><strong>{{.Label}}</strong></p><a href="{{.URL}}" hx-boost="false" rel="noreferrer">Open source</a>{{if .Preview}} · <a href="{{.Preview}}">View current public album preview</a>{{end}}</aside>{{end}}{{if .Images}}<div class="post-images">{{range .Images}}<figure><a href="/images/{{.ID}}?open=1" target="_blank" rel="noopener" hx-boost="false"><img src="/images/{{.ID}}" alt="{{.Name}}" loading="lazy"></a><figcaption>{{.Name}}</figcaption></figure>{{end}}</div>{{end}}
 {{end}}

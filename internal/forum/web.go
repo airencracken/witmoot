@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/airencracken/comfylib/admin"
+	"github.com/airencracken/comfylib/analytics"
 	"github.com/airencracken/comfylib/autobackup"
 	"github.com/airencracken/comfylib/suite"
 	"html/template"
@@ -290,11 +291,11 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /account/imvault/disconnect", a.signedIn(a.disconnectImages))
 	mux.HandleFunc("GET /imvault/library", a.private(a.library))
 	mux.HandleFunc("GET /imvault/library/{id}/image", a.private(a.libraryImage))
-	mux.HandleFunc("GET /images/{id}", a.readable(a.image))
+	mux.HandleFunc("GET /images/{id}", a.readable(a.trackOpen(analytics.Image, a.image)))
 	if err = a.registerSharedSignIn(mux); err != nil {
 		return nil, err
 	}
-	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(mux))
+	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(analytics.Maintenance(a.store.AnalyticsDB(), mux)))
 	return a, nil
 }
 
@@ -457,9 +458,7 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
 	if state(r).User != nil && state(r).User.Role == "owner" && (p.View == "settings" || p.View == "metrics") {
-		metrics := p.Overview.Metrics
-		p.Overview = admin.WithSuite(admin.Runtime(a.config.Version, a.config.Backups.Status()), "WITMOOT_")
-		p.Overview.Metrics = metrics
+		p.Overview = admin.WithOperations(p.Overview, a.config.Version, a.config.Backups.Status(), "WITMOOT_")
 	}
 	p.Version = a.config.Version
 	// Rendering a refused upload must never parse or drain its multipart body.
@@ -721,7 +720,7 @@ func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, mess
 	a.postReferences(posts)
 	p := Page{View: "topic", Title: topic.Title, Topic: topic, Posts: posts, Error: message, BodyInput: body}
 	pagination(r, &p, page, more)
-	a.render(w, r, status, p)
+	a.renderTopicActivity(w, r, status, p)
 }
 
 func (a *App) newTopic(w http.ResponseWriter, r *http.Request) {
