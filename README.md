@@ -51,6 +51,25 @@ Run a published image with Docker Compose: [container installation, upgrades, an
 Use a current Go security patch when building: Go 1.26.11 or later on the
 1.26 series, or Go 1.27.4 or later on the 1.27 series.
 
+## Witmoot 0.23.0
+
+Account settings now offer the same **Times and dates** control used across the
+five Comfyware applications. Open `/account`, choose an IANA timezone such as
+`America/Los_Angeles`, and select **Save timezone**. UTC is the default. Your
+choice is saved for your account across sessions and devices. **Use this device's
+timezone** fills the field when JavaScript is available; saving remains explicit.
+Manual selection and local date rendering also work without JavaScript.
+
+Comfylib 0.6.0 owns validation, formatting, the account control, browser detection
+and bounded template caching. Dates handle daylight saving and calendar boundaries.
+Admin dashboard sign-in and backup instants follow your preference; reporting
+days remain UTC. Stored timestamps, API responses and machine-readable timestamps
+retain their existing UTC contract. Account isolation, native permissions and CSRF
+checks apply to every preference change.
+
+Existing saved Witmoot timezones are preserved in the native account column.
+No application migration or export format change is added.
+
 ## Witmoot 0.22.0
 
 Native admin metrics now use one shared dashboard with identical typography, spacing, cards, tables and reporting definitions across the apps. Successful local and community sign-ins and authorized content opens are recorded by Comfylib 0.5.0. Views count once per account, item and UTC day; thumbnails, background assets, failed requests and signed-out visits do not count.
