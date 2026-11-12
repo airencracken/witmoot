@@ -1,15 +1,15 @@
 {{define "settings"}}
 {{template "crumb" .}}
-	<div class="page-heading"><div><h1>Site settings</h1><p class="lede">Set the welcome, membership, and house rules.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
+	<div class="page-heading"><div><h1>Site settings</h1><p><a href="/admin/metrics">Instance metrics and health</a></p><p class="lede">Set the welcome, membership, and house rules.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
 <p class="muted">Running Witmoot {{.Version}}.</p>
-{{if .Saved}}<p class="save-notice" role="status">Your site settings are saved.</p>{{end}}
+{{if .Saved}}<p class="save-notice comfy-notice" role="status">Your site settings are saved.</p>{{end}}
 {{template "error" .}}
-<section class="paper stack" aria-labelledby="backup-heading"><h2 id="backup-heading">Automatic backups</h2>
+<section class="comfy-admin-section paper stack" aria-labelledby="backup-heading"><h2 id="backup-heading">Automatic backups</h2>
 {{if .Backups.Enabled}}<p>A verified backup runs every {{.Backups.Interval}}. At most {{.Backups.Keep}} automatic copies are kept, with a total archive cap of {{.Backups.ArchiveCap}} and an uncompressed copy cap of {{.Backups.CopyCap}} per backup.</p>
 <p>Private destination: <code>{{.Backups.Directory}}</code>.</p>
-{{if .Backups.Running}}<p role="status">A backup is running.</p>{{end}}
+{{if .Backups.Running}}<p role="status" class="comfy-notice">A backup is running.</p>{{end}}
 {{if .Backups.LastSuccess.IsZero}}<p>No automatic backup has succeeded yet. The first attempt starts one minute after service startup.</p>{{else}}<p>Last successful backup: <time>{{.Backups.LastSuccess.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
-{{if .Backups.LastError}}<p role="alert">Last backup error: {{.Backups.LastError}}</p>{{end}}
+{{if .Backups.LastError}}<p role="alert" class="comfy-notice comfy-notice-error">Last backup error: {{.Backups.LastError}}</p>{{end}}
 {{if not .Backups.NextAttempt.IsZero}}<p>Next attempt: <time>{{.Backups.NextAttempt.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
 {{else}}<p>Automatic backups are disabled or no service worker is attached.</p>{{end}}
 <p>Copy completed backups to another machine. Local copies cannot recover from a lost disk. Schedule and caps are configured in the service environment and take effect after a restart.</p></section>
@@ -57,7 +57,7 @@
 	</div>
 	<div class="form-footer"><span class="muted">Changes take effect for new requests and are kept after a restart.</span><button type="submit">Save settings</button></div>
 </form>
-<section class="paper settings-form">
+<section class="comfy-admin-section paper settings-form">
 	<h2>Favicon and mascot</h2>
 	<p class="muted">Upload a PNG, JPEG, or GIF image up to 2 MiB. Images are converted to PNG before they are served.</p>
 	<form action="/settings/branding-assets" method="post" enctype="multipart/form-data">
@@ -69,5 +69,5 @@
 		<button type="submit">Save images</button>
 	</form>
 </section>
-<section class="paper settings-form"><h2>Keep a community archive</h2><p>This includes every board and message, including private conversations, and available image previews. Keep it somewhere private.</p><p><a class="button secondary" href="/community/export" hx-boost="false">Download community archive</a></p></section>
+<section class="comfy-admin-section paper settings-form"><h2>Keep a community archive</h2><p>This includes every board and message, including private conversations, and available image previews. Keep it somewhere private.</p><p><a class="button secondary" href="/community/export" hx-boost="false">Download community archive</a></p></section>
 {{end}}

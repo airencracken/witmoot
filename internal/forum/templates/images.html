@@ -1,6 +1,6 @@
 {{define "image-account"}}
-<section class="paper narrow"><h1>Your imvault connection</h1><p>Bring images from <a href="{{.ImageServer}}" target="_blank" rel="noopener" hx-boost="false">{{.ImageServer}}</a> to your conversations.</p>{{template "error" .}}{{if .Saved}}<p class="form-success" role="status">Your image settings are saved.</p>{{end}}
-{{if .ImageError}}<p role="alert">{{.ImageError}}</p>{{end}}
+<section class="paper narrow"><h1>Your imvault connection</h1><p>Bring images from <a href="{{.ImageServer}}" target="_blank" rel="noopener" hx-boost="false">{{.ImageServer}}</a> to your conversations.</p>{{template "error" .}}{{if .Saved}}<p class="comfy-notice form-success" role="status">Your image settings are saved.</p>{{end}}
+{{if .ImageError}}<p role="alert" class="comfy-notice comfy-notice-error">{{.ImageError}}</p>{{end}}
 {{if .ImageConnected}}<p>Connected as <strong>{{.ImageUsername}}</strong>.</p><p><a href="/imvault/library">Browse your library</a></p><form method="post" action="/account/imvault/disconnect">{{template "csrf" .}}<button class="secondary" type="submit">Disconnect imvault</button></form><p class="muted">Disconnecting stops Witmoot from showing images that use this connection. Public image links keep working. Your files stay in imvault; you can revoke the API key there.</p>{{end}}
 {{if .CanPost}}<form method="post" action="/account/imvault" autocomplete="off">{{template "csrf" .}}<label for="api-key">imvault API key</label><input id="api-key" name="api_key" type="password" maxlength="512" required autocomplete="off"><p class="muted">Create a key in your imvault account settings. Witmoot keeps it encrypted on the server and uses it to browse and upload on your behalf.</p><button type="submit">{{if .ImageConnected}}Replace connection{{else}}Connect imvault{{end}}</button></form>{{end}}</section>
 {{end}}
@@ -18,7 +18,7 @@
 {{end}}{{end}}
 
 {{define "image-library"}}<div id="image-library">
-{{if .ImageError}}<p role="alert">{{.ImageError}}</p>{{end}}
+{{if .ImageError}}<p role="alert" class="comfy-notice comfy-notice-error">{{.ImageError}}</p>{{end}}
 {{if .CarriedImages}}<fieldset class="carried-images"><legend>Selected on another page (uncheck to remove)</legend>{{range .CarriedImages}}<label><input type="checkbox" name="image_ids" value="{{.}}" checked> Image {{.}}</label>{{end}}</fieldset>{{end}}
 {{if .LibraryPicking}}<button type="submit" name="load_images" value="1" formnovalidate hx-get="/imvault/library" hx-target="#image-library" hx-swap="outerHTML" hx-include="closest .image-fields" hx-params="q,image_ids">{{if .LibraryLoaded}}Refresh images{{else}}Load image library{{end}}</button>{{end}}
 {{if .LibraryLoaded}}<div class="image-grid">{{range .Library}}<div class="image-choice">{{if $.LibraryPicking}}<label><input type="checkbox" name="image_ids" value="{{.ID}}" {{if index $.SelectedImages .ID}}checked{{end}}><img src="/imvault/library/{{.ID}}/image" alt="" loading="lazy"><span>{{.Name}}</span></label>{{else}}<img src="/imvault/library/{{.ID}}/image" alt="{{.Name}}" loading="lazy">{{end}}<a href="{{$.ImageServer}}/f/{{.ID}}" target="_blank" rel="noopener" hx-boost="false">{{if $.LibraryPicking}}Open image{{else}}{{.Name}}{{end}}</a><small>{{.Visibility}} in imvault</small>{{if not $.LibraryPicking}}<label>Image link<input type="text" readonly value="{{$.ImageServer}}/f/{{.ID}}"></label>{{end}}</div>{{else}}<p class="muted">No images on this page.</p>{{end}}</div>

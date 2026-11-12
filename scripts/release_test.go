@@ -164,8 +164,18 @@ func TestArtifactCheckComparesTheSourceArchive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(script), `sh scripts/release/check-source.sh "$1" || exit 1`) {
-		t.Fatal("check-artifacts.sh does not compare the source archive with the tracked files")
+	if !strings.Contains(string(script), "scripts/comfy.py check-artifacts") {
+		t.Fatal("artifact checks must run from pinned Comfylib")
+	}
+	module, _ := comfylibModule(t)
+	shared, err := os.ReadFile(filepath.Join(module, "tools/releases/artifacts.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{"verify_source(root,sources[0])", "source archive file set differs", "source archive differs:"} {
+		if !strings.Contains(string(shared), contract) {
+			t.Fatal("shared source comparison contract missing", contract)
+		}
 	}
 }
 

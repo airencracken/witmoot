@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/airencracken/comfylib/admin"
 	"github.com/airencracken/comfylib/autobackup"
 	"github.com/airencracken/comfylib/suite"
 	"html/template"
@@ -74,7 +75,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
-	Backups autobackup.Status
+	Overview admin.View
+	Backups  autobackup.Status
 
 	Biography                                                   memberprofile.Profile
 	ProfileMember                                               MemberProfile
@@ -162,7 +164,7 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.HasPrefix(baseURL, "https://") {
 		config.SecureCookies = true
 	}
-	tmpl, err := template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"linkNumber": func(i int) int { return i + 1 },
+	tmpl, err := template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -254,6 +256,7 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /invites/{id}/revoke", a.private(a.revokeInvite))
 	mux.HandleFunc("POST /invites/members/{id}/permission", a.owner(a.setInvitePermission))
 	mux.HandleFunc("GET /community/export", a.owner(a.handleCommunityExport))
+	mux.HandleFunc("GET /admin/metrics", a.owner(a.metrics))
 	mux.HandleFunc("GET /settings", a.owner(a.settings))
 	mux.HandleFunc("POST /settings", a.owner(a.saveSettings))
 	mux.HandleFunc("POST /settings/branding-assets", a.owner(a.saveBrandingAssets))
@@ -453,6 +456,11 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
+	if state(r).User != nil && state(r).User.Role == "owner" && (p.View == "settings" || p.View == "metrics") {
+		metrics := p.Overview.Metrics
+		p.Overview = admin.WithSuite(admin.Runtime(a.config.Version, a.config.Backups.Status()), "WITMOOT_")
+		p.Overview.Metrics = metrics
+	}
 	p.Version = a.config.Version
 	// Rendering a refused upload must never parse or drain its multipart body.
 	p.DiscussionReturn = r.PostForm.Get("return_to")

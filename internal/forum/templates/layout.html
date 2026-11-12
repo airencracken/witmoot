@@ -67,7 +67,7 @@
 		{{else if eq .View "remove-post"}}{{template "remove-post" .}}
 		{{else if eq .View "about"}}{{template "about" .}}
 		{{else if eq .View "moderation"}}{{template "moderation" .}}
-		{{else if eq .View "settings"}}{{template "settings" .}}
+		{{else if eq .View "metrics"}}{{template "metrics" .}}{{else if eq .View "settings"}}{{template "settings" .}}
 		{{else if eq .View "boards"}}{{template "boards" .}}
 		{{else if eq .View "groups"}}{{template "groups" .}}
 		{{else if eq .View "group-settings"}}{{template "group-settings" .}}
@@ -84,7 +84,7 @@
 </body>
 </html>{{end}}
 
-{{define "error"}}{{if .Error}}<div class="form-error" role="alert" tabindex="-1">{{.Error}}</div>{{end}}{{end}}
+{{define "error"}}{{if .Error}}<div class="comfy-notice comfy-notice-error form-error" role="alert" tabindex="-1">{{.Error}}</div>{{end}}{{end}}
 {{define "csrf"}}<input type="hidden" name="csrf" value="{{.CSRF}}">{{end}}
 {{define "body"}}{{range segments .}}{{if .URL}}<a href="{{.URL}}" rel="noopener noreferrer external">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}{{end}}
 {{define "pager"}}{{if or .Prev .Next}}<nav class="pagination" aria-label="Pages">{{if .Prev}}<a class="button secondary" href="{{.Prev}}">Previous page</a>{{end}}{{if .Next}}<a class="button secondary" href="{{.Next}}">Next page</a>{{end}}</nav>{{end}}{{end}}

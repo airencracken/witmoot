@@ -1,3 +1,4 @@
+import { findBrowser, reservePort, waitForHTTP, stopProcess } from '../browser-runtime.mjs';
 import { act, checkSuiteControls } from '../browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
@@ -20,10 +21,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const binary = resolve(root, 'bin/witmoot');
 const data = await mkdtemp(join(tmpdir(), 'witmoot-browser-long-directory-'.padEnd(120, 'x')));
-const socket = createServer();
-await new Promise((done, reject) => { socket.once('error', reject); socket.listen(0, '127.0.0.1', done); });
-const port = socket.address().port;
-await new Promise(done => socket.close(done));
+const port = await reservePort();
 const origin = `http://127.0.0.1:${port}`;
 const env = { ...process.env, WITMOOT_DATA_DIR: data, WITMOOT_ADDR: `127.0.0.1:${port}`, WITMOOT_BASE_URL: origin, WITMOOT_TRUSTED_PROXIES: '', WITMOOT_SECURE_COOKIES: 'false', WITMOOT_IMVAULT_URL: '', WITMOOT_APPS: '[{"id":"songstead","url":"https://suite.example.org"}]' };
 let server;
@@ -31,14 +29,7 @@ let browser;
 const password = 'a friendly browser test password';
 const problems = [];
 
-async function ready() {
-	for (let tries = 0; tries < 100; tries++) {
-		if (server.exitCode !== null) throw new Error(`Server exited: ${server.exitCode}`);
-		try { if ((await fetch(origin + '/healthz')).ok) return; } catch { /* Server is starting. */ }
-		await new Promise(done => setTimeout(done, 100));
-	}
-	throw new Error('Server did not become ready');
-}
+async function ready() { await waitForHTTP(origin + '/healthz', { process: server }); }
 
 async function startServer() {
 	await stopServer();
@@ -47,13 +38,7 @@ async function startServer() {
 	await ready();
 }
 
-async function stopServer() {
-	if (server && server.exitCode === null) {
-		const exited = new Promise(done => server.once('exit', done));
-		server.kill('SIGTERM');
-		await exited;
-	}
-}
+async function stopServer() { await stopProcess(server); }
 
 async function flow(javaScriptEnabled) {
 	const context = await browser.newContext({ javaScriptEnabled, colorScheme: javaScriptEnabled ? 'dark' : 'light', viewport: { width: 1280, height: 900 } });
@@ -293,7 +278,7 @@ async function modeFlow(javaScriptEnabled) {
 try {
 	execFileSync(binary, ['create-owner', '--username', 'alex', '--password-stdin'], { env, input: password + '\n' });
 	await startServer();
-	browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM || undefined });
+	browser = await chromium.launch({ headless: true, executablePath: await findBrowser({ required: true }) });
 	await checkThemes(browser, origin);
 	await flow(true);
 	await flow(false);

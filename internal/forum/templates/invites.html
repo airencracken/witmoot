@@ -7,7 +7,7 @@
   </header>
   {{if eq .Mode "open"}}<p class="muted">Registration is currently <strong>open</strong>, so people can also <a href="/join">join without an invitation</a>.</p>{{end}}
   {{template "error" .}}
-  {{if .Saved}}<p class="save-notice" role="status">Invitation revoked. It can no longer be used to join.</p>{{end}}
+  {{if .Saved}}<p class="comfy-notice save-notice" role="status">Invitation revoked. It can no longer be used to join.</p>{{end}}
   {{if .InviteLink}}
   <section class="invitation-result" role="status" aria-labelledby="invitation-ready">
     <h2 id="invitation-ready">Copy this invitation now</h2>

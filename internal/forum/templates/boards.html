@@ -1,13 +1,13 @@
 {{define "boards"}}
 <div class="page-heading"><div><h1>Manage boards</h1><p class="lede">Make a shared space or keep a conversation among selected people.</p></div><a class="button" href="/boards/new">Create a board</a></div>
-{{if .Deleted}}<p class="save-notice" role="status">The board and its conversations have been permanently deleted.</p>{{end}}
+{{if .Deleted}}<p class="comfy-notice save-notice" role="status">The board and its conversations have been permanently deleted.</p>{{end}}
 {{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Category}} · {{if .Restricted}}Selected members{{else}}Site access rules{{end}}{{if .Archived}} · Archived{{end}}</p></div><a class="button secondary small" href="/boards/{{.ID}}/settings" aria-label="Manage {{.Name}}">Manage</a></article>{{else}}<p class="paper">No boards yet. Create a board to give your people a place to talk.</p>{{end}}
 {{end}}
 
 {{define "board-settings"}}
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><span>{{.Title}}</span></nav>
 <div class="page-heading"><div><h1>{{.Title}}</h1><p class="lede">Choose who can see this board and who can join in.</p></div>{{if .Board.ID}}<a href="/boards/{{.Board.ID}}">View {{.Board.Name}}</a>{{end}}</div>
-{{if .Saved}}<p class="save-notice" role="status">Your board settings are saved.</p>{{end}}
+{{if .Saved}}<p class="comfy-notice save-notice" role="status">Your board settings are saved.</p>{{end}}
 {{if .Board.Archived}}{{template "archive-notice" .}}{{end}}
 {{template "error" .}}
 <form class="paper settings-form" action="{{if .Board.ID}}/boards/{{.Board.ID}}/settings{{else}}/boards/new{{end}}" method="post" hx-disabled-elt="find button[type='submit']">

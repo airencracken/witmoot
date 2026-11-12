@@ -1,11 +1,10 @@
 package forum
 
 import (
-	"container/list"
 	"errors"
+	"github.com/airencracken/comfylib/ratelimit"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -89,69 +88,13 @@ func HashPassword(password string) (string, error) {
 	return string(hash), err
 }
 
-const (
-	rateWindow   = 15 * time.Minute
-	rateAttempts = 20
-	// rateClients bounds the limiter's memory. When it is full the oldest
-	// record is dropped, so a flood of addresses cannot lock out new visitors.
-	rateClients = 10000
-)
+const rateAttempts = 20
+const rateClients = 10000
 
-type rateEntry struct {
-	key   string
-	count int
-	until time.Time
+type limiter struct{ shared *ratelimit.Window }
+
+func newLimiter() *limiter {
+	return &limiter{shared: ratelimit.NewWindow(ratelimit.WindowConfig{Attempts: rateAttempts, Interval: 15 * time.Minute, Capacity: rateClients})}
 }
-
-// limiter budgets authentication attempts per client network. Records are
-// kept in creation order, which is also expiry order because every window has
-// the same length, so pruning and eviction never scan the whole table.
-type limiter struct {
-	mu      sync.Mutex
-	entries map[string]*list.Element
-	order   list.List
-}
-
-func newLimiter() *limiter { return &limiter{entries: make(map[string]*list.Element)} }
-
-// allow spends one attempt from the budget of key, a client network from
-// App.rateKey.
-func (l *limiter) allow(key string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	now := time.Now()
-	for front := l.order.Front(); front != nil && !front.Value.(*rateEntry).until.After(now); front = l.order.Front() {
-		l.remove(front)
-	}
-	element, ok := l.entries[key]
-	if !ok {
-		for l.order.Len() >= rateClients {
-			l.remove(l.order.Front())
-		}
-		element = l.order.PushBack(&rateEntry{key: key, until: now.Add(rateWindow)})
-		l.entries[key] = element
-	}
-	entry := element.Value.(*rateEntry)
-	if entry.count >= rateAttempts {
-		return false
-	}
-	entry.count++
-	return true
-}
-
-// refund returns an attempt that succeeded, so people who sign in often are
-// never locked out by their own correct passwords.
-func (l *limiter) refund(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if element, ok := l.entries[key]; ok {
-		if entry := element.Value.(*rateEntry); entry.count > 0 {
-			entry.count--
-		}
-	}
-}
-
-func (l *limiter) remove(element *list.Element) {
-	delete(l.entries, element.Value.(*rateEntry).key)
-	l.order.Remove(element)
-}
+func (l *limiter) allow(key string) bool { ok, _ := l.shared.Allow(key); return ok }
+func (l *limiter) refund(key string)     { l.shared.Refund(key) }
