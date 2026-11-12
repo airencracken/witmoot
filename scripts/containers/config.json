@@ -3,5 +3,6 @@
   "previous": "0.19.1",
   "port": 8082,
   "tmp_mb": 128,
-  "owner_command": "create-owner"
+  "owner_command": "create-owner",
+  "lifecycle": "snapshot"
 }

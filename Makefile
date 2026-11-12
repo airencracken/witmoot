@@ -43,7 +43,7 @@ test-proxies: ## Test nginx and Apache TLS proxy examples (needs both servers)
 	go test -tags=proxyintegration -count=1 -timeout=60s ./contrib/proxy
 
 test-mutations: ## Verify community and comfylib integration regressions reject deliberate defects (needs Python 3)
-	GOWORK=off python3 scripts/mutate.py scripts/mutations/community.json scripts/mutations/integration.json scripts/mutations/recent.json scripts/mutations/setup.json
+	GOWORK=off python3 scripts/comfy.py mutate scripts/mutations/community.json scripts/mutations/integration.json scripts/mutations/recent.json scripts/mutations/setup.json
 
 check: test-suite-assets test-config test-design-mutations test-containers test-cli test-js release-check ## Run JavaScript tests, vet, race tests, formatting, and release config checks
 	go vet ./...
@@ -103,7 +103,7 @@ test-sandbox: ## Require real Bubblewrap boundary and lifecycle tests (Linux)
 	COMFYWARE_SANDBOX_TEST=1 go test -race -count=1 ./cmd/witmoot -run 'Sandbox|Real'
 
 test-sandbox-mutations: ## Verify sandbox regressions reject deliberate defects (Python 3)
-	GOWORK=off python3 scripts/mutate.py scripts/mutations/sandbox.json
+	GOWORK=off python3 scripts/comfy.py mutate scripts/mutations/sandbox.json
 
 .PHONY: test-cli
 test-cli: build ## Check hidden password prompts through an actual terminal
@@ -112,26 +112,26 @@ test-cli: build ## Check hidden password prompts through an actual terminal
 
 .PHONY: test-containers test-container-lifecycle
 test-containers: ## Check container release, schema, mutation and publication contracts
-	python3 -m unittest discover -s scripts/containers -p 'test_*.py' -v
+	python3 scripts/comfy.py test-containers
 
 test-container-lifecycle: ## Exercise a local image (build it first; needs Docker)
-	python3 scripts/containers/lifecycle.py --image witmoot:local --version "$(VERSION)" --upgrade
+	python3 scripts/comfy.py container-lifecycle --image witmoot:local --version "$(VERSION)" --upgrade
 
 .PHONY: test-container-registry
 test-container-registry: ## Exercise real multi-platform publication in an isolated local registry
-	python3 scripts/containers/check_registry.py
+	python3 scripts/comfy.py container-registry
 
 .PHONY: test-design-mutations
 test-design-mutations: ## Verify invitation design regressions reject deliberate defects
 	GOWORK=off go mod download
-	GOWORK=off python3 scripts/mutate.py scripts/mutations/design.json
+	GOWORK=off python3 scripts/comfy.py mutate scripts/mutations/design.json
 
 .PHONY: test-config
 test-config:
-	python3 scripts/test_service_config.py
+	python3 scripts/comfy.py service-config
 
 .PHONY: test-suite-assets
-test-suite-assets: ## Verify synchronized suite source and assets
-	python3 scripts/verify_suite.py
-	python3 scripts/test_suite_deployment.py
-	python3 scripts/test_release_dispatch.py
+test-suite-assets: ## Verify shared module integration and deployment contracts
+	python3 scripts/comfy.py check
+	python3 scripts/comfy.py suite-deployment
+	python3 scripts/comfy.py release-dispatch

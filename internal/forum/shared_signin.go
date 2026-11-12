@@ -3,9 +3,9 @@ package forum
 
 import (
 	"fmt"
+	sharedoidc "github.com/airencracken/comfylib/oidc"
+	"github.com/airencracken/comfylib/suite"
 	"net/http"
-	"witmoot/internal/sharedoidc"
-	"witmoot/internal/suite"
 )
 
 func (a *App) registerSharedSignIn(mux *http.ServeMux) error {

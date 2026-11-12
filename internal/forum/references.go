@@ -3,12 +3,12 @@ package forum
 
 import (
 	"github.com/airencracken/comfylib/reference"
+	"github.com/airencracken/comfylib/suite"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
-	"witmoot/internal/suite"
 )
 
 type Reference struct{ URL, Label, Preview string }

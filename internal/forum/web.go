@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/airencracken/comfylib/autobackup"
+	"github.com/airencracken/comfylib/suite"
 	"html/template"
 	"io"
 	"io/fs"
@@ -22,7 +23,6 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-	"witmoot/internal/suite"
 
 	"github.com/airencracken/comfylib/memberprofile"
 	"github.com/airencracken/comfylib/smtp"

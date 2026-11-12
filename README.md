@@ -409,8 +409,8 @@ proxy configuration code comes from
 release in `go.mod`. To work on both at once, use an untracked workspace
 (`go work init . ../comfylib`) rather than a `replace` directive; tests refuse
 a committed one. The mutation tables in `scripts/mutations/` run on
-`scripts/mutate.py`, a copy of comfylib's engine that a test keeps identical
-to the pinned release.
+`python3 scripts/comfy.py mutate`, which resolves the engine from that exact
+pinned release, including when the module proxy is disabled.
 
 Tests cover all three modes, audience filtering, migration from the original
 private schema, persisted settings, stale forms and registration policy,

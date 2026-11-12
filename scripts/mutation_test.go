@@ -36,36 +36,19 @@ func comfylibModule(t *testing.T) (dir, version string) {
 	return module.Dir, module.Version
 }
 
-// syncHeader is the one line scripts/mutate.py adds to comfylib's engine.
-var syncHeader = regexp.MustCompile(`^# Synced from github\.com/airencracken/comfylib@(\S+) tools/mutate\.py; edit it there\.\n`)
-
-// The mutation engine is comfylib's, copied so the harness can run from a
-// throwaway copy of this tree with GOPROXY=off. Apart from the line naming
-// the release it came from, the copy must be byte-for-byte the pinned one.
-func TestMutationEngineMatchesThePinnedComfylib(t *testing.T) {
-	dir, version := comfylibModule(t)
-	upstream, err := os.ReadFile(filepath.Join(dir, "tools", "mutate.py"))
+// The launcher resolves tools from the exact module used to build this app.
+func TestMaintenanceLauncherUsesPinnedComfylib(t *testing.T) {
+	dir, _ := comfylibModule(t)
+	want, err := os.ReadFile(filepath.Join(dir, "tools", "app_bootstrap.py"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	local, err := os.ReadFile("mutate.py")
+	got, err := os.ReadFile("comfy.py")
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := bytes.SplitAfterN(local, []byte("\n"), 3)
-	if len(lines) != 3 {
-		t.Fatal("scripts/mutate.py is too short")
-	}
-	match := syncHeader.FindSubmatch(lines[2][:bytes.IndexByte(lines[2], '\n')+1])
-	if match == nil {
-		t.Fatal("scripts/mutate.py does not name the comfylib release it was copied from on its third line")
-	}
-	if string(match[1]) != version {
-		t.Fatalf("scripts/mutate.py was copied from comfylib %s, but go.mod pins %s", match[1], version)
-	}
-	synced := append(append(append([]byte{}, lines[0]...), lines[1]...), lines[2][len(match[0]):]...)
-	if !bytes.Equal(synced, upstream) {
-		t.Fatalf("scripts/mutate.py differs from %s; copy it again and keep only the header line", filepath.Join(dir, "tools", "mutate.py"))
+	if !bytes.Equal(got, want) {
+		t.Fatal("maintenance launcher differs from pinned Comfylib")
 	}
 }
 
@@ -268,7 +251,11 @@ func TestMutationTablesTargetExistingCode(t *testing.T) {
 	if err != nil {
 		t.Skip("needs python3 to check the anchors")
 	}
-	cmd := exec.Command(python, append([]string{"mutate.py", "--root", "..", "--list"}, mutationTables(t)...)...)
+	tables := mutationTables(t)
+	for i := range tables {
+		tables[i] = "scripts/" + tables[i]
+	}
+	cmd := exec.Command(python, append([]string{"comfy.py", "mutate", "--list"}, tables...)...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("the engine refused the tables: %v\n%s", err, out)
 	}
