@@ -32,6 +32,10 @@ concurrency:
 
 jobs:
   build:
+    env:
+      # The full SQLite race suite exceeds Go's default on two-core runners.
+      # Focused tests retain any shorter timeout passed on the command line.
+      GOFLAGS: "-timeout=30m"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
