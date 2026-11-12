@@ -5,16 +5,7 @@
 	{{template "error" .}}
 	{{if .Notice}}<p class="comfy-notice save-notice" role="status">{{.Notice}}</p>{{end}}
 	<h2>Your profile</h2><p><a href="/members/{{.User.ID}}">View your profile</a> · <a href="/account/profile">Edit your profile</a></p>
-<h2>Times and dates</h2>
-	<form action="/account/timezone" method="post" hx-push-url="false" hx-disabled-elt="find button[type='submit']">
-		{{template "csrf" .}}
-		<label for="timezone">Display timezone</label>
-		<input id="timezone" name="timezone" list="timezones" maxlength="64" value="{{.TimezoneInput}}" aria-describedby="timezone-help" autocomplete="off" required>
-		<datalist id="timezones">{{range .TimezoneSuggestions}}<option value="{{.}}"></option>{{end}}</datalist>
-		<p class="field-help" id="timezone-help">UTC by default. Search for a city or enter a timezone such as America/Los_Angeles. Your choice is saved across devices.</p>
-		<button type="button" class="secondary" data-device-timezone hidden>Use this device's timezone</button>
-		<button type="submit" class="secondary">Save timezone</button>
-	</form>
+{{timezonePreference .TimezoneControl}}
 	<h2 id="profile-avatar">Your avatar</h2>
 	{{if .HasAvatar}}<p><picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.User.ID}}?still=1"><img class="avatar large" src="/avatars/{{.User.ID}}" alt="Your current avatar"></picture></p>{{end}}
 	<form action="/account/avatar" method="post" enctype="multipart/form-data" hx-disabled-elt="find button[type='submit']">

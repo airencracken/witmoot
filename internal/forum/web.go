@@ -11,6 +11,7 @@ import (
 	"github.com/airencracken/comfylib/admin"
 	"github.com/airencracken/comfylib/analytics"
 	"github.com/airencracken/comfylib/autobackup"
+	"github.com/airencracken/comfylib/displaytime"
 	"github.com/airencracken/comfylib/suite"
 	"html/template"
 	"io"
@@ -76,8 +77,10 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
-	Overview admin.View
-	Backups  autobackup.Status
+	TimezoneControl displaytime.Preference
+	TimezoneError   string
+	Overview        admin.View
+	Backups         autobackup.Status
 
 	Biography                                                   memberprofile.Profile
 	ProfileMember                                               MemberProfile
@@ -165,7 +168,7 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.HasPrefix(baseURL, "https://") {
 		config.SecureCookies = true
 	}
-	tmpl, err := template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
+	tmpl, err := template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"timezonePreference": displaytime.RenderPreference, "adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -506,6 +509,8 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 	if p.User != nil {
 		p.timezone = displayTimezone(p.User.Timezone)
 	}
+	p.Overview.Timezone = p.timezone.String()
+	p.TimezoneControl = displaytime.Preference{Action: "/account/timezone", CSRF: p.CSRF, Name: p.TimezoneInput, Error: p.TimezoneError}
 	p.Mode, p.CanRead, p.CanPost = state(r).Mode, state(r).canRead(), state(r).canPost()
 	p.CanManageInvites = state(r).User != nil && state(r).User.Role == "owner"
 	if p.Board.ID != 0 {

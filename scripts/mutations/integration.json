@@ -194,8 +194,8 @@
   {
     "name": "timezone preference uses the local calendar",
     "file": "internal/forum/timezone.go",
-    "before": "time.Unix(unix, 0).In(location).Format(format)",
-    "after": "time.Unix(unix, 0).UTC().Format(format)",
+    "before": "return displaytime.In(p.timezone).Stamp(unix)",
+    "after": "return displaytime.In(time.UTC).Stamp(unix)",
     "package": "./internal/forum",
     "run": "^TestTimezoneValidationAndCalendarBoundaries$"
   },

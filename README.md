@@ -528,3 +528,11 @@ and `witmoot create-owner --username NAME` prompts privately by default.
 
 Optional app navigation, shared sign-in and discussion returns are described in
 [Comfyware connections](docs/suite.md).
+
+## Display timezone
+
+In your account settings (`/account`), choose **Times and dates**, enter a city
+timezone, and select **Save timezone**. The saved choice follows your account
+across devices. UTC is the default. Device detection fills the field when
+JavaScript is available; manual selection and saving work without it.
+Admin reporting days remain UTC.
