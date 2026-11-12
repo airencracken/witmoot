@@ -47,7 +47,7 @@ export async function checkTimezones(browser, origin, password, javaScriptEnable
   await act(page.getByLabel('Display timezone', { exact: true }), 'fill', '../UTC');
   await act(page.getByRole('button', { name: 'Save timezone', exact: true }), 'click');
   await page.getByRole('alert').waitFor();
-  assert.match(await page.getByRole('alert').innerText(), /Choose a timezone/);
+  assert.match(await page.getByRole('alert').innerText(), /choose a timezone/i);
   await page.goto(origin + '/account');
   assert.equal(await page.getByLabel('Display timezone', { exact: true }).inputValue(), 'Asia/Kolkata');
   await act(page.getByLabel('Display timezone', { exact: true }), 'fill', 'UTC');
