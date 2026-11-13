@@ -136,7 +136,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		await act(member.getByRole('button', { name: 'Delete my account', exact: true }), 'click');
 		await member.waitForURL(origin + '/login?deleted=1');
 		await owner.goto(topicURL);
-		assert.match(await owner.locator('main').innerText(), /This message was deleted by its author/);
+		assert.match(await owner.locator('main').innerText(), /This post was deleted by its author/);
 		assert.match(await owner.locator('main').innerText(), /A reply from the owner that survives departure/);
 		assert.doesNotMatch(await owner.locator('main').innerText(), new RegExp(username));
 		assert.deepEqual(problems, [], 'Community flow script or CSP errors');

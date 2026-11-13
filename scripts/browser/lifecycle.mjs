@@ -66,7 +66,7 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 	await act(owner.getByRole('button', { name: 'Delete board permanently', exact: true }), 'click');
 	await owner.getByRole('alert').waitFor();
 	assert.match(await owner.getByRole('alert').innerText(), /type the board name exactly/);
-	assert.match(await owner.locator('.board-confirmation').innerText(), /1 conversation, 2 messages, and 0 attachment links/);
+	assert.match(await owner.locator('.board-confirmation').innerText(), /1 conversation, 2 posts, and 0 attachment links/);
 	if (javaScriptEnabled) assert.equal(await owner.getByRole('alert').evaluate(el => el === document.activeElement), true);
 	assert.equal(await owner.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Board deletion form overflows');
 	if (process.env.WITMOOT_SCREENSHOT_DIR) await owner.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, `board-delete-${javaScriptEnabled ? 'dark' : 'nojs'}.png`), fullPage: true });
