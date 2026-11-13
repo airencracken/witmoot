@@ -1,9 +1,9 @@
 # Run Witmoot with Docker
 
-Published images are available at `ghcr.io/airencracken/witmoot:v0.21.0` for
-Linux amd64 and arm64. Docker selects the matching architecture. Images contain
-the same version-stamped static binary as the native release, CA certificates,
-timezone data, and zstd for automatic backups.
+Images are published at `ghcr.io/airencracken/witmoot:v0.23.0` for Linux
+amd64 and arm64. Docker picks the right architecture. Each image holds the
+same static binary as the native release, CA certificates, timezone data, and
+zstd for automatic backups.
 
 ## Start an instance
 
@@ -16,39 +16,43 @@ docker compose up -d
 docker compose exec witmoot create-owner --username owner --password-prompt
 ```
 
-Open `http://localhost:8082`. The example publishes only on host loopback.
-For access from another computer, configure a reverse proxy and set
-`WITMOOT_BASE_URL` to your public HTTPS origin. HTTPS base URLs enable secure
-cookies. Trust only the proxy's actual container or host network address in
-`WITMOOT_TRUSTED_PROXIES`; loopback inside a container refers to that container.
-Each app runs independently; companion app URLs are optional.
+Open `http://localhost:8082`. Witmoot listens on port 8080 inside the
+container, and Compose publishes it only on host loopback `127.0.0.1:8082`.
+Set `WITMOOT_PORT` in `.env` to use another host port.
 
-The process runs as UID/GID `10001:10001`, with a read-only root filesystem,
-no Linux capabilities, and bounded writable `/tmp`. The named data volume is
-private, mode `0700`, and survives container replacement. Bind mounts require
-you to create the directory with ownership `10001:10001` and mode `0700` first.
-Do not use `docker compose down -v` unless you intend to delete the data.
-The image healthcheck probes `/healthz` using the port in `WITMOOT_ADDR`.
-Override the probe if you bind to a specific non-loopback address.
+To reach it from another computer, put a reverse proxy in front and set
+`WITMOOT_BASE_URL` to your public HTTPS origin; that also turns on secure
+cookies. List only the proxy's real address in `WITMOOT_TRUSTED_PROXIES`.
+Loopback inside a container means the container itself. See
+[Docker / Compose](deployment.md#docker--compose) for proxy networking.
 
-Set `WITMOOT_IMAGE` in `.env` to choose an explicit version or digest:
+The container runs as UID/GID `10001:10001` with a read-only root
+filesystem, no Linux capabilities, and a small writable `/tmp`. The named data
+volume has mode `0700` and survives container replacement. For a bind mount,
+create the directory first with owner `10001:10001` and mode `0700`.
+`docker compose down -v` deletes your data.
+
+The healthcheck probes `/healthz` on the port in `WITMOOT_ADDR`. Override it if
+you bind to a specific non-loopback address.
+
+Pin a version or digest in `.env`:
 
 ```dotenv
-WITMOOT_IMAGE="ghcr.io/airencracken/witmoot:v0.21.0"
+WITMOOT_IMAGE="ghcr.io/airencracken/witmoot:v0.23.0"
 ```
 
-For a digest pin, use the registry's full multi-platform index digest, such as
-`ghcr.io/airencracken/witmoot@sha256:...`, obtained with
-`docker buildx imagetools inspect ghcr.io/airencracken/witmoot:v0.21.0`.
-Exact version tags are preserved. We publish no moving `latest`, major, or minor
-aliases, so pulling an image never opts you into a later database migration.
+For a digest, use the full multi-platform index digest
+(`ghcr.io/airencracken/witmoot@sha256:...`) from
+`docker buildx imagetools inspect ghcr.io/airencracken/witmoot:v0.23.0`.
+There are no `latest`, major or minor tags, so a pull never moves you to a
+newer database schema.
 
 ## Back up, upgrade, and restore
 
-Automatic compressed backups live under `/data/backups` with bounded retention;
-see [automatic backups](automatic-backups.md). Copy backups off the Docker host.
-The following full-volume backup also preserves keys, uploaded files, and
-scheduling state. Stop the server before taking it:
+Automatic backups land in `/data/backups`; see
+[automatic backups](automatic-backups.md). Copy them off the Docker host.
+
+For a full-volume backup, stop the server first:
 
 ```sh
 umask 077
@@ -56,15 +60,14 @@ docker compose stop witmoot
 docker compose run --rm --no-deps -T --entrypoint tar witmoot -C /data -cf - . > witmoot-before-upgrade.tar
 ```
 
-Check that the backup command succeeded and keep the file private. Read the new
-release's migration notes, change `WITMOOT_IMAGE` to the desired exact version,
-then run `docker compose pull` and `docker compose up -d`. Check
-`docker compose ps` and `docker compose logs witmoot` before resuming use.
+Check that the command succeeded and keep the file private. To upgrade, read
+the new release notes, set `WITMOOT_IMAGE` to the new version, then run
+`docker compose pull` and `docker compose up -d`. Check `docker compose ps`
+and `docker compose logs witmoot` before you use it again.
 
-A downgrade requires the matching pre-upgrade data backup as well as the old
-image. Startup migrations are forward-only. To restore without destroying the
-current volume, stop the service and select a **new** named volume in a Compose
-override file:
+Migrations run forward only. To go back, you need the old image and the
+backup taken before the upgrade. Restore into a **new** named volume so the
+current one stays intact:
 
 ```yaml
 # docker-compose.restore.yml
@@ -73,60 +76,44 @@ volumes:
     name: witmoot-restored
 ```
 
-Choose the image version matching the backup in `.env`. From the same project
-directory, run:
+Set `WITMOOT_IMAGE` in `.env` to the version that made the backup. From the
+same project directory, run:
 
 ```sh
 docker compose -f docker-compose.yml -f docker-compose.restore.yml run --rm --no-deps -T --entrypoint tar witmoot -C /data -xf - < witmoot-before-upgrade.tar
 docker compose -f docker-compose.yml -f docker-compose.restore.yml up -d
 ```
 
-The destination volume must be new and empty. Keep using that override for
-subsequent Compose commands. Verify health, sign-in, and your data before deleting
-the original volume. Treat backup files as trusted private inputs.
+The new volume must be empty. Keep using the override for later Compose
+commands. Check health, sign-in, and your data before you delete the old
+volume. Restore only backups you made.
 
 ## Build locally
 
-A source checkout supports an explicit developer build:
+From a source checkout:
 
 ```sh
-VERSION=0.21.0 docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
+VERSION=0.23.0 docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
 ```
 
-The override builds `witmoot:local`; it does not fetch the published app image.
-Published images use `Dockerfile.release`, which packages verified native release
-artifacts. It does not compile source again.
+This builds `witmoot:local` and does not pull the published image.
 
 ## Release maintenance
 
-The release workflow builds native archives first. Both amd64 and arm64 images
-are tested on native runners for startup, routes, health checks, non-root volume
-permissions, graceful shutdown, compressed backups, restart persistence, a
-previous-release upgrade, full-volume restore, rollback with the old data, and
-adversarial configuration. Unit and mutation tests cover archive checksums,
-unsafe archives, metadata, and interrupted publication. Only after these checks
-pass does the workflow publish the exact saved images and assemble one combined
-version tag. PR and branch builds never publish.
+Published images come from `Dockerfile.release`, which packages the verified
+native release binaries. The release workflow publishes images only after
+both architectures pass their checks.
 
-Publication uses the repository's `GITHUB_TOKEN` with `packages: write` only in
-the publisher. On the first release, GHCR initially creates a private package:
-open the account's **Packages → witmoot → Package settings → Change visibility**
-and make it public. This is separate from repository visibility. The publisher
-verifies access with an empty Docker credential directory and fails until
-anonymous access works. Retry that failed publisher job after changing visibility;
-its saved artifacts are retained for seven days. Re-running the same artifacts is
-idempotent; a different image cannot overwrite an existing version tag.
-
-Update the pinned multi-platform Alpine and Go base digests through reviewed
-changes. Refresh runtime packages and run the lifecycle tests for each release.
-Security fixes to the runtime need a new patch version; do not replace an old
-tag. Candidate architecture tags support publication and are not deployment
-references. Keep the combined release tag and digest available for existing users.
+On the first release, GHCR creates the package as private. Open
+**Packages → witmoot → Package settings → Change visibility** and make it
+public, then re-run the failed publish job. Its saved artifacts last seven
+days. A published version tag is never overwritten; ship runtime security
+fixes as a new patch version.
 
 Local checks:
 
 ```sh
 make test-containers
-docker build --build-arg VERSION=0.21.0 -t witmoot:local .
-make test-container-lifecycle VERSION=0.21.0
+docker build --build-arg VERSION=0.23.0 -t witmoot:local .
+make test-container-lifecycle VERSION=0.23.0
 ```

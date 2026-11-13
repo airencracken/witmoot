@@ -1,34 +1,25 @@
 # Binary releases
 
-For first-run accounts, use [browser or command-line setup](setup.md). Run
-`witmoot setup` for the browser key, or `witmoot create-owner --username NAME`
-for a hidden terminal prompt.
+Download Witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
+The latest release is [0.23.0](release-notes/0.23.0.md), with one timezone setting and local dates across the app.
+Read the [release notes](release-notes/) for every version you skip before
+upgrading.
 
-Download witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The latest release is [0.23.0](release-notes/0.23.0.md), with consistent account timezone controls and local dates throughout the application.
-See the [suite guide](suite.md) for configuration and the release notes for upgrade guidance.
-Read the [0.18.0 notes](release-notes/0.18.0.md) for the individual-post feed and schema 20 index upgrade.
 Each version has Linux **amd64** (x86-64) and **arm64** (AArch64) builds:
 
 - `witmoot_VERSION_linux_ARCH.tar.gz`: a static binary, documentation,
-  license notices, and service/configuration examples.
+  license notices, and service examples.
 - `witmoot_VERSION_ARCH.deb`: a Debian/Ubuntu package with a systemd unit.
-- `witmoot_VERSION_source.tar.gz`: the corresponding source.
-- `witmoot_VERSION_checksums.txt`: SHA-256 checksums for all five artifacts.
+- `witmoot_VERSION_source.tar.gz`: the matching source.
+- `witmoot_VERSION_checksums.txt`: SHA-256 checksums for all five files.
 
-See [the 0.12.0 release notes](release-notes/0.12.0.md) for saved display
-timezones and its database migration. See [the 0.11.0 release notes](release-notes/0.11.0.md)
-for account deletion, archives, and pre-migration snapshots. See [the 0.10.0 release notes](release-notes/0.10.0.md) before upgrading: it
-changes mail and sandbox settings and the database schema. See
-[the 0.9.0 release notes](release-notes/0.9.0.md) for optional Bubblewrap confinement, and
-[the 0.8.0 release notes](release-notes/0.8.0.md) for owner controls, house rules, and interface refinements.
-
-The Go compiler is only needed when building from source.
-HTTPS connections to Imvault need your system's CA certificates.
+You need Go only to build from source. HTTPS connections to Imvault need your
+system's CA certificates. To create the first account, see
+[setting up Witmoot](setup.md).
 
 ## Debian and Ubuntu
 
-Select the version and architecture you want. For example:
+Pick the version and architecture. For example:
 
 ```sh
 release_version=0.23.0
@@ -40,18 +31,14 @@ sha256sum --ignore-missing -c "witmoot_${release_version}_checksums.txt"
 sudo apt install "./witmoot_${release_version}_${release_arch}.deb"
 ```
 
-Use `arm64` for an AArch64 machine. Check that the checksum command succeeds
-before installing. The package creates a dedicated `witmoot` account and
-`/var/lib/witmoot` with mode 0700. It installs the binary in `/usr/bin` and
-keeps settings in `/etc/witmoot/witmoot.env`, readable only by root.
+Use `arm64` on an AArch64 machine. Install only if the checksum passes. The
+package creates a `witmoot` account and `/var/lib/witmoot` with mode 0700,
+installs `/usr/bin/witmoot`, and keeps settings in `/etc/witmoot/witmoot.env`,
+readable only by root.
 
-**The first install leaves the service stopped and disabled.** Edit that
-configuration, provision the owner, then enable the service. Native package
-defaults bind to `127.0.0.1:8082`; configure your HTTPS reverse proxy and
-a public HTTPS base URL before exposing the site; it enables secure cookies.
-
-In a terminal, provision the account using the same data directory. The hidden
-prompt asks for the password twice:
+**The first install leaves the service stopped and disabled.** Edit the
+configuration, then create the owner in a terminal and start the service. The
+hidden prompt asks for the password twice:
 
 ```bash
 sudo /usr/bin/witmoot create-owner \
@@ -59,27 +46,23 @@ sudo /usr/bin/witmoot create-owner \
 systemctl enable --now witmoot
 ```
 
-The command reads `WITMOOT_DATA_DIR` from the systemd unit and environment file
-or OpenRC configuration when it is unset in the process environment. When run
-as root, it repeats the database operation as the configured service account.
-For scripts, pass one password line on stdin with `--password-stdin`. See
-[deployment](deployment.md) for reverse proxy and service settings. Logs go to
-`journalctl -u witmoot`.
+The service listens on `127.0.0.1:8082`. Set up an HTTPS reverse proxy and a
+public HTTPS `WITMOOT_BASE_URL` before you open the site to others; see
+[deployment](deployment.md). Logs go to `journalctl -u witmoot`.
 
-An upgrade restarts a running service and leaves an inactive service inactive.
-Back up before upgrading: startup can migrate the database. Debian manages
-the environment file as a conffile, preserving local edits or asking how to
-handle a changed upstream default.
+An upgrade restarts a running service and leaves a stopped one stopped.
+Startup can migrate the database, so back up first. Going back to an older
+binary may mean restoring that backup. Debian treats the environment file as a
+conffile and keeps your edits.
 
-Removal stops and disables the service. Purge also removes package
-configuration. **Neither removes application data or the service account.**
-Delete those separately only when you intend to discard the installation.
-An older binary may require restoring the matching pre-upgrade backup.
+Removing the package stops and disables the service; purging also removes its
+configuration. **Neither removes your data or the service account.** Delete
+those yourself only when you mean to.
 
 ## Portable binary archive
 
-Download the archive and checksum file for your architecture, verify them as
-above, and extract the archive:
+Download the archive and checksum file for your architecture, check them as
+above, and extract:
 
 ```sh
 tar -xzf witmoot_0.23.0_linux_amd64.tar.gz
@@ -89,11 +72,9 @@ sudo install -d /usr/local/share/doc/witmoot
 sudo install -m 0644 LICENSE README.md THIRD_PARTY_NOTICES.txt /usr/local/share/doc/witmoot/
 ```
 
-For an existing service, install the binary at the path its service definition
-uses, then restart it. For a new installation, create its dedicated service
-account and data directory as described in [deployment](deployment.md).
-
-To install the systemd files directly from the archive on a new installation:
+To upgrade, install the binary where your service expects it and restart.
+For a new install, create the service account and data directory as in
+[deployment](deployment.md), then copy the systemd files:
 
 ```sh
 sudo install -m 0644 contrib/systemd/witmoot.service /etc/systemd/system/witmoot.service
@@ -102,32 +83,26 @@ sudo install -m 0600 contrib/systemd/witmoot.env /etc/witmoot/witmoot.env
 sudo systemctl daemon-reload
 ```
 
-Edit the environment file (including `WITMOOT_ADDR=127.0.0.1:8082`),
-provision the local account, and enable the service. These first-install
-commands copy configuration; keep your existing configuration during upgrades.
-For OpenRC, the archive includes `contrib/openrc` and `contrib/logrotate`.
-Set `WITMOOT_BIN` to the installed binary path in `/etc/conf.d/witmoot`.
+Edit the environment file, create the owner, and enable the service. Skip
+these copies on upgrade so your configuration stays. For OpenRC, the archive
+has `contrib/openrc` and `contrib/logrotate`; set `WITMOOT_BIN` in
+`/etc/conf.d/witmoot` to the installed binary.
 
-## Logging in packages
+## Logs
 
-Gentoo's ebuilds install `/etc/logrotate.d/witmoot` and depend on
-`app-admin/logrotate`. The OpenRC service writes `/var/log/witmoot.log`;
-the rule keeps 14 archives and rotates daily or above 10 MiB when the system's
-logrotate job runs. Gentoo's default logrotate installation provides its cron
-job and depends on a cron implementation. If you disable that integration,
-arrange the system logrotate timer or another scheduler.
+Debian packages and the systemd unit log to journald. Read them with
+`journalctl -u witmoot`. On OpenRC, Gentoo's ebuild installs a logrotate rule
+for `/var/log/witmoot.log`; see [logs and backups](deployment.md#logs-and-backups).
 
-Debian packages and the supplied systemd unit explicitly send stdout and stderr
-to journald, which handles rotation and retention. They do not create a separate
-application log file. Use `journalctl -u witmoot` to read these logs.
-Journal limits are managed by the host's journald configuration.
+## Containers
+
+See [Run Witmoot with Docker](containers.md).
 
 ## Building and publishing
 
-GoReleaser **2.18.2** builds the same artifact set for both projects. With Go
-installed (the Makefile uses an installed `goreleaser`, or else runs the pinned
-release with `go run`, which needs network access and a Go new enough to build
-it):
+GoReleaser **2.18.2** builds the release. The Makefile uses an installed
+`goreleaser`, or runs the pinned version with `go run`, which needs network
+access:
 
 ```sh
 make release-check
@@ -135,48 +110,20 @@ make release-snapshot
 sh scripts/release/check-artifacts.sh
 ```
 
-Snapshot builds stay in `dist/` and never publish. Artifact checks also need
-`dpkg-deb`, `readelf`, and standard shell tools; Debian/Ubuntu provide these in
-`dpkg` and `binutils`. Source archives come from Git, and the check compares
-every tracked file with its copy in the archive and refuses untracked extras,
-so commit changes before checking. Release and `make build` binaries are
-stamped with their version, which the service logs at startup. Generated
-dependency notices and package files live in the ignored `.release/` directory.
+Snapshots stay in `dist/` and are never published. The artifact check needs
+`dpkg-deb` and `readelf` (Debian packages `dpkg` and `binutils`). It compares
+the source archive with every tracked file, so commit your changes first.
 
-The GitHub Actions workflow runs repository checks, builds both architectures,
-validates archive/package contents and checksums, and tests package lifecycles
-on native amd64 and arm64 Ubuntu runners plus Debian containers. It checks
-owner provisioning, HTTP health, service startup and upgrade restart on systemd,
-conffile preservation, removal, purge, and reinstallation with existing data.
-The lifecycle script intentionally refuses an existing installation and requires
-`RELEASE_PACKAGE_TEST=1` in a disposable system.
-
-After the change is on `master`, publish by creating and pushing a version tag:
+Once the change is on `master`, tag it and push the tag:
 
 ```sh
 git tag -a vX.Y.Z -m "witmoot X.Y.Z"
 git push origin vX.Y.Z
 ```
 
-The tagged commit must be reachable from `master`. The workflow publishes
-the exact tested artifacts to GitHub Releases only after every check passes.
-Uploads happen in a draft before it becomes public. Tags with a prerelease
-suffix produce a prerelease. A rerun can finish a draft but will not replace
-an already published release.
+The tagged commit must be on `master`. The workflow publishes to GitHub
+Releases only after every check passes. A tag with a prerelease suffix makes a
+prerelease. A rerun can finish a draft but never replaces a published release.
 
-The workflow uses GitHub's repository token with write access confined to
-the publishing job; no separate release token is needed.
-
-## Published container images
-
-See [Docker installation and operations](containers.md) for multi-platform images,
-Compose setup, version pins, backups, upgrades, and restore instructions.
-
-## Rebuild an existing release tag
-
-Maintainers can dispatch the Release workflow on `master` with `release_tag` set
-to an existing version tag. The workflow validates the tag, exact commit, VERSION
-where present, and reachability from master. It uses Go 1.26.11 and runs the full
-native, package and container gates against that tag. Container revision labels
-identify the checked-out source commit. Published releases and image tags remain
-immutable; reruns may finish an unpublished draft.
+To rebuild an existing tag, run the Release workflow on `master` with
+`release_tag` set to that tag.

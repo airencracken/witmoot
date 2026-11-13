@@ -1,17 +1,14 @@
 # Shared CSRF derivation
 
-The application now calls `comfylib/token.SessionCSRF` and pins published
-Comfylib v0.1.1 with verified module checksums. Its existing purpose string is retained, so previously
-issued sessions continue to use the same CSRF token. Independent compatibility
-vectors cover that contract.
+Witmoot derives form tokens with Comfylib's `token.SessionCSRF`, so existing
+sessions keep their tokens.
 
-Develop with a sibling Comfylib worktree selected by an untracked `go.work`:
+To develop against a sibling Comfylib worktree, use an untracked `go.work`:
 
 ```sh
 go work init . ../comfylib
-go work edit -replace=github.com/airencracken/comfylib@v0.1.1=../comfylib
+go work edit -replace=github.com/airencracken/comfylib=../comfylib
 ```
 
-Release checks run with `GOWORK=off` and resolve the published library through
-the module proxy. Keep workspace files and local replacements out of commits.
-The copied mutation engine is unchanged apart from its version header.
+Release checks run with `GOWORK=off` against the published module. Keep
+`go.work` and local replacements out of commits.

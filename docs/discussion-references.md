@@ -1,38 +1,35 @@
 # Bring a link to the conversation
 
-`GET /share?source=URL&title=TITLE&body=TEXT` prepares a draft from a deliberately
-shared source. The shared Comfylib reference package builds and validates this
-browser handoff. Sign in, choose a board for a new discussion or an existing
-topic ID for a reply, review its audience, and use the ordinary post action.
-GET never writes a topic or reply. Topic/board access, archived/read-only rules,
-CSRF protection and audience checks remain the existing ones.
+Songstead and Imvault can send a link to Witmoot as a draft through
+`GET /share?source=URL&title=TITLE&body=TEXT`. Sign in, then pick a board to
+start a new conversation, or pick a recent conversation to add a message.
+Review who can read it and post as usual. Opening `/share` never posts
+anything, and the normal board access and archive rules apply.
 
-Songstead drafts include public music information, the listening URL and a link
-back to the recommendation. They do not include sender/group notes, listening
-state or manual positions. Pasting a Songstead recommendation URL into an
-existing message also yields a small reference; opening the source requires its
-own sign-in and recommendation permission. Witmoot does not fetch Songstead or
-need a configured Songstead service, and source links work without previews.
+## Songstead
 
-imvault album handoffs are link-only. Private titles, counts, descriptions,
-covers and album contents are never copied into messages by the handoff.
-For a pasted album URL matching `WITMOOT_IMVAULT_URL`, Witmoot adds a source
-reference and an explicit **View current public album preview** link. Opening a
-topic does not contact imvault. A requested preview uses the post author's
-existing encrypted imvault connection and the authenticated
-`GET /api/v1/albums/{slug}/preview` API. No additional credentials are stored.
+A Songstead draft carries public music information, the listening link and a
+link back to the recommendation. It leaves out notes, listening state and
+playback position. Pasting a Songstead recommendation link into a message also
+adds a small reference. Opening it needs a Songstead sign-in with access to
+that recommendation. Witmoot never contacts Songstead.
 
-Every preview request first checks local post/topic/board access and verifies
-that the exact album URL still appears in the unremoved post. The API requires
-album ownership and returns metadata only while the album is public. Witmoot
-also rejects nonpublic responses and discards metadata on malformed, revoked or
-unavailable responses. It never shows private or members-only album metadata,
-even to a signed-in Witmoot reader. Only public images are counted; there is no
-cover proxy or album-content copy. Responses are no-store, with no preview cache.
-An unavailable, disconnected or older imvault keeps the topic and source link
-readable. Revisit the preview to see updated public album titles/image counts.
+## Imvault albums
 
-No new Witmoot configuration or database migration is required. Existing image
-connections, optional-service configuration, backups and disconnect semantics
-remain as documented in [imvault.md](imvault.md). The published Comfylib v0.1.1 `reference` package is pinned with verified
-module checksums; clean builds run with `GOWORK=off`.
+Album handoffs carry the link only. Private titles, counts, descriptions,
+covers and photos never reach the message.
+
+When a message contains an album link from the server in
+`WITMOOT_IMVAULT_URL`, Witmoot adds a reference and a
+**View current public album preview** link. Reading the conversation does not
+contact Imvault. Choosing the link asks Imvault for the album's current title
+and image count through the message author's Imvault connection.
+
+Witmoot shows a preview only while the album is public, the message is not
+removed, and the reader can see the conversation. Members-only and private
+albums show nothing. If Imvault is down, the author has disconnected, or the
+album has changed, the conversation and link stay readable. Witmoot copies no
+covers or photos and does not cache previews; open the preview again to see
+changes.
+
+There is nothing to configure beyond the [Imvault connection](imvault.md).

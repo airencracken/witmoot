@@ -1,17 +1,14 @@
 # Automatic backups
 
-Starting with Witmoot 0.17.0, the running service creates a verified,
-compressed backup every 24 hours. No cron job or timer is required. The first
-attempt starts one minute after startup; later attempts use the last successful
-backup time, including across restarts. Failed attempts retry after 15 minutes.
-Shutdown cancels the worker and joins it before closing the database.
+Since 0.17.0, the running service makes a verified, compressed backup every 24
+hours. You do not need a cron job or timer. The first attempt starts one minute
+after startup. Later attempts count from the last successful backup, even
+across restarts. A failed attempt retries after 15 minutes.
 
-Backups live in the private `backups/` subdirectory of the configured data
-directory. Each completed snapshot directory contains `manifest.json` and
-`snapshot.tar.zst` when `zstd` is on the service's PATH, otherwise
-`snapshot.tar.gz`. Gzip is built into the app. Install zstd to use it in native
-or Bubblewrap services. A zstd execution failure is reported rather than
-silently substituting another compressor. Compression uses one worker thread.
+Backups go to `backups/` inside the data directory. Each snapshot directory
+holds `manifest.json` and `snapshot.tar.zst` when `zstd` is on the service's
+PATH, or `snapshot.tar.gz` otherwise. Gzip is built in. If zstd is installed
+but fails, the backup fails; Witmoot does not fall back to gzip.
 
 ## Limits and scheduling
 
@@ -25,41 +22,38 @@ WITMOOT_BACKUP_MAX_BYTES="10737418240"
 WITMOOT_BACKUP_COPY_MAX_BYTES="5368709120"
 ```
 
-- Interval: 1 hour through 365 days; `0` disables automatic backups.
-- Copy count: 1 through 30, default 7.
-- Retained compressed archive data: default 10 GiB per app.
-- One uncompressed snapshot: default 5 GiB, checked before database copying
-  and while copying additional files. Oversized collections require a larger
-  explicit copy cap.
+- Interval: 1 hour to 365 days. `0` turns automatic backups off.
+- Copies kept: 1 to 30, default 7.
+- Total compressed archives: default 10 GiB.
+- One uncompressed snapshot: default 5 GiB. Raise this cap if your data
+  directory is larger.
 
-Rotation applies both count and archive byte limits and always keeps the
-snapshot just completed, even if the system clock moved backwards. A snapshot
-that cannot fit the archive cap is rejected without deleting existing backups.
-Manual backups, other apps' backups and pre-migration snapshots are untouched.
-A failed copy or compression leaves no completed snapshot and does not rotate
-older copies. After a crash, the next running service removes its reserved
-interrupted staging directories before creating another copy.
+Rotation removes the oldest copies past either limit and always keeps the
+newest one. A snapshot too large for the archive cap is rejected, and existing
+backups stay. A failed backup leaves older copies alone. Rotation never
+touches manual backups or pre-migration snapshots.
 
-The retained archive cap excludes small manifests and scheduling state. During
-a backup, allow additional disk space for one uncompressed snapshot and its
-new compressed archive; rotation happens after the new snapshot is complete.
-The copy cap is not a cap on the live app's storage. SQLite size is checked
-before snapshotting and the finished snapshot is checked again.
+During a backup, leave free disk space for one uncompressed snapshot plus its
+compressed archive.
 
-Owners see enabled status, destination, caps, latest successful backup, latest
-error and next attempt on the existing instance settings page. Errors also go
-to the service log. Backup status and files are never public web routes.
-Automatic backups do not include service configuration or outside credentials;
-preserve those separately.
+Owners see the schedule, caps, folder, last success, last error and next
+attempt in the **Server** section at the bottom of **Settings**. With backups
+turned off it says "Automatic backups are off." Errors also go to the service
+log. Backups are never served over the web. They do not include service
+configuration or outside credentials; keep those separately.
 
 ## Recovery
 
-Keep a protected copy of completed snapshot directories on another machine.
-Local backups protect against mistakes, but share the live disk's failure
-risk. They contain passwords and private data.
+Copy completed snapshot directories to another machine and keep them private.
+They contain password hashes and private conversations. A local copy will not
+survive a lost disk.
 
-For a restore drill, compare the archive's `sha256sum` with the hash in
-`manifest.json`, create a new private extraction directory, and extract there:
+The snapshot holds a consistent copy of the SQLite database and `imvault.key`
+when present, so members' Imvault connections survive a restore. A missing or
+wrong `imvault.key` makes the backup fail.
+
+To test a backup, compare the archive's `sha256sum` with the hash in
+`manifest.json`, then extract it into a new private directory:
 
 ```sh
 umask 077
@@ -67,17 +61,11 @@ mkdir /private/restore-drill
 tar -xf /private/backups/SNAPSHOT/snapshot.tar.zst -C /private/restore-drill
 ```
 
-Use `snapshot.tar.gz` for gzip copies. Extraction of zstd copies needs zstd
-installed. Extract only your trusted backups, and never over a running data
-directory.
+Use `snapshot.tar.gz` for gzip copies. Extracting zstd copies needs zstd.
+Extract only backups you made, and never over a running data directory.
+Point the matching binary at the extracted directory with `WITMOOT_DATA_DIR`
+and an unused loopback port.
 
-The snapshot includes the consistent SQLite database and `imvault.key` when
-present, preserving encrypted member connections. Integrity, foreign keys and
-connection decryption are checked; a missing or incorrect connection key
-prevents a successful backup.
-
-For a restore drill, use the extracted directory as `WITMOOT_DATA_DIR` with the
-matching binary on an unused loopback port. For production recovery, stop the
-service first and preserve the service account ownership and private
-permissions when replacing its data directory. Imvault media remains in
-Imvault and must be backed up separately.
+To recover for real, stop the service first. Keep the service account's
+ownership and private permissions when you replace its data directory. Images
+live in Imvault; back that up separately.

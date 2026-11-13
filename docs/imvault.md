@@ -1,26 +1,26 @@
 # Images at the table
 
-Witmoot can use an imvault server for images. The integration is optional:
-text conversations work with no image service configured.
+Witmoot can share images from an Imvault server. This is optional; text
+conversations work without it.
 
 ## Connect the two
 
-1. Run an imvault instance reachable from the Witmoot server. This integration
-   uses imvault's v1 account, files, upload, delete, and preview endpoints.
-2. Set `WITMOOT_IMVAULT_URL` to that instance's base URL and restart Witmoot.
-   Use HTTPS when the connection crosses a network you do not control.
-3. In imvault, create an API key under **Settings → API keys**.
-4. In Witmoot, open **Images**, enter that key, and choose **Connect imvault**.
+1. Run an Imvault instance the Witmoot server can reach.
+2. Set `WITMOOT_IMVAULT_URL` to its base URL and restart Witmoot. Use HTTPS
+   across any network you do not control.
+3. In Imvault, create an API key under **Settings → API keys**.
+4. In Witmoot, open **Account → Images**, paste the key, and choose
+   **Connect Imvault**.
 
-Each member connects their own account. Witmoot uses the key's imvault permissions;
-use an ordinary account unless administrative access is intended. The owner
-configures one server for the board. Members cannot send keys to arbitrary URLs.
-API responses cannot redirect Witmoot to another server.
+Each member connects their own account, and Witmoot acts with that key's
+permissions. Use an ordinary Imvault account unless you mean to grant admin
+access. Members cannot point their key at any server other than the one the
+owner configured.
 
-## Running beside imvault
+## Running beside Imvault
 
-Use separate data directories, service accounts, and loopback ports. For a
-native installation with imvault on `127.0.0.1:8080`, Witmoot can use:
+Give each app its own data directory, service account and loopback port. With
+Imvault on `127.0.0.1:8080`:
 
 ```sh
 WITMOOT_ADDR="127.0.0.1:8082"
@@ -31,8 +31,8 @@ WITMOOT_TRUSTED_PROXIES="127.0.0.1/32,::1/128"
 WITMOOT_IMVAULT_URL="https://photos.example.org"
 ```
 
-Set these in the environment of the Witmoot service and restart it. Add a
-separate site block to the existing Caddyfile, using your board's hostname:
+Put these in `/etc/conf.d/witmoot` for OpenRC or `/etc/witmoot/witmoot.env`
+for systemd, restart Witmoot, and add a separate site to your Caddyfile:
 
 ```caddyfile
 board.example.org {
@@ -41,115 +41,88 @@ board.example.org {
 }
 ```
 
-The [deployment guide](deployment.md) covers the packaged services, owner
-provisioning, and Docker. For OpenRC, put the settings in `/etc/conf.d/witmoot`;
-for systemd, use `/etc/witmoot/witmoot.env`.
+Use Imvault's public, canonical URL for `WITMOOT_IMVAULT_URL`. Pasted links
+must match it, and Witmoot must be able to reach it. There is no shared
+sign-in. Back up both data directories, including Witmoot's `imvault.key`.
 
-Use imvault's public, canonical URL for `WITMOOT_IMVAULT_URL`: pasted links
-must match it, and Witmoot must be able to reach it. There is no shared sign-in;
-each person connects their own imvault API key. Keep both data directories in
-your backups, including Witmoot's `imvault.key`.
-
-`WITMOOT_TRUSTED_PROXIES` defaults to empty. Only list proxies you operate,
-never all internet addresses. Witmoot checks the direct peer before considering
-`X-Forwarded-For`, then walks the chain from right to left until the first
-untrusted address. Missing or malformed trusted hops fall back to the peer's
-rate-limit bucket. Invalid configuration stops startup.
-
-Caddy normally replaces untrusted forwarded headers; see its
-[forwarded-header defaults](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#defaults).
-The [nginx and Apache examples](reverse-proxies.md) also replace these headers
-when accepting visitors' connections directly.
-If another proxy sits in front of Caddy, configure the trusted chain in Caddy
-and Witmoot. Keep the application port private. These settings affect client
-addresses for rate limiting; `WITMOOT_SECURE_COOKIES=true` remains necessary for
-HTTPS deployments.
+`WITMOOT_TRUSTED_PROXIES` is empty by default. List only proxies you run.
+Witmoot reads `X-Forwarded-For` only from a trusted peer, walking right to left
+to the first untrusted address, and uses that address for rate limits. Invalid
+values stop startup. Caddy and the
+[nginx and Apache examples](reverse-proxies.md) replace forwarded headers from
+visitors. If another proxy sits in front of Caddy, trust it in both Caddy and
+Witmoot. HTTPS deployments still need `WITMOOT_SECURE_COOKIES="true"`.
 
 ## Three ways to share
 
-Open **Add images** when starting a conversation or replying:
+Open **Add images** when you start a conversation or reply:
 
-- **Upload images** sends new files to your connected imvault account with
-  `visibility=private` and `metadata=hidden`, regardless of imvault's defaults.
-- **Load image library** fetches your existing images when you ask for them,
-  with search and pagination. Selections survive moving between picker pages.
-  Without JavaScript, loading or refreshing the library keeps your text draft
-  and selections without posting; choose upload files afterward. The first page
-  of search results can be selected, or use **Open your full library** to browse
-  further and copy a link into your draft.
-- **Paste imvault image links** accepts image pages and raw, preview, or thumbnail
-  links from the configured server. Public thumbnails need no connection.
-  Other images must be accessible through your connected account's files API.
-  Thumbnail and preview links with imvault's `?v=…` version parameter work too.
+- **Upload images** sends new files to your Imvault account as private, with
+  metadata hidden, whatever your Imvault defaults are.
+- **Load image library** shows your existing images, with search and pages.
+  Your selections stay as you move between pages. Without JavaScript, loading
+  the library keeps your draft and selections. You can pick from the first
+  page of results, or use **Open your full library** to browse further and
+  copy a link into your message.
+- **Paste Imvault image links** accepts image pages and raw, preview or
+  thumbnail links from the configured server, including ones with `?v=…`.
+  Public thumbnails need no connection. Other images must be reachable through
+  your own account.
 
-A message may contain four images, each up to 8 MiB. Supported uploads are JPEG,
-PNG, WebP, and GIF. Messages still require text. If validation or an image upload fails, text and
-valid image selections remain, but browser upload fields must be selected again.
+A message can hold four images of up to 8 MiB each: JPEG, PNG, WebP or GIF.
+Messages still need text. If posting fails, your text and chosen images stay,
+but you have to pick upload files again.
 
-Still images use imvault's generated preview. Animated images use a still
-thumbnail. Witmoot does not fetch originals or expose camera metadata. This is
-image sharing, not a general attachment store or an embedded imvault browser.
+Witmoot shows Imvault's preview for still images and a still thumbnail for
+animated ones. It never fetches originals or shows camera metadata.
 
 ## Avatars from your library
 
-Under **Account**, a member can import an image from their connected imvault
-library as their avatar. Witmoot copies the chosen preview, crops it square, and
-stores a small PNG in its own database, along with bounded GIF animation when
-the selected rendition is animated. The avatar keeps working even if
-imvault is unreachable later or the connection is removed. This is the one place
-Witmoot keeps image bytes of its own; conversation images remain references.
+In the **Profile** section of the account page, members can pick an avatar
+from their Imvault library. Witmoot copies the preview, crops it square and
+keeps a small PNG, plus a short GIF animation when the image is animated. The
+avatar keeps working if Imvault goes away or you disconnect. This is the only
+image Witmoot stores itself; message images stay in Imvault.
 
 ## Who can see a shared image
 
-Attaching an image explicitly shares its preview with everyone allowed to read
-that conversation, even when the image is private in imvault. In Open mode,
-new conversations and their attached previews are public. Existing topic
-audiences are preserved through mode changes; private images attached to a
-members-only topic stay behind sign-in. Open registration still lets anyone
-become a member, as explained in the board settings.
+Attaching an image shares its preview with everyone who can read that
+conversation, even when the image is private in Imvault. In Open mode, new
+conversations and their images are public. A conversation keeps its audience
+when the board mode changes, so images in a members-only conversation stay
+behind sign-in. Switching to Private or Personal mode closes public access to
+the whole board, images included.
 
-Witmoot serves images through local `/images/...` URLs. Each request checks the
-current board mode and conversation audience before accessing imvault. Private
-and Personal modes close access to formerly public images along with the board.
-The proxy does not forward browser cookies, expose API keys, or store shared
-conversation image bytes in SQLite. The proxy streams image bytes and caches
-successful ownership checks for 15 seconds, separately for each credential.
-Every request still checks local access. Browser responses use
-`Cache-Control: private, max-age=15` and `Vary: Cookie`; revocations may therefore
-take up to 15 seconds to expire from a browser or the ownership cache.
+Images load through local `/images/...` URLs. Each request checks the
+conversation's audience before Witmoot asks Imvault. Witmoot does not forward
+browser cookies or expose API keys. Witmoot remembers a
+successful Imvault check for 15 seconds, and browsers cache images privately
+for 15 seconds, so revoking access can take that long to show.
 
-Existing public imvault links remain public at their original URLs. Sharing one
-in a private conversation does not change its visibility in imvault. Anyone
-who has already viewed an image can keep a copy.
+Sharing a public Imvault link in a private conversation does not change it in
+Imvault. Anyone who has already seen an image may have kept a copy.
 
 ## Connections, backups, and failures
 
-API keys are encrypted with AES-GCM, bound to the Witmoot member and configured
-server. The random encryption key is stored as `imvault.key` in Witmoot's data
-directory with owner-only file permissions. Back up the entire data directory,
-including this key. A database backup alone cannot restore the connections.
-Back up imvault separately: Witmoot stores references, and depends on imvault
-for the images themselves.
+Witmoot encrypts each API key with the random key in `imvault.key` in its data
+directory. Back up the whole data directory with that file. A database backup
+alone cannot restore connections. Witmoot stores references only, so back up
+Imvault separately.
 
-**Disconnect imvault** deletes the member's stored API key without deleting their
-files or conversations. Images that relied on that connection stop loading;
-public pasted images continue to work. Reconnecting restores accessible images.
-Revoking the key in imvault also stops credentialed access. A different account
-cannot use an old reference unless imvault grants that account access to the file.
-Changing `WITMOOT_IMVAULT_URL` disables references to the old server.
+**Disconnect Imvault** deletes your stored key. Your files and conversations
+stay. Images that relied on your connection stop loading; public pasted images
+keep working. Reconnecting brings them back. Revoking the key in Imvault also
+stops access. Changing `WITMOOT_IMVAULT_URL` breaks references to the old
+server.
 
-If imvault is unavailable, conversations remain readable and images may be
-unavailable. Reading a conversation or opening its composer does not request
-the image library. Posting with an unavailable attachment fails with an explanation;
-text-only posting remains possible. Library requests and media responses are
-bounded in size and time.
+If Imvault is down, conversations stay readable and images may not load.
+Posting with an unreachable image fails with an explanation; text-only
+messages still work.
 
-Post text and attachment references commit together in SQLite. If a post fails,
-Witmoot tries to delete only files newly uploaded for that failed submission;
-it never deletes selected library files or pasted images. The two servers do
-not share a transaction. An interrupted upload response, process crash, or failed
-cleanup can leave an unattached private file in imvault. Cleanup failures with
-known IDs are logged for the operator to reconcile.
+If a message fails after an upload, Witmoot deletes the files it just uploaded
+for it. It never deletes library images or pasted links. A crash or network
+failure can still leave an unattached private file in Imvault. Witmoot logs
+failed cleanups with their file IDs.
 
-Album discussion references and browser draft handoffs are documented in
-[discussion-references.md](discussion-references.md).
+For album links and drafts from Imvault, see
+[bring a link to the conversation](discussion-references.md).

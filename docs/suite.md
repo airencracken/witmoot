@@ -1,25 +1,28 @@
 # Optional Comfyware connections
 
-Each app keeps its own accounts, permissions, sessions and data. All connections
-are optional. An empty configuration retains local password sign-in and hides
-the Apps menu. No destination is discovered or contacted by the app switcher.
+Each Comfyware app keeps its own accounts, permissions and data. Every
+connection here is optional. With none configured, members sign in with a
+local password and the Apps menu is hidden.
+
+Set these in `/etc/conf.d/witmoot` (OpenRC), `/etc/witmoot/witmoot.env`
+(systemd), or the Compose `.env` file, then restart. All default to empty.
 
 ## Apps menu
 
-Set `WITMOOT_APPS` to a JSON array of known app IDs and absolute HTTP(S)
-addresses. The current app is omitted automatically. For example:
+Set `WITMOOT_APPS` to a JSON array of app IDs and their HTTP(S) addresses.
+Witmoot leaves itself out of the menu. For example:
 
 ```sh
 WITMOOT_APPS='[{"id":"imvault","url":"https://photos.example.org"},{"id":"songstead","url":"https://music.example.org"},{"id":"witmoot","url":"https://discuss.example.org"},{"id":"folkweave","url":"https://people.example.org"},{"id":"tidings","url":"https://read.example.org"}]'
 ```
 
-Use the addresses served by your own installation. Unknown IDs, duplicate apps,
-credentials, queries and fragments are rejected at startup. The menu does not
-provide membership in another app.
+Unknown IDs, duplicates, and addresses with credentials, queries or fragments
+stop startup. Witmoot never contacts these addresses, and the menu grants no
+membership in the other apps.
 
 ## Community sign-in
 
-Configure an OpenID Connect provider using:
+Connect an OpenID Connect provider:
 
 ```sh
 WITMOOT_SHARED_ISSUER=https://identity.example.org
@@ -27,70 +30,36 @@ WITMOOT_SHARED_CLIENT_ID=witmoot
 WITMOOT_SHARED_CLIENT_SECRET=configure-in-your-protected-service-environment
 ```
 
-Also configure the app's existing `WITMOOT_BASE_URL` to its public address and
-register exactly `https://your-app.example.org/auth/shared/callback` with the
-provider. Each app uses its own client registration. The issuer must use HTTPS;
-HTTP loopback issuers are accepted for local testing. Protect the client secret
-like the existing application secrets. No provider request is made at startup.
+Set `WITMOOT_BASE_URL` to Witmoot's public address and register exactly
+`https://your-app.example.org/auth/shared/callback` with the provider, using a
+separate client for each app. The issuer must use HTTPS; loopback HTTP works
+for testing. Protect the client secret like any other password.
 
-Sign in with a local password, open Account, choose Community sign-in, and
-connect your community identity. Later, the login page can use that identity.
-An unlinked identity cannot create an account or inherit permissions from email
-or provider claims. Invitations and local owner/member restrictions still apply.
-Imvault also requires its existing second factor when the local account has one.
-Disabled or suspended accounts cannot sign in. Disconnecting the identity leaves
-the local password usable. Signing out ends the session in this app; it does not
-sign out other apps or the provider. Keep a working local owner password for
-recovery and provider outages.
+Members sign in with their password, open **Account → Community sign-in**, and
+link their community identity. After that, the login page offers it. An
+unlinked identity cannot create an account or claim one by email address.
+Invitations, roles and suspensions still apply. Unlinking leaves the password
+working. Signing out ends only the Witmoot session. Keep a working local owner
+password in case the provider is down.
 
-Bindings are stored in the application's SQLite database and included in full
-database backups. Personal exports do not copy identity bindings to other apps.
-Pending sign-ins expire after five minutes and are lost on server restart.
-Use a single application process per database, as required by the existing
-instance lock; pending flows are intentionally held only in that process.
+Links between accounts and identities live in the database and in full
+backups, not in personal exports. An unfinished sign-in expires after five
+minutes or when the server restarts.
 
-## Discussions and privacy
+## Drafts from other apps
 
-Songstead and Imvault can prepare drafts for their configured Witmoot server.
-The source app shows the information included before leaving. Imvault includes
-an album link without its private title or contents. In Witmoot, choose a board
-or existing conversation and review its audience before posting.
+Songstead and Imvault can prepare a draft for Witmoot. The source app shows
+what it will send. In Witmoot, pick a board or a recent conversation and check
+who can read it before posting. See
+[bring a link to the conversation](discussion-references.md).
 
-For the return flow, configure the source app's public address in `WITMOOT_APPS`
-and configure Witmoot's public `WITMOOT_BASE_URL`. After posting, choose Return
-and keep discussion link. The source app asks you to confirm saving it through
-its normal authenticated form. The return is bound to the original local session
-and source item, expires after twenty minutes and is lost on server restart.
-It never changes either item's audience. Keep an existing thread URL manually if
-a return expires. App links, album previews, local comments and shared sign-in
-remain independently configurable.
+To send the link back, list the source app in `WITMOOT_APPS` and set
+`WITMOOT_BASE_URL`. After posting, choose to return and keep the conversation
+link; the source app asks you to confirm before saving it. The offer lasts
+twenty minutes and ends if the server restarts. If it runs out, copy the
+conversation link by hand.
 
-## Reading and controls
+## Maintenance
 
-Account actions, invitations, host tools and theme selection are grouped under
-Account. Native disclosure controls also work without JavaScript. Optional upload
-metadata and music details can be expanded when needed; audience choices remain
-visible. Songstead and Tidings offer comfortable or compact reading. That choice
-is stored per app in this browser, synchronizes between its tabs and falls back
-to comfortable if browser storage is unavailable. Other browsers keep their own
-choice. Imvault uses neutral privacy labels; each upload still has an explicit
-audience.
-
-## Shared source maintenance
-
-Suite helpers are imported from `github.com/airencracken/comfylib/suite`.
-The separately versioned `github.com/airencracken/comfylib/oidc` module supplies
-the OIDC protocol adapter; the core library still uses only the standard library.
-Shared browser assets are served from `ui.Assets()` at `/static/comfyware/`.
-
-`python3 scripts/comfy.py check` verifies the integration. The same small launcher
-runs configuration, release and container checks from the exact Comfylib version
-in `go.mod`, with `GOWORK=off`. Application settings and lifecycle profiles stay
-in `scripts/containers/config.json`; application sessions and permissions remain
-local. Upgrade the published module pins to update shared behavior and tooling.
-There are no synchronized source copies or generated asset manifests.
-
-Native service templates and Compose forward the four optional suite settings.
-For Compose, put them in the project `.env` file or shell environment; for OpenRC
-or systemd, edit the installed service configuration and restart the service.
-All four default to empty, leaving navigation and community sign-in disabled.
+`python3 scripts/comfy.py check` runs the shared configuration, release and
+container checks from the Comfylib version pinned in `go.mod`.
