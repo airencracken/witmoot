@@ -2,139 +2,62 @@
 
 A little corner of the internet for your people.
 
-Witmoot is a bulletin board for personal use, families, and groups of friends. It takes
-its familiar rooms, topics, and conversations from phpBB and vBulletin, and its
-small, self-hosted clubhouse spirit from imvault.
+Witmoot is a bulletin board for a household, a family, or a group of friends.
+It borrows rooms, topics, and conversations from phpBB and vBulletin, and keeps
+them small and self-hosted.
 
-**Comfyware** is software for your friends and family, run by and for the people
-using it. It brings the personal spirit of the IndieWeb together with
-self-hosting and a focus on small communities. Trust comes from a bounded social
-context, governed by the people actually in it.
+Witmoot is part of **Comfyware**: software for friends and family, run by and
+for the people using it. Each community sets its own rules, owns its data, and
+can pack up and leave. There are no recommendation algorithms, infinite scroll,
+streaks, or engagement targets. Just the plans, little updates, good finds, and
+conversations worth coming back to. Read more in the
+[Comfyware principles](docs/product.md#what-comfyware-means).
 
-"Software you'd let your kids use" means an instance operated by people you
-trust, under rules you understand. Each community establishes its own rules and
-culture. Comfyware does not promise that every instance is suitable for every
-family. It should provide the tools for local governance, protect the community's
-ownership of its data, and make leaving or moving practical.
+One Go binary and one data directory: server-rendered HTML, SQLite, and HTMX,
+with no frontend build step and no outside service.
 
-Low distraction. No recommendation algorithms, infinite scroll, streaks, or
-engagement targets. Just the plans, little updates, good finds, and conversations
-worth coming back to, whenever you choose.
-
-The [comfyware principles](docs/product.md#what-comfyware-means) guide the tools
-we build and the features we choose.
-
-[copyparty](https://github.com/9001/copyparty) is another inspiration for that
-practical, personal approach to running your own shared corner of the web.
-
-One Go binary. One data directory. Server-rendered HTML, SQLite, and HTMX.
-No frontend build step or external service needed to run it.
-
-Sage and cream by day, dark greens by night. Choose **System**, **Light**, or
-**Dark** in the header. System follows your device; an explicit choice stays in
-this browser, including before you sign in.
-
-Meet the **Moot Knight**: a little keeper of the round table, with a book,
-a quill, and room for your people. The mascot appears on the welcome page and
-beside the board.
+Sage and cream by day, dark greens by night. Pick **System**, **Light**, or
+**Dark** from the header. Meet the **Moot Knight**, a little keeper of the round
+table with a book, a quill, and room for your people.
 
 ![Witmoot's private board with a sample conversation](docs/images/board.png)
 
-*An isolated browser-test instance, with sample conversation data.*
+*A test instance with sample conversations.*
 
-Run `witmoot --version` to identify your binary. The site settings page also
-shows the running version. **Show version in the footer** makes it visible to
-visitors; it is off by default.
-
-Run a published image with Docker Compose: [container installation, upgrades, and backups](docs/containers.md).
-
-Use a current Go security patch when building: Go 1.26.11 or later on the
-1.26 series, or Go 1.27.4 or later on the 1.27 series.
-
-## Witmoot 0.23.0
-
-Account settings now offer the same **Times and dates** control used across the
-five Comfyware applications. Open `/account`, choose an IANA timezone such as
-`America/Los_Angeles`, and select **Save timezone**. UTC is the default. Your
-choice is saved for your account across sessions and devices. **Use this device's
-timezone** fills the field when JavaScript is available; saving remains explicit.
-Manual selection and local date rendering also work without JavaScript.
-
-Comfylib 0.6.0 owns validation, formatting, the account control, browser detection
-and bounded template caching. Dates handle daylight saving and calendar boundaries.
-Admin dashboard sign-in and backup instants follow your preference; reporting
-days remain UTC. Stored timestamps, API responses and machine-readable timestamps
-retain their existing UTC contract. Account isolation, native permissions and CSRF
-checks apply to every preference change.
-
-Existing saved Witmoot timezones are preserved in the native account column.
-No application migration or export format change is added.
-
-## Witmoot 0.22.0
-
-Native admin metrics now use one shared dashboard with identical typography, spacing, cards, tables and reporting definitions across the apps. Successful local and community sign-ins and authorized content opens are recorded by Comfylib 0.5.0. Views count once per account, item and UTC day; thumbnails, background assets, failed requests and signed-out visits do not count.
-
-Only active administrators (called owners in this app where applicable) can read the dashboard or its account sign-in summaries. Ordinary members, guests and moderators cannot read analytics. The dashboard shows the past seven UTC days, when collection began, daily totals, recent sign-ins by account, and most-viewed content. Recording begins after upgrade; no earlier history is inferred. No IP addresses or browser identifiers are recorded. Activity is retained for ninety UTC days, pruned at startup and daily while serving, and removed when its account is deleted.
-
-The analytics tables are additive and separately versioned by Comfylib; existing application data and application migration versions are unchanged. Back up before upgrading. Existing archives remain supported. Shared browser contracts now check exact dashboard styling, widths and access boundaries in both themes and with JavaScript disabled.
-
-## Witmoot 0.21.0
-
-Native owner/admin metrics now show aggregate membership, content, storage and recent activity, with owner-only operational summaries for backups and configured suite connections. The pages work without JavaScript and follow the application's existing permissions.
-
-Rate limiting uses the bounded shared implementations while retaining the app's own budgets. Release preparation, artifact verification, browser fixtures and immutable CI workflows use the published Comfylib pin directly. A release preflight verifies version metadata, cold module caches and the exact shared workflow revision before publication.
-
-No application database migration is added. Existing service configuration and account permissions remain supported.
+**What's new:** see the [release notes](docs/releases.md).
 
 ## Come on in
 
-Want to look around first? With Go 1.26.11 or later installed:
+Want to look around first? With Go installed:
 
 ```sh
 make demo
-# Choose another local port if needed:
-make demo PORT=9000
+make demo PORT=9000   # another local port
 ```
 
-Open <http://127.0.0.1:8082> for the default demo. Sign in as **demo** (owner),
-**freya**, or **jules** (members), all with password **demo-password**.
-There are sample conversations and replies in every room, including public,
-members-only, and owner-only conversations. Try Search, Settings, and Invites.
-The planning nook is a private board: **freya** can post and edit her messages,
-**jules** can read, and visitors cannot see it. Sign in as **demo** and choose
-**Manage boards** to try changing those permissions.
-The **Sunday regulars** group grants posting access to both members, with an
-individual Read only override for jules. **Manage groups** shows that override
-alongside each person's effective board access.
-Visit **Archive** for Last summer, a board of past conversations. Owners can
-restore it or try the archive and deletion confirmations in its board settings.
+Open <http://127.0.0.1:8082>. Sign in as **demo** (owner), **freya**, or
+**jules** (members), all with the password **demo-password**. Every room has
+sample conversations, some public, some for members, some for owners only.
 
-The demo listens only on localhost, uses a fresh temporary directory, and ignores
-your `WITMOOT_*` configuration. Ctrl-C stops it and removes its data; the next run
-starts fresh. It does not need an imvault server. Run `make` or `make help` to see
-all available commands.
+- **The planning nook** is a private board: freya can post, jules can read, and
+  visitors cannot see it. Change that under **Manage boards**.
+- **Sunday regulars** is a group that lets both members post, with a Read only
+  override for jules. **Manage groups** shows the result.
+- **Archive** holds Last summer, a board of past conversations.
 
-For your own board:
+The demo listens on localhost, uses a temporary directory, and ignores your
+`WITMOOT_*` settings. Ctrl-C stops it and deletes its data. Run `make help` for
+every command.
 
-For a prebuilt Linux binary or Debian package, head to
-[GitHub Releases](https://github.com/airencracken/witmoot/releases) and the
-[binary installation guide](docs/releases.md).
+## Set up your own board
 
-The binary includes deployment help and HTTPS proxy config helpers:
+Download a Linux binary or Debian package from
+[GitHub Releases](https://github.com/airencracken/witmoot/releases) and follow
+the [binary installation guide](docs/releases.md), or run the published image
+with [Docker Compose](docs/containers.md).
 
-```sh
-witmoot --help
-witmoot help create-owner
-witmoot reset-link --username freya --expires 48h
-witmoot proxy-config caddy --domain board.example.org > witmoot.Caddyfile
-```
-
-Use `nginx` or `apache` in place of `caddy` for those servers. The
-[proxy guide](docs/reverse-proxies.md#generate-a-site-configuration) covers
-custom ports, certificates, and installation.
-
-Requires Go 1.26.11 or later. Dependencies are pinned in `go.mod`; HTMX 2.0.10 and
-its license are included locally. The first build downloads Go dependencies.
+Building from source? Requires Go 1.26.11 or later (or Go 1.27.4 or later on the
+1.27 series).
 
 ```bash
 make build
@@ -142,420 +65,227 @@ make build
 ./bin/witmoot
 ```
 
-For scripts, pass one password line on standard input with
-`./bin/witmoot create-owner --username alex --password-stdin`.
+Scripts can pass the password on standard input with `--password-stdin`. New
+builds can also authorize the first owner in the browser with `witmoot setup`;
+see [common setup](docs/setup.md).
 
-Open <http://127.0.0.1:8082>, sign in, and choose **Settings** to select Personal,
-Private, or Open. New installations start in Private mode. Use **Invites** to
-make a link for someone you know. Invitations default to one use and seven days;
-owners choose labels, use limits, and expiry when creating them, and can revoke
-them from the saved list. Passwords need at least 12 characters and may contain
-up to 72 bytes.
+Open <http://127.0.0.1:8082> and sign in. New boards start in Private mode.
+Choose **Settings** to change the mode and **Invites** to bring someone in.
 
-An owner is created locally. Public registration never creates an owner, even on
-an empty installation. Invited and openly registered accounts are always members.
+For a permanent home, read the [deployment guide](docs/deployment.md) (source
+installs, a Gentoo ebuild, OpenRC and systemd services, log rotation) and the
+[proxy guide](docs/reverse-proxies.md). Caddy is the recommended proxy;
+`witmoot proxy-config caddy --domain board.example.org` prints a site
+configuration, and `nginx` or `apache` work too.
 
-For a permanent home, see the [deployment guide](docs/deployment.md): source
-install targets, a Gentoo ebuild, OpenRC and systemd services, log rotation,
-Caddy, and Docker Compose. [nginx and Apache are also supported](docs/reverse-proxies.md);
-Caddy is the recommended proxy. Native services default to `127.0.0.1:8082`, so the
-board and imvault can share a host without competing for the same port.
+`witmoot --help` lists every command and setting.
 
-## Your place, your house rules
+## Who can see what
 
-Open **Manage** in the header for boards, groups, members, and site settings.
-Under **Settings**, publish house rules and a way to contact the owners.
-**House rules & owners** in the footer is available before sign-in and lists
-owner usernames, never their private account email addresses. Only enter contact
-details you want to make public.
-
-Under **Members**, an owner can suspend a member or restore access. Suspension
-signs them out on every device and revokes their reset links and unused
-invitations. It keeps their contributions and board/group permissions. Restoring
-access lets them sign in again; old sessions, links, and invitations stay revoked.
-Owners cannot be suspended. Public pages remain available without signing in.
-
-Owners can **Remove** a message after reviewing its text and confirming. Removal
-permanently replaces the text with a placeholder and deletes its shared image
-links. Replies and message numbers keep their place; Imvault originals are kept.
-Removing the opening message can also replace the conversation title. Removed
-messages cannot be edited or restored, and fresh exports contain the placeholder
-with `removed: true`. Existing downloads and backups are not changed.
-**View owner activity** on Members records who suspended/restored a member or
-removed a message. This history is visible only to owners.
-
-Use **Manage boards** as an owner to create boards, rename them, and choose
-**Selected members only** for a private space. **Manage groups** lets owners
-create named groups, edit their memberships, and rename or delete them. In board
-settings, give a group **Read only** or **Read and post** access. Membership
-changes take effect immediately across its boards, conversations, and images.
-
-Individual permissions override every group grant: **No access** hides the board,
-**Read only** prevents posting, and **Read and post** allows it. **Use groups**
-inherits group grants; if groups overlap, Read and post wins. Without an individual
-or group grant, a private board stays hidden. Existing individual grants become
-overrides when upgrading; new members start with Use groups and no memberships.
-
-Each group's management page shows its board grants, highlights individual
-overrides, and lists effective access for each member. This includes site access
-rules, suspension, and archive status; each conversation's audience still applies. Deleting a
-group requires its exact name as confirmation and removes only its memberships
-and grants. Accounts, conversations, other groups, and individual overrides remain.
-
-Owners can manage every board. Hidden boards and their conversations stay out
-of the home page, recent activity, search, and counts, and direct links to their
-conversations and attached images require access too. These restrictions still
-apply when the site is Open. Existing shared boards keep their current access.
-Witmoot's image URLs follow board access; linking a public image from imvault
-does not change the original image's visibility there.
-
-**Recent** is a feed of individual posts and replies from boards you can read,
-newest first. Read the message, see who wrote it and where it belongs, then
-choose **Read in conversation** to reach that exact message. Shared images and
-discussion links come along. Pages have twenty posts and an end; editing a
-message does not bump it to the top. Removed messages and archived boards stay
-out of Recent, and private board and conversation audiences still apply.
-
-Board settings also offer **Archive board**, **Restore board**, and **Delete
-board permanently**. Archiving moves a board off the home page and Recent into
-the **Archive**. Its conversations and images remain readable by the same
-people and searchable, with an Archived label. Nobody can post or edit until
-an owner restores it; member permissions are preserved. Site totals include
-archived conversations you can access.
-
-Permanent deletion has a separate confirmation page showing how many
-conversations, messages, and attachment links will be removed. You must type
-the board's exact name to proceed. This cannot be undone. Original images in
-imvault remain there, including images shared in other conversations. Choose
-Archive when you want to keep the memories.
-
-Authors can **Edit** their own messages while they have posting access. Changed
-messages show an edited timestamp and keep their attached images. Editing does
-not bump the conversation; stale edits warn you instead of overwriting a newer
-change. The **Site access** text on the home page describes the site-wide mode;
-it is a status label, not a button.
-
-Owners can change the mode at **Settings** (`/settings`). It takes effect for new
-requests immediately and is stored in SQLite, so it survives restarts.
+Owners choose the mode under **Settings**. It applies right away.
 
 | Mode | Who can browse and post | Joining | New conversations |
 | --- | --- | --- | --- |
 | **Personal** | Owners only | Disabled, including invitations | Owners only |
 | **Private** | Signed-in members and owners | Invitation required | Members only |
-| **Open** | Visitors can read public conversations; signed-in members can post | Anyone can register | Public |
+| **Open** | Visitors read public conversations; members post | Anyone can register | Public |
 
-Each conversation keeps its audience when the mode changes, and replies inherit
-that audience. Conversations created before this feature remain members-only.
-Owners can read every audience; members can read public and members-only topics.
-Visitors can read public topics only, and only while the board is Open. Counts,
-latest-topic summaries, and search respect those same audiences.
+Each conversation keeps its audience when the mode changes, and replies share
+it. Owners read everything. Members read public and members-only conversations.
+Visitors read public conversations, and only in Open mode. Counts and search
+follow the same rules.
 
-**Open signup lets anyone become a member, including access to existing
-members-only conversations.** Members-only means behind sign-in; it does not
-reserve conversations for the original invited group. Owner-only topics remain
-restricted to owners. Personal mode blocks existing member sessions without
-deleting their accounts or content. Unexpired invitations work again after
-leaving Personal mode.
+**Open signup lets anyone become a member, and members can read members-only
+conversations on shared boards.** Use a private board for anything closer.
+Personal mode signs members out without deleting their accounts, and unexpired
+invitations work again when you leave it.
 
-The composer shows the audience before posting. If a mode change affects that
-audience while a draft is open, the server preserves the draft and asks the
-author to review the new audience before resubmitting. There is no anonymous
-posting or per-conversation audience editor in this version.
+If the audience changes while someone is writing, Witmoot keeps the draft and
+asks them to check who will read it.
 
-This follows imvault's idea of one application with selectable profiles and
-preserved content audiences. Personal mode here is strictly owner-only, and
-Open requires an account to post; it does not reproduce imvault's anonymous uploads.
+Accounts are created as members. Make owners on the command line with
+`witmoot create-owner`.
 
-## What is here
+## Boards and groups
 
-- Five starter rooms for everyday conversation, plans, projects, recommendations,
-  and the group itself.
-- Audience-aware topic lists, chronological messages, and pagination.
-- New conversations and replies, with plain text, preserved line breaks, and
-  bare web addresses shown as links.
-- Optional imvault images: upload from a post, choose from your library, or
-  paste an image link. Image access follows the conversation's audience.
-- Optional member avatars: upload a picture or import one from your imvault
-  library. Witmoot removes metadata, keeps a still picture and supports GIF
-  animation with a per-viewer animation preference.
-- Search across conversation titles and message text.
-- Saved display timezones in **Your account**, with UTC as the default. Dates
-  and times follow your choice on every device, including without JavaScript.
-- Owner invitations, member accounts, sign-in, and sign-out.
-- Password changes for signed-in members, single-use reset links owners hand
-  over, an optional SMTP relay that can email them, and an interactive
-  `witmoot admin` view for the same account work.
-- A per-member export: download your own posts and their context as a Zip with
-  a versioned manifest and a page that opens offline.
-- Responsive pages and HTMX navigation. The same forms work without JavaScript.
-- Transactional schema initialization, topic creation, replies, and invitation
-  redemption. Restarting keeps your conversations and sessions.
+Open the **Account** menu and choose **Manage boards** to create and rename
+boards. Choose **Selected members only** to make a private board, then grant
+access to groups or people.
 
-One installation is one community, with shared and private boards and reusable
-user groups. Private messages are not implemented. Owner-only conversations are
-shared among all owner accounts.
+**Manage groups** gathers people into named groups. Give a group **Read only**
+or **Read and post** on a board, and membership changes apply at once. A
+person's own setting beats every group: **No access**, **Read only**, or
+**Read and post**. **Use groups** follows their groups, and the most generous
+group grant wins. Without any grant, a private board stays hidden from the home
+page, Recent, search, and counts, and so do its conversations and images.
 
-## Make it yours
+Each group's page lists its boards and every member's effective access.
+
+**Archive board** moves a board to the **Archive**: still readable and
+searchable by the same people, closed to new messages until you restore it.
+**Delete board permanently** shows what will go, asks you to type the board's
+name, and cannot be undone. Images stay in Imvault.
+
+## House rules and members
+
+Under **Settings**, publish house rules and a way to reach the owners. **House
+rules & owners** in the footer shows them to everyone, with owner usernames but
+never email addresses.
+
+Under **Members**, an owner can:
+
+- **Suspend** a member: they are signed out everywhere, and their reset links and
+  unused invitations stop working. Their messages and permissions stay.
+  **Restore access** lets them sign in again.
+- **Create a reset link** for someone locked out. It works once, expires after
+  24 hours, and is shown once with a Copy button. With mail set up, **Email a
+  reset link** sends it instead.
+- **Remove avatar** for moderation.
+
+Owners can also **Remove** a message. Its text and shared image links are
+deleted for good and a placeholder keeps its place in the conversation. **View
+owner activity** lists suspensions, restorations, and removals.
+
+On the command line, `witmoot set-password --username NAME` replaces a password
+and ends that account's sessions. `witmoot reset-link --username NAME
+[--expires 48h]` prints a reset link, `witmoot list-users` lists accounts, and
+`witmoot admin` opens an interactive account manager. When run as root, these
+commands read the service configuration and act as the service user.
+
+## Invitations
+
+Under **Invites**, add an optional label, the number of accounts it may admit
+(`0` for no limit), and an expiry in days (blank or `0` for never). Copy the link
+or code when it appears; it is not shown again. The list shows each
+invitation's uses, expiry, and status, with **Revoke invitation** for open ones.
+Owners can let individual members invite people too.
+
+Set `WITMOOT_BASE_URL` to your public address, such as
+`https://board.example.org`, so links point to the right place behind a proxy.
+
+## For members
+
+- **Recent** shows each new message and reply from boards you can read, newest
+  first. **Read in conversation** takes you to that exact message.
+- **Search** finds conversations by title or message text, archived ones too.
+- **Edit** your own messages while you can post. Edits show a timestamp and do
+  not bump the conversation.
+- **Your account** holds your profile (name, bio, and up to five links), your
+  avatar, your timezone, your password and email, a download of your data, and
+  account deletion. Turn off **Show animated avatars** to see still pictures
+  everywhere.
+- **Images** connects your [Imvault](docs/imvault.md) account, when the owner
+  has set one up, so you can upload, pick from your library, or paste image
+  links. Anyone who can read a conversation can see its images.
+- Links from Songstead, the Comfyware app for music recommendations, and from
+  Imvault albums can start a conversation or join a recent one. See
+  [Comfyware connections](docs/suite.md).
+
+Shared links stay links: Witmoot does not embed players, so opening a page does
+not contact anyone else.
+
+There are no private messages. Owner-only conversations are shared by all owners.
+
+## Settings
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `WITMOOT_NAME` | `Witmoot` | Name in the header and page titles |
-| `WITMOOT_BASE_URL` | request origin | Public HTTP(S) origin for shareable invitation links |
-| `WITMOOT_DATA_DIR` | `./data` | Database, journal files, and optional imvault encryption key |
+| `WITMOOT_BASE_URL` | request origin | Public HTTP(S) address for invitation and reset links |
+| `WITMOOT_DATA_DIR` | `./data` | Database and optional Imvault encryption key |
 | `WITMOOT_ADDR` | `127.0.0.1:8082` | HTTP listen address |
-| `WITMOOT_SECURE_COOKIES` | automatic for HTTPS | HTTPS base URLs force secure cookies; set `true` to require them elsewhere |
-| `WITMOOT_TRUSTED_PROXIES` | unset | Comma-separated proxy IPs/CIDRs allowed to supply client addresses |
-| `WITMOOT_IMVAULT_URL` | unset | Optional imvault server URL, such as `https://photos.example.org` |
-| `WITMOOT_SMTP_HOST` | unset | Optional SMTP relay; empty leaves mail disabled |
+| `WITMOOT_SECURE_COOKIES` | on for HTTPS | Set `true` to require secure cookies elsewhere |
+| `WITMOOT_TRUSTED_PROXIES` | unset | Comma-separated proxy IPs or CIDRs allowed to report client addresses |
+| `WITMOOT_IMVAULT_URL` | unset | Imvault server, such as `https://photos.example.org` |
+| `WITMOOT_SMTP_HOST` | unset | SMTP relay; empty leaves mail off |
 | `WITMOOT_SMTP_PORT` | `587` | Relay port |
-| `WITMOOT_SMTP_USERNAME` | unset | Relay username, if it needs one |
-| `WITMOOT_SMTP_PASSWORD` | unset | Relay password, if it needs one |
-| `WITMOOT_SMTP_FROM` | `no-reply@` the `WITMOOT_BASE_URL` domain | From address for outgoing mail; required with a relay when the base URL has no domain name |
+| `WITMOOT_SMTP_USERNAME` | unset | Relay username |
+| `WITMOOT_SMTP_PASSWORD` | unset | Relay password |
+| `WITMOOT_SMTP_FROM` | `no-reply@` the base URL's domain | From address; required with a relay when the base URL has no domain name |
 | `WITMOOT_SMTP_TLS` | `starttls` | `starttls`, `implicit`, or `none` |
 | `WITMOOT_BACKUP_INTERVAL` | `24h` | Time between automatic backups; `0` turns them off |
 | `WITMOOT_BACKUP_KEEP` | `7` | Automatic backups to keep |
 | `WITMOOT_BACKUP_MAX_BYTES` | 10 GiB | Total size cap for kept backups |
 | `WITMOOT_BACKUP_COPY_MAX_BYTES` | 5 GiB | Size cap for one uncompressed copy |
-| `SSL_CERT_FILE` | system bundle | Optional PEM bundle of trusted CAs, for example for a private relay; also used in the sandbox |
+| `SSL_CERT_FILE` | system bundle | PEM bundle of trusted CAs, for example for a private relay |
 
 ```bash
 WITMOOT_NAME='Our little corner' WITMOOT_ADDR=127.0.0.1:9000 make run
 ```
 
-Five starter boards are seeded once. Owners can create and rename boards,
-choose who can read and post, and archive boards without deleting their
-conversations. The default data directory is created with owner-only access.
-An existing directory keeps its permissions.
-
-## Invitations for your people
-
-Owners manage invitations under **Invites**. Add an optional label, choose the
-number of accounts it may admit (`0` for unlimited), and set an expiry in days
-(blank or `0` for never). New accounts are always members.
-
-Copy the full link or code when it is created; only a digest and identifying
-prefix are stored. The saved list shows usage, expiry, and status, with a
-**Revoke invitation** button for open invitations. Revocation prevents new
-registrations without changing accounts that already joined. Failed
-registrations do not consume a use. Existing invitations retain their original
-single-use limit and expiry after upgrading.
-
-Links are complete URLs even without JavaScript. Set `WITMOOT_BASE_URL` to the
-public origin, such as `https://board.example.org`, behind a reverse proxy.
-Without it, links use the request host and HTTPS when secure cookies are enabled
-or the request itself uses TLS. Personal mode continues to disable invitations
-and registration; unexpired, unrevoked invitations work again after leaving it.
-
-## When someone is locked out
-
-Owners open **Members** to see every account. **Create a reset link** makes a
-single-use link a member can open to choose a new password; it expires after 24
-hours and is shown once, so copy it and hand it over. **Cancel reset link** stops
-a link that should no longer work. A member can also change their own password
-under **Account**, which asks for the current one and signs other devices out.
-
-On the command line, `witmoot set-password --username NAME` replaces a password
-outright and ends that account's sessions, for when nobody can use a link.
-`witmoot reset-link --username NAME [--expires 48h]` prints a link and its code,
-and `witmoot list-users` lists accounts with their roles and addresses. On a
-terminal, `witmoot admin` opens an interactive view of the same work: browse
-members, create owners, issue or cancel reset links, and set passwords. All of
-these read `WITMOOT_DATA_DIR` from the service configuration and, when run as
-root, repeat the work as the service user.
-
-Members may add an optional email address under **Account**. When an operator has
-configured an SMTP relay, an owner can email a reset link instead of copying it.
-Witmoot needs no mail to run, and sending stays off unless a relay is set.
-
-## Images with imvault
-
-Set `WITMOOT_IMVAULT_URL` to your imvault server and restart Witmoot. Each member
-can then open **Images** and connect an API key from their own imvault account.
-Uploads and library selection need a connection; public pasted links do not.
-See [the imvault setup guide](docs/imvault.md) for access rules and backups.
+Site name, welcome text, mascot, favicon, house rules, and the footer version
+live under **Settings** instead.
 
 ## Keeping the house in order
 
-Use an HTTPS reverse proxy for a hosted installation, keep the app port private,
-and set `WITMOOT_SECURE_COOKIES=true`. Secure mode uses `__Host-` cookies.
+Put Witmoot behind an HTTPS proxy, keep its port private, and set
+`WITMOOT_SECURE_COOKIES=true`.
 
-Passwords use bcrypt. Session, invitation, and reset tokens are random and only
-their SHA-256 hashes are stored. Reset links work once and expire. Sessions
-expire after seven days. Forms require CSRF tokens and use Go's cross-origin
-protection. User text is escaped; only bare `http://` and `https://` addresses
-are turned into links, and nothing else is treated as markup. Avatars are
-re-encoded locally, which drops camera metadata, and are served through the same
-audience gate as the board. Private pages send `Cache-Control: no-store` and
-disable HTMX history storage. Assets are served locally under a restrictive
-content security policy.
+Passwords use bcrypt and need at least 12 characters. Witmoot stores only hashes
+of session, invitation, and reset tokens. Sessions last seven days. Forms carry
+CSRF tokens, message text is escaped, and only bare `http://` and `https://`
+addresses become links. Avatars are re-encoded, which removes camera details.
+Sign-in, registration, and invitation use share a limit of 20 attempts per 15
+minutes per address. Behind a proxy, list it in `WITMOOT_TRUSTED_PROXIES` so
+visitors get their own limits; see
+[running beside Imvault](docs/imvault.md#running-beside-imvault).
 
-Sign-in, open registration, and invitation redemption share a limit of 20 attempts per 15 minutes
-per client IP, with IPv6 clients counted per /64 network. The limiter is in
-memory and does not trust forwarded headers unless the peer is in
-`WITMOOT_TRUSTED_PROXIES`. Without `WITMOOT_BASE_URL`, invitation and reset
-links use HTTPS when the request did, including when a trusted proxy reports
-it in `X-Forwarded-Proto`. Configure this behind
-Caddy so visitors have separate budgets; otherwise they share the proxy's
-budget. See [running beside imvault](docs/imvault.md#running-beside-imvault).
+Witmoot backs itself up every day while it runs; owners see the status under
+**Settings** → **Server**. See [automatic backups](docs/automatic-backups.md) for
+retention, off-host copies, and recovery. For a manual backup, stop the server
+and copy the whole data directory. Do not copy only the live `.db` file.
 
-For a simple backup, **stop the server and copy the entire data directory**.
-Restore it with the server stopped, then start Witmoot against that directory.
-Do not copy only the live `.db` file while SQLite is using WAL journaling.
-Avatars live in the database, so this copy includes them.
+Taking your data with you is a Comfyware promise. Each member can download their
+own messages and context from **Your account**, and owners can download a
+community archive from **Settings**. Both open offline. See
+[data portability](docs/data-portability.md).
 
-**Taking your data is a core comfyware requirement.** Under **Account**, each
-member can download a ZIP containing their own messages, context, avatar and
-available shared image previews, with a versioned `manifest.json` and readable
-`archive.html`. Other people's replies and credentials are excluded. Unavailable
-previews are marked and linked to Imvault; originals come from its account export.
+Members can delete their account with their password. Their messages become
+anonymous placeholders. The last owner must appoint another owner first.
 
-Owners can download a private **community archive** from Settings. It includes
-every board, conversation and author, with board access rules and available shared
-previews. An importer is still future work. See
-[data portability](docs/data-portability.md) for scope and limits. Operator backups
-remain a copy of the full data directory, including secrets.
+The owner metrics page counts members, boards, conversations, messages, and
+storage. Witmoot does not record who signed in or what anyone read.
 
-Members can delete their account with their password and typed username. Their
-messages become anonymous placeholders; other people's replies remain. The last
-owner must appoint a successor first. Owners can also suspend members and
-permanently remove individual messages.
-Account recovery covers member-initiated
-password changes, owner-issued reset links, and the local `set-password`
-command; there is no self-service email reset, and mail stays off until a relay
-is configured. Do not use it as the sole copy of irreplaceable family material.
-SQLite data is not encrypted at rest.
+SQLite data is not encrypted at rest. Keep another copy of anything
+irreplaceable.
 
-Links are not embedded yet: a shared video or music URL stays a link, so opening
-a page does not contact a third party. Whether to add click-to-load players is a
-product decision still open, since an embed would mean relaxing the content
-security policy. Avatars are optional and re-encoded locally. GIFs up to 512 by 512 pixels
-and 64 frames keep their animation. Under **Your account → Your avatar**,
-you can disable animated avatars across devices. Reduced-motion preferences
-and visitors use still pictures. An owner can remove any member's avatar.
+Optional Linux confinement with Bubblewrap is described in
+[the sandbox guide](docs/sandbox.md).
 
 ## Working on it
 
 ```bash
-make help    # available commands and installation options
-make check   # formatting, JavaScript tests (Node required), vet, race tests, and release config
-make test-mutations # deliberate defects in community controls (Python 3 required)
-make build   # standalone binary; no cgo required
+make help            # commands and installation options
+make check           # formatting, vet, race tests, JavaScript tests, release config
+make test-mutations  # deliberate defects the tests must catch (Python 3)
+make build           # standalone binary, no cgo
 ```
 
-The sandbox, service configuration, mail, key file, token, client address and
-proxy configuration code comes from
-[comfylib](https://github.com/airencracken/comfylib), pinned to an exact
-release in `go.mod`. To work on both at once, use an untracked workspace
-(`go work init . ../comfylib`) rather than a `replace` directive; tests refuse
-a committed one. The mutation tables in `scripts/mutations/` run on
-`python3 scripts/comfy.py mutate`, which resolves the engine from that exact
-pinned release, including when the module proxy is disabled.
+Shared code comes from [Comfylib](https://github.com/airencracken/comfylib),
+pinned in `go.mod`. To work on both, use an untracked workspace
+(`go work init . ../comfylib`); do not commit a `replace` directive.
 
-Tests cover all three modes, audience filtering, migration from the original
-private schema, persisted settings, stale forms and registration policy,
-invitation races and rollback, session expiry, CSRF, role checks, escaping,
-search literals, pagination, and failed writes. Community tests exercise
-suspension, session/reset/invitation revocation, permission preservation,
-confirmation conflicts, message/image erasure, export contracts, schema upgrades,
-generated action sequences, and rollback at every write. Deliberate
-mutations verify that these regressions, and those for the comfylib
-integration, detect broken controls.
-Image tests cover the API contract, encrypted connections, all three attachment
-paths, audience checks, input limits, upstream failures, and upload cleanup.
-Packaging tests exercise staged installs, preserved configuration, service
-settings, and log rotation. Install `logrotate` to run the rotation integration
-test; it reports a skip when the tool is unavailable.
-
-Browser checks use Node.js and Playwright only as development tools:
+Browser checks need Node.js and Playwright:
 
 ```bash
 npm --prefix scripts/browser ci
-cd scripts/browser
-npx playwright install chromium
-cd ../..
+(cd scripts/browser && npx playwright install chromium)
 make test-browser
 ```
 
-These checks start an isolated temporary instance and exercise the full flow with
-HTMX enabled and JavaScript disabled, including changing modes in Settings,
-public browsing, open registration, Personal access restrictions, house rules,
-message removal, suspension/restoration, keyboard access to the owner menu,
-mobile account navigation, both themes at four widths,
-and browser security policy checks. They fail if browser tooling is missing. Optional screenshots:
-`WITMOOT_SCREENSHOT_DIR=/tmp/witmoot-screenshots make test-browser`.
-
-To also test against a real imvault server, build imvault separately and run:
-
-```bash
-IMVAULT_BINARY=/path/to/imvault make test-imvault
-```
-
-This starts both apps with temporary data and checks image workflows with HTMX
-enabled and JavaScript disabled. It creates disposable accounts and API keys;
-it does not use your running imvault installation.
+They run an isolated instance with and without JavaScript. Set
+`WITMOOT_SCREENSHOT_DIR` to keep screenshots. To test with a real Imvault
+server, run `IMVAULT_BINARY=/path/to/imvault make test-imvault`.
 
 The product direction lives in [docs/product.md](docs/product.md).
 
 ## License
 
-You can [support witmoot on Ko-fi](https://ko-fi.com/airencracken).
-
 Copyright (C) 2026 Marcus J. Hildum.
 
 Witmoot is licensed under the GNU Affero General Public License, version 3 or
-later (`AGPL-3.0-or-later`), like imvault. See [LICENSE](LICENSE).
-This program comes without any warranty.
+later (`AGPL-3.0-or-later`), like Imvault. See [LICENSE](LICENSE). It comes
+without any warranty. Third-party components keep their own licenses; see
+[THIRD_PARTY.md](THIRD_PARTY.md).
 
-Third-party components retain their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).
-
-Optional Linux service confinement: [Bubblewrap setup and boundaries](docs/sandbox.md).
-
-For the coordinated Comfylib CSRF update on this branch, see
-[shared CSRF release coordination](docs/shared-csrf.md).
-
-Explicit Songstead and album discussion handoffs are documented in
-[docs/discussion-references.md](docs/discussion-references.md).
-
-[Shared administration helpers](docs/shared-administration.md) use Comfylib v0.1.7, including the profile image handling shared with Songstead.
-
-## Member profiles
-
-In Your account, open Edit your profile to optionally add a name, a short
-plain-text bio and up to five labeled web links. Profile pages require sign-in
-and are linked from conversation authors. Usernames stay unchanged; clearing the
-fields removes them. Profiles do not show email, private settings or posting
-history. Your own account export includes your profile. See the
-[0.16.0 release notes](docs/release-notes/0.16.0.md) before the schema 19 upgrade.
-
-## Automatic backups
-
-Witmoot 0.17.0 backs itself up daily while running, using zstd when
-available and gzip otherwise. It keeps at most seven copies within a 10 GiB
-archive cap and bounds each uncompressed copy to 5 GiB. Owners can check status
-in instance settings. See [automatic backups](docs/automatic-backups.md) for
-configuration, retention, off-host copies and recovery.
-
-## Shared forms
-
-Invitation and account layouts use Comfylib's embedded `ui` styles, loaded after
-the app stylesheet so controls and responsive spacing stay aligned across the
-Comfyware apps. Comfylib also supplies invitation status calculation and shared
-browser assertions. Templates, palettes, permissions and atomic redemption remain
-in the application.
-
-## Common setup
-
-New source builds share [browser and command-line setup](docs/setup.md) with the
-other Comfyware apps: `witmoot setup` authorizes the first-owner browser page,
-and `witmoot create-owner --username NAME` prompts privately by default.
-
-Optional app navigation, shared sign-in and discussion returns are described in
-[Comfyware connections](docs/suite.md).
-
-## Display timezone
-
-In your account settings (`/account`), choose **Times and dates**, enter a city
-timezone, and select **Save timezone**. The saved choice follows your account
-across devices. UTC is the default. Device detection fills the field when
-JavaScript is available; manual selection and saving work without it.
-Admin reporting days remain UTC.
+You can [support Witmoot on Ko-fi](https://ko-fi.com/airencracken).
