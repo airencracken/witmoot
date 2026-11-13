@@ -6,7 +6,7 @@
 {{end}}
 
 {{define "home"}}
-<div class="page-heading"><div><h1>{{if .User}}Good to see you, {{.User.Username}}.{{else}}Welcome to {{.Name}}.{{end}}</h1><p class="lede">{{if eq .Mode "personal"}}A little room for your thoughts, plans, and good finds.{{else}}Pick a corner. See what everyone has been up to.{{end}}</p></div><p class="site-access"><strong>Site access: {{.Mode.Label}}</strong><span>{{if eq .Mode "open"}}Public browsing · Open registration{{else if eq .Mode "personal"}}Owners only · Registration closed{{else}}Sign-in required · Invitation-only registration{{end}}</span></p></div>
+<div class="page-heading"><div><h1>{{if .User}}Good to see you, {{.User.Username}}.{{else}}Welcome to {{.Name}}.{{end}}</h1><p class="lede">{{if eq .Mode "personal"}}A little room for your thoughts, plans, and good finds.{{else}}Pick a corner. See what everyone has been up to.{{end}}</p></div></div>
 <div class="home-grid">
 	<div class="board-list">
 		{{$category := ""}}

@@ -279,9 +279,6 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .site-header nav .owner-links a { display: block; padding: .6rem .75rem; }
 
 /* Board membership and edits. */
-.site-access { margin: 0; color: var(--muted); font-size: 12px; }
-.site-access strong, .site-access span { display: block; }
-.site-access strong { color: var(--ink); }
 .board-access { display: block; color: var(--rust); font-size: 12px; margin-top: 5px; }
 .edited { display: block; margin-top: 3px; }
 .post-content header { gap: 16px; align-items: flex-start; }

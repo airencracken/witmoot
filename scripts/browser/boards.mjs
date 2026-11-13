@@ -84,7 +84,7 @@ export async function checkBoards(browser, origin, password, javaScriptEnabled) 
 		assert.equal((await guest.goto(topicURL)).status(), 404);
 		await guest.goto(origin);
 		assert.equal(await guest.getByRole('link', { name, exact: true }).count(), 0);
-		assert.match(await guest.locator('.site-access').innerText(), /Public browsing.*Open registration/);
+		assert.match(await guest.locator('.side-note').innerText(), /Public conversations are open to everyone/);
 
 		await writer.goto(editURL);
 		await owner.goto(settingsURL);
