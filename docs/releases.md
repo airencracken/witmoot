@@ -2,6 +2,7 @@
 
 Download Witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
 The latest release is [0.23.0](release-notes/0.23.0.md), with one timezone setting and local dates across the app.
+Changes not yet released are in [unreleased](release-notes/unreleased.md).
 Read the [release notes](release-notes/) for every version you skip before
 upgrading.
 
