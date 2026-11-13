@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/airencracken/comfylib/ui"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -229,8 +230,8 @@ func animationChoice(values []string) (animate, ok bool) {
 
 // Avatar limits are stated when a picture breaks them, so the form itself
 // can stay short.
-const (
-	errAvatarTooLarge  = userError("Choose a picture no larger than 2 MiB.")
+var (
+	errAvatarTooLarge  = userError("Choose a picture no larger than " + ui.Size(maxAvatarInputBytes) + ".")
 	errAvatarTooBig    = userError("Choose a picture of at most 4 megapixels, such as 2048 by 2048 pixels.")
 	errAvatarFormat    = userError("Choose a PNG, JPEG, or GIF picture.")
 	errAvatarAnimation = userError("Choose a GIF that opens properly, up to 512 by 512 pixels and 64 frames.")

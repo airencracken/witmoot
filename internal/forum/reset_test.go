@@ -327,7 +327,7 @@ func TestResetTokensNeverReachTheLogs(t *testing.T) {
 	}
 	requireStatus(t, client.request("GET", "/reset/"+token, nil, nil), 500)
 	requireStatus(t, client.post("/reset/"+token, url.Values{"password": {"a long new password"}}), 500)
-	if !strings.Contains(logs.String(), "request failed") || strings.Contains(logs.String(), token) {
+	if !strings.Contains(logs.String(), "request problem") || strings.Contains(logs.String(), token) {
 		t.Fatalf("logs carry the reset token or no failure: %s", &logs)
 	}
 }

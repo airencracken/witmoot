@@ -231,9 +231,9 @@ func (a *App) saveBrandingAssets(w http.ResponseWriter, r *http.Request) {
 	a.redirect(w, r, "/settings?saved=1")
 }
 
-// errBrandImageTooLarge refuses an upload over the 2 MiB that branding and
-// avatar forms accept.
-const errBrandImageTooLarge = userError("Choose an image no larger than 2 MiB.")
+// errBrandImageTooLarge refuses an upload larger than branding and avatar
+// forms accept.
+var errBrandImageTooLarge = userError("Choose an image no larger than " + ui.Size(maxBrandImageBytes) + ".")
 
 func uploadedImage(r *http.Request, name string) ([]byte, error) {
 	file, header, err := r.FormFile(name)

@@ -3,9 +3,12 @@ package forum
 
 import (
 	"bytes"
+	"errors"
 	"net/url"
 	"strings"
 	"testing"
+
+	"witmoot/internal/imvault"
 )
 
 // The account page groups its forms into Profile, Sign-in, and Your data, in
@@ -90,7 +93,7 @@ func TestAvatarErrorsStateTheirLimits(t *testing.T) {
 		file []byte
 		want string
 	}{
-		"too large":     {append(pngAvatarFixture(t, 8, 8), bytes.Repeat([]byte{0}, 2<<20)...), "Choose an image no larger than 2 MiB."},
+		"too large":     {append(pngAvatarFixture(t, 8, 8), bytes.Repeat([]byte{0}, 2<<20)...), string(errBrandImageTooLarge)},
 		"too many dots": {grayPNG(t, 4097, 16), "Choose a picture of at most 4 megapixels, such as 2048 by 2048 pixels."},
 		"not a picture": {[]byte("plain text, not a picture"), "Choose a PNG, JPEG, or GIF picture."},
 		"broken gif":    {[]byte("GIF89a but not really"), "Choose a GIF that opens properly"},
@@ -100,6 +103,28 @@ func TestAvatarErrorsStateTheirLimits(t *testing.T) {
 		w := postAvatarMultipart(t, client, nil, c.file)
 		if w.Code != 422 || !strings.Contains(w.Body.String(), c.want) {
 			t.Errorf("%s: %d, want error %q\n%s", name, w.Code, c.want, w.Body.String())
+		}
+	}
+}
+
+// Limits are binary values, and the copy that states them uses IEC units
+// that match those values exactly.
+func TestUploadLimitsAndTheirCopyAgree(t *testing.T) {
+	for _, c := range []struct {
+		limit   int64
+		want    int64
+		message string
+		text    string
+	}{
+		{maxBrandImageBytes, 2 << 20, string(errBrandImageTooLarge), "2 MiB"},
+		{maxAvatarInputBytes, 2 << 20, string(errAvatarTooLarge), "2 MiB"},
+		{imvault.MaxImageBytes, 8 << 20, string(uploadProblem(errors.New("refused")).(userError)), "8 MiB"},
+	} {
+		if c.limit != c.want {
+			t.Errorf("limit is %d bytes, want the binary value %d", c.limit, c.want)
+		}
+		if !strings.Contains(c.message, c.text) || strings.Contains(c.message, " MB") {
+			t.Errorf("%q should state the limit as %s", c.message, c.text)
 		}
 	}
 }

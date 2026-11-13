@@ -63,7 +63,7 @@
 <p>Saved in <code>{{.Backups.Directory}}</code>.</p>
 {{if .Backups.Running}}<p role="status" class="comfy-notice">A backup is running.</p>{{end}}
 {{if .Backups.LastSuccess.IsZero}}<p>No automatic backup has succeeded yet. The first one starts a minute after the server starts.</p>{{else}}<p>Last successful backup: <time>{{.Backups.LastSuccess.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
-{{if .Backups.LastError}}<p role="alert" class="comfy-notice comfy-notice-error">Last backup error: {{.Backups.LastError}}</p>{{end}}
+{{with .Backups.Summary}}<p role="alert" class="comfy-notice comfy-notice-error">{{.}}</p>{{end}}
 {{if not .Backups.NextAttempt.IsZero}}<p>Next attempt: <time>{{.Backups.NextAttempt.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
 {{else}}<p>Automatic backups are off.</p>{{end}}
 <p>Copy backups to another machine; a local copy will not survive a lost disk. The schedule and size caps live in the service settings and change after a restart.</p></section>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/airencracken/comfylib/ui"
 	"io"
 	"log/slog"
 	"mime"
@@ -320,7 +321,7 @@ func (a *App) prepareImages(r *http.Request) ([]Attachment, func(), error) {
 				return nil, cleanup, userError("Connect your Imvault account to upload images.")
 			}
 			if header.Size > imvault.MaxImageBytes {
-				return nil, cleanup, userError("Each image must be 8 MiB or smaller.")
+				return nil, cleanup, userError("Each image must be " + ui.Size(imvault.MaxImageBytes) + " or smaller.")
 			}
 			file, err := header.Open()
 			if err != nil {
@@ -347,5 +348,5 @@ func uploadProblem(err error) error {
 	if errors.Is(err, imvault.ErrUnavailable) {
 		return userError(imvault.ErrUnavailable.Error())
 	}
-	return userError("Choose JPEG, PNG, WebP, or GIF images up to 8 MiB each.")
+	return userError("Choose JPEG, PNG, WebP, or GIF images up to " + ui.Size(imvault.MaxImageBytes) + " each.")
 }

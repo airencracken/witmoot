@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/airencracken/comfylib/analytics"
+	comfypassword "github.com/airencracken/comfylib/password"
 	"net/http"
 	"strings"
 	"time"
@@ -60,7 +61,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		hash = a.dummyHash
 	}
 	check := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	if err != nil || check != nil || len(password) > 72 {
+	if err != nil || check != nil || !comfypassword.Fits(password) {
 		a.countSecurity(r, analytics.RecordFailedSignIn)
 		a.render(w, r, 422, Page{View: "login", Title: "Welcome back", Username: name, Error: "That username and password did not match. Give it another try."})
 		return

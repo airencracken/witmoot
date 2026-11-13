@@ -2,6 +2,7 @@ package forum
 
 import (
 	"errors"
+	"github.com/airencracken/comfylib/password"
 	"github.com/airencracken/comfylib/ratelimit"
 	"regexp"
 	"strings"
@@ -22,10 +23,10 @@ func ValidateCredentials(username, password string) string {
 }
 
 // ValidatePassword checks a password on its own, so a reset can be rejected
-// before a one-time link is spent.
-func ValidatePassword(password string) string {
-	if !utf8.ValidString(password) || utf8.RuneCountInString(password) < 12 || len(password) > 72 {
-		return "Use a password with at least 12 characters and at most 72 bytes."
+// before a one-time link is spent. The rule and its messages are Comfylib's.
+func ValidatePassword(value string) string {
+	if err := password.Validate(value); err != nil {
+		return err.Error()
 	}
 	return ""
 }

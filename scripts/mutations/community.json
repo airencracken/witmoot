@@ -250,8 +250,8 @@
   {
     "name": "version preference saved",
     "file": "internal/forum/branding.go",
-    "before": "branding.OwnerContact, branding.ShowVersion)",
-    "after": "branding.OwnerContact, false)",
+    "before": "branding.OwnerContact, branding.ShowVersion, branding.Palette)",
+    "after": "branding.OwnerContact, false, branding.Palette)",
     "package": "./internal/forum",
     "run": "^TestVersionDisplayMigrationAndAtomicity$"
   },
@@ -358,5 +358,21 @@
     "after": "a.metrics",
     "package": "./internal/forum",
     "run": "^TestOwnerMetricsTotalsPermissionsAndFailure$"
+  },
+  {
+    "name": "site palette saved",
+    "file": "internal/forum/branding.go",
+    "before": "branding.OwnerContact, branding.ShowVersion, branding.Palette)",
+    "after": "branding.OwnerContact, branding.ShowVersion, \"\")",
+    "package": "./internal/forum",
+    "run": "^TestOwnerSitePaletteSetting$"
+  },
+  {
+    "name": "unknown site palettes refused",
+    "file": "internal/forum/branding.go",
+    "before": "\t\t\treturn SiteBranding{}, errPalette",
+    "after": "\t\t\tbranding.Palette = \"\"",
+    "package": "./internal/forum",
+    "run": "^TestOwnerSitePaletteSetting$"
   }
 ]

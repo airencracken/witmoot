@@ -12,6 +12,7 @@ import (
 	"github.com/airencracken/comfylib/analytics"
 	"github.com/airencracken/comfylib/autobackup"
 	"github.com/airencracken/comfylib/displaytime"
+	"github.com/airencracken/comfylib/problem"
 	"github.com/airencracken/comfylib/suite"
 	"html/template"
 	"io"
@@ -194,7 +195,7 @@ func New(store *Store, config Config) (*App, error) {
 		config.SecureCookies = true
 	}
 	var tmpl *template.Template
-	tmpl, err = template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"paletteAttrs": ui.PaletteAttrs, "themePicker": func() template.HTML { return ui.ThemePicker(true) }, "palettes": ui.Palettes,
+	tmpl, err = template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"paletteAttrs": ui.PaletteAttrs, "imageLimit": func() string { return ui.Size(imvault.MaxImageBytes) }, "themePicker": func() template.HTML { return ui.ThemePicker(true) }, "palettes": ui.Palettes,
 		"content": func(p Page) (template.HTML, error) {
 			var page strings.Builder
 			err := tmpl.ExecuteTemplate(&page, pageTemplate(p.View), p)
@@ -423,7 +424,7 @@ func (a *App) middleware(next http.Handler) http.Handler {
 				return
 			}
 			if subtle.ConstantTimeCompare([]byte(provided), []byte(state.CSRF)) != 1 {
-				a.fail(w, r, http.StatusForbidden, "This form has expired. Reload the page and try again.")
+				a.problems().Expired(w, r)
 				return
 			}
 			// Only a request that carries its token gets its upload read.
@@ -493,6 +494,15 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page) {
+	if err := a.renderPage(w, r, status, p); err != nil {
+		slog.Error("render page", "error", err)
+		http.Error(w, "Something went wrong rendering this page.", http.StatusInternalServerError)
+	}
+}
+
+// renderPage draws p inside the layout. Nothing is written if the template
+// fails, so the caller can still send another response.
+func (a *App) renderPage(w http.ResponseWriter, r *http.Request, status int, p Page) error {
 	if state(r).User != nil && state(r).User.Role == "owner" && (p.View == "settings" || p.View == "metrics") {
 		p.Overview = admin.WithOperations(p.Overview, a.config.Version, a.config.Backups.Status(), "WITMOOT_")
 	}
@@ -561,23 +571,33 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 	a.decorateImages(r, &p)
 	var buffer bytes.Buffer
 	if err := a.templates.ExecuteTemplate(&buffer, "layout", p); err != nil {
-		slog.Error("render page", "error", err)
-		http.Error(w, "Something went wrong rendering this page.", http.StatusInternalServerError)
-		return
+		return err
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if _, err := buffer.WriteTo(w); err != nil {
 		slog.Debug("response interrupted", "error", err)
 	}
+	return nil
 }
 
-func (a *App) fail(w http.ResponseWriter, r *http.Request, status int, message string) {
-	a.render(w, r, status, Page{View: "error", Title: http.StatusText(status), Error: message})
+// problems writes error pages through Comfylib, inside Witmoot's layout.
+func (a *App) problems() problem.Writer {
+	return problem.Writer{Layout: func(w http.ResponseWriter, r *http.Request, page problem.Page) error {
+		return a.renderPage(w, r, page.Status, Page{View: "error", Title: page.Title, Error: page.Message})
+	}}
 }
+
+// fail answers with an error page. message is shown as written; an empty one
+// uses the plain default for the status.
+func (a *App) fail(w http.ResponseWriter, r *http.Request, status int, message string) {
+	a.problems().Write(w, r, status, message, nil)
+}
+
+// serverError logs err and shows a plain apology; the detail never reaches
+// the page.
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	slog.Error("request failed", "path", loggedPath(r), "error", err)
-	a.fail(w, r, 500, "Something went wrong. Please try again in a moment.")
+	a.problems().Write(w, r, http.StatusInternalServerError, "", err)
 }
 
 // userError is a failure whose text is written as interface copy, a complete
