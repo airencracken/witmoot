@@ -4,12 +4,15 @@ package forum
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/airencracken/comfylib/ui"
 )
 
 // The home page explains access in one plain sidebar sentence, for every mode,
@@ -223,5 +226,59 @@ func TestOneTimeLinksHaveOneFieldAndACopyButton(t *testing.T) {
 	w := owner.request("GET", "/static/copy.js", nil, nil)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "navigator.clipboard") {
 		t.Fatalf("copy script not served: %d", w.Code)
+	}
+}
+
+// Every --comfy-* token the shared stylesheets read is mapped to a Witmoot
+// token, with selectors that outrank the shared defaults, and shared headings
+// use Georgia like the rest of the app.
+func TestSharedTokensMapToWitmoot(t *testing.T) {
+	css, err := assets.ReadFile("static/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style := string(css)
+	rootStart := strings.Index(style, `:root[data-comfy-app="witmoot"] {`)
+	if rootStart < 0 {
+		t.Fatal("no Witmoot token block for shared pages")
+	}
+	root := style[rootStart : rootStart+strings.Index(style[rootStart:], "}")]
+	read := regexp.MustCompile(`var\((--comfy-[a-z0-9-]+)`)
+	shared := map[string]bool{}
+	for _, name := range []string{"accounts.css", "components.css"} {
+		content, err := fs.ReadFile(ui.Assets(), name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range read.FindAllStringSubmatch(string(content), -1) {
+			shared[match[1]] = true
+		}
+	}
+	if len(shared) < 5 {
+		t.Fatalf("found only %d shared tokens; the pattern no longer matches", len(shared))
+	}
+	for token := range shared {
+		if strings.HasPrefix(token, "--comfy-space-") {
+			continue // spacing has no Witmoot counterpart and keeps its shared scale
+		}
+		if !regexp.MustCompile(regexp.QuoteMeta(token) + `: [^;]+;`).MatchString(root) {
+			t.Errorf("%s is read by shared pages but not mapped for Witmoot", token)
+		}
+	}
+	for _, want := range []string{
+		"--comfy-ink: var(--ink);", "--comfy-panel: var(--paper);", "--comfy-line: var(--line);", "--comfy-accent: var(--green);",
+		`--comfy-heading-font: Georgia, "Times New Roman", serif;`,
+		`:root[data-comfy-app="witmoot"] .comfy-admin-dashboard {`,
+		`:is(.invitation-header, .account-page, .comfy-admin-dashboard) h1`,
+		"font-family: var(--comfy-heading-font)",
+	} {
+		if !strings.Contains(style, want) {
+			t.Errorf("style.css lacks %q", want)
+		}
+	}
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	if body := owner.request("GET", "/admin/metrics", nil, nil).Body.String(); !strings.Contains(body, `data-comfy-app="witmoot"`) || !strings.Contains(body, "comfy-admin-dashboard") {
+		t.Fatal("metrics page lost the app marker the token selectors need")
 	}
 }

@@ -16,6 +16,29 @@
 	color: var(--ink);
 	background: var(--background);
 }
+/* Shared Comfyware pages (invitations, accounts, metrics) read these tokens.
+   The attribute selector outranks the defaults in comfyware/components.css. */
+:root[data-comfy-app="witmoot"] {
+	--comfy-ink: var(--ink);
+	--comfy-panel: var(--paper);
+	--comfy-line: var(--line);
+	--comfy-accent: var(--green);
+	--comfy-admin-muted: var(--muted);
+	--comfy-radius: 10px;
+	--comfy-heading-font: Georgia, "Times New Roman", serif;
+	--comfy-body-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+:root[data-comfy-app="witmoot"] .comfy-admin-dashboard {
+	--comfy-ink: var(--ink);
+	--comfy-panel: var(--paper);
+	--comfy-line: var(--line);
+	--comfy-admin-muted: var(--muted);
+}
+:root[data-comfy-app="witmoot"] :is(.invitation-page, .account-page, .comfy-admin-dashboard),
+:root[data-comfy-app="witmoot"] :is(.invitation-page, .account-page, .comfy-admin-dashboard) *:not(code, pre) { font-family: var(--comfy-body-font); }
+:root[data-comfy-app="witmoot"] :is(.invitation-header, .account-page, .comfy-admin-dashboard) h1,
+:root[data-comfy-app="witmoot"] :is(.invitation-page, .comfy-admin-dashboard) h2 { font-family: var(--comfy-heading-font); font-weight: 400; letter-spacing: -.02em; }
+:root[data-comfy-app="witmoot"] .comfy-admin-dashboard a { color: var(--green); }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 * { box-sizing: border-box; }
