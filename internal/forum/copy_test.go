@@ -176,3 +176,52 @@ func TestExportUsesTheFamilyPalette(t *testing.T) {
 		}
 	}
 }
+
+// A one-time link is shown once, in a read-only field, with a Copy button
+// that the script reveals only where the clipboard works.
+func TestOneTimeLinksHaveOneFieldAndACopyButton(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	memberClient(t, app, "jules")
+	jules, _, err := app.store.Credentials(context.Background(), "jules")
+	if err != nil {
+		t.Fatal(err)
+	}
+	invite := owner.post("/invites", url.Values{"label": {"Sam"}, "max_uses": {"1"}, "expires_days": {"7"}})
+	requireStatus(t, invite, 200)
+	reset := owner.post(fmt.Sprintf("/members/%d/reset", jules.ID), nil)
+	if reset.Code == 303 {
+		reset = owner.request("GET", reset.Header().Get("Location"), nil, nil)
+	}
+	link := regexp.MustCompile(`<input id="(invite-link|reset-link)" type="text" readonly value="([^"]+)">`)
+	for name, c := range map[string]struct {
+		body string
+		ids  []string
+	}{
+		"invitation": {invite.Body.String(), []string{"invite-link", "invite-code"}},
+		"reset":      {reset.Body.String(), []string{"reset-link"}},
+	} {
+		match := link.FindStringSubmatch(c.body)
+		if match == nil {
+			t.Fatalf("%s: no read-only link field\n%s", name, c.body)
+		}
+		if n := strings.Count(c.body, match[2]); n != 1 {
+			t.Errorf("%s: the link appears %d times, want once", name, n)
+		}
+		for _, id := range c.ids {
+			if !strings.Contains(c.body, fmt.Sprintf(`data-copy="%s" hidden>`, id)) || !strings.Contains(c.body, fmt.Sprintf(`id="%s" type="text" readonly`, id)) {
+				t.Errorf("%s: %s lacks a hidden copy button for its read-only field", name, id)
+			}
+		}
+		if strings.Contains(c.body, "data-invitation") {
+			t.Errorf("%s: unused data-invitation attribute is back", name)
+		}
+		if !strings.Contains(c.body, `<script src="/static/copy.js" defer></script>`) {
+			t.Errorf("%s: copy script is not loaded", name)
+		}
+	}
+	w := owner.request("GET", "/static/copy.js", nil, nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "navigator.clipboard") {
+		t.Fatalf("copy script not served: %d", w.Code)
+	}
+}

@@ -31,6 +31,8 @@ test: ## Run Go tests with the race detector
 
 test-js: ## Run JavaScript behavior tests (needs Node)
 	node --check internal/forum/static/theme.js
+	node --check internal/forum/static/app.js
+	node --check internal/forum/static/copy.js
 	node --test scripts/*.test.cjs
 
 test-browser: build ## Run browser checks (needs Node and Playwright; see README)

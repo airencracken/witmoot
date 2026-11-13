@@ -58,7 +58,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		await screenshot(visitor, 'house-rules');
 		await owner.goto(origin + '/invites');
 		await act(owner.getByRole('button', { name: 'Create invitation', exact: true }), 'click');
-		const invitation = await owner.getByRole('link', { name: 'Invitation link', exact: true }).getAttribute('href');
+		const invitation = await owner.getByLabel('Invitation link', { exact: true }).inputValue();
 		const member = await newPage();
 		await member.goto(invitation);
 		await act(member.getByLabel('Username', { exact: true }), 'fill', username);

@@ -132,10 +132,11 @@ async function flow(javaScriptEnabled) {
 	await act(page.getByLabel('Uses', { exact: true }), 'fill', '2');
 	await act(page.getByLabel('Expires after (days)', { exact: true }), 'fill', '14');
 	await act(page.getByRole('button', { name: 'Create invitation' }), 'click');
-	const invite = await page.getByRole('link', { name: 'Invitation link', exact: true }).getAttribute('href');
+	const invite = await page.getByLabel('Invitation link', { exact: true }).inputValue();
 	assert.equal(new URL(invite).origin, origin);
 	assert.match(new URL(invite).search, /^\?invite=[a-f0-9]{64}$/);
-	assert.equal(await page.getByLabel('Invitation link', { exact: true }).inputValue(), invite);
+	assert.equal(await page.getByRole('link', { name: 'Invitation link', exact: true }).count(), 0);
+	assert.equal(await page.getByRole('button', { name: 'Copy link', exact: true }).isVisible(), javaScriptEnabled);
 	const guest = await browser.newContext({ javaScriptEnabled });
 	const guestPage = await guest.newPage();
 	await guestPage.goto(invite);
