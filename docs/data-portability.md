@@ -1,15 +1,15 @@
 # Taking your data with you
 
-Members download their own messages from **Your data** on the account page.
+Members download their own posts from **Your data** on the account page.
 Owners download the whole community from **Settings**. Both ZIPs contain
 `manifest.json` and an `archive.html` you can read offline. Witmoot cannot
 import these archives yet.
 
 ## Member archives
 
-An account archive holds your messages with their timestamps, the boards and
+An account archive holds your posts with their timestamps, the boards and
 conversations they belong to, your profile, and your avatar. Other people's
-replies are left out. A removed message keeps its place, marked
+replies are left out. A removed post keeps its place, marked
 `removed: true`, with only the placeholder text.
 
 You keep your own words from conversations you can no longer read. Those
@@ -24,7 +24,7 @@ through
 ## Community archives
 
 Only owners can use `/community/export`. The archive holds every board and
-conversation, private and empty ones included, every message with its author,
+conversation, private and empty ones included, every post with its author,
 and available shared previews. It also records the site mode, public contact
 and house rules, board descriptions and order, restricted and archived boards,
 groups and their members, and every board grant and denial. Anyone moving the
@@ -49,7 +49,7 @@ and account deletions do not change archives or backups already made.
 
 **Delete your account** under **Your data** asks for your password and your
 typed username. It clears your sign-ins, profile, image connection,
-invitations and access grants. Your messages become anonymous placeholders and
+invitations and access grants. Your posts become anonymous placeholders and
 your conversation titles become "Conversation". Other people's replies stay
 where they are. Your images in Imvault are not touched.
 

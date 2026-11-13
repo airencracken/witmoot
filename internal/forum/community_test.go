@@ -148,7 +148,7 @@ func TestRemovalHTTPConfirmationHTMXAndExport(t *testing.T) {
 	}
 	w = member.request("GET", fmt.Sprintf("/topics/%d", topic), nil, nil)
 	requireStatus(t, w, 200)
-	if strings.Contains(w.Body.String(), "Erase this unique text") || strings.Contains(w.Body.String(), "An unfortunate title") || !strings.Contains(w.Body.String(), removedMessage) {
+	if strings.Contains(w.Body.String(), "Erase this unique text") || strings.Contains(w.Body.String(), "An unfortunate title") || !strings.Contains(w.Body.String(), "This post was removed by a site owner.") {
 		t.Fatal("removed content still visible")
 	}
 	requireStatus(t, member.request("GET", fmt.Sprintf("/posts/%d/edit", post), nil, nil), 404)

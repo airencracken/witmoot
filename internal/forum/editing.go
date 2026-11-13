@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var errPostBody = errors.New("write a message between 1 and 20,000 characters")
+var errPostBody = errors.New("write a post between 1 and 20,000 characters")
 
 func readPost(ctx context.Context, q rowQuerier, id int64, reader *User) (Post, error) {
 	var p Post
@@ -98,7 +98,7 @@ func (a *App) editPostForm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.render(w, r, 200, Page{View: "edit-post", Title: "Edit your message", Post: p, Topic: t, BodyInput: p.Body})
+	a.render(w, r, 200, Page{View: "edit-post", Title: "Edit your post", Post: p, Topic: t, BodyInput: p.Body})
 }
 
 func (a *App) editPost(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ func (a *App) editPost(w http.ResponseWriter, r *http.Request) {
 	}
 	revision, err := strconv.ParseInt(r.PostForm.Get("revision"), 10, 64)
 	if err != nil || revision < 0 {
-		a.fail(w, r, 400, "Reload the message before editing.")
+		a.fail(w, r, 400, "Reload the post before editing.")
 		return
 	}
 	body := strings.TrimSpace(r.PostForm.Get("body"))
@@ -120,7 +120,7 @@ func (a *App) editPost(w http.ResponseWriter, r *http.Request) {
 				status = http.StatusConflict
 			}
 			p.Revision = revision
-			a.render(w, r, status, Page{View: "edit-post", Title: "Edit your message", Post: p, Topic: t, BodyInput: body, Error: err.Error()})
+			a.render(w, r, status, Page{View: "edit-post", Title: "Edit your post", Post: p, Topic: t, BodyInput: body, Error: err.Error()})
 			return
 		}
 		a.storeError(w, r, err)

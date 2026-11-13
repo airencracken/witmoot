@@ -148,7 +148,7 @@ status.
 ## Instance metrics
 
 Owners open `/admin/metrics` from **Settings**. It shows counts of members,
-boards, conversations and messages, new messages in the past seven UTC days,
+boards, conversations and posts, new posts in the past seven UTC days,
 and the database size. **Site health** shows requests, errors, response times
 and data served per route, and **Security** counts failed sign-ins,
 rate-limited attempts and refused invitation or reset links. Automatic backups

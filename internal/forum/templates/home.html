@@ -14,7 +14,7 @@
 		{{if ne .Category $category}}<h2 class="category-heading">{{.Category}}</h2>{{$category = .Category}}{{end}}
 		<article class="board-row">
 			<div class="board-symbol" aria-hidden="true">{{initial .Name}}</div>
-			<div class="board-description"><h3><a href="/boards/{{.ID}}">{{.Name}}</a></h3><p>{{.Description}}</p>{{if .Restricted}}<span class="board-access">Private board{{if eq .Access "read"}} · Read only{{end}}</span>{{end}}<span class="mobile-count">{{.Topics}} conversations · {{.Posts}} messages</span></div>
+			<div class="board-description"><h3><a href="/boards/{{.ID}}">{{.Name}}</a></h3><p>{{.Description}}</p>{{if .Restricted}}<span class="board-access">Private board{{if eq .Access "read"}} · Read only{{end}}</span>{{end}}<span class="mobile-count">{{.Topics}} conversations · {{.Posts}} posts</span></div>
 			<div class="board-count"><strong>{{.Topics}}</strong><span>conversations</span></div>
 			<div class="board-latest">{{if .LastTopicID}}<a href="/topics/{{.LastTopicID}}">{{.LastTitle}}</a><span>{{.LastAuthor}} · <time datetime="{{iso .LastAt}}">{{$.Date .LastAt}}</time></span>{{else}}<span>Room for a first conversation.</span>{{end}}</div>
 		</article>
@@ -22,7 +22,7 @@
 	</div>
 	<aside class="sidebar">
 		<section class="paper side-note"><img class="mascot" src="{{.MascotURL}}" alt="" width="180" height="180"><h2>About this board</h2><p>{{.WelcomeText}}</p><p>{{if eq .Mode "personal"}}Only owners can use this board. New conversations are for owners only.{{else if eq .Mode "open"}}Public conversations are open to everyone. Create an account to take part.{{else}}Members can read and join the shared conversations here. New people join by invitation.{{end}}</p></section>
-		<section class="paper group-stats"><h2>This community</h2><dl><div><dt>People</dt><dd>{{.Stats.Members}}</dd></div><div><dt>Conversations</dt><dd>{{.Stats.Topics}}</dd></div><div><dt>Messages</dt><dd>{{.Stats.Posts}}</dd></div></dl>{{if and .User (or (eq .User.Role "owner") .User.CanInvite) (ne .Mode "personal")}}<a href="/invites">Invite someone in <span aria-hidden="true">→</span></a>{{else if and (not .User) (eq .Mode "open")}}<a href="/join">Join our board <span aria-hidden="true">→</span></a>{{end}}</section>
+		<section class="paper group-stats"><h2>This community</h2><dl><div><dt>People</dt><dd>{{.Stats.Members}}</dd></div><div><dt>Conversations</dt><dd>{{.Stats.Topics}}</dd></div><div><dt>Posts</dt><dd>{{.Stats.Posts}}</dd></div></dl>{{if and .User (or (eq .User.Role "owner") .User.CanInvite) (ne .Mode "personal")}}<a href="/invites">Invite someone in <span aria-hidden="true">→</span></a>{{else if and (not .User) (eq .Mode "open")}}<a href="/join">Join our board <span aria-hidden="true">→</span></a>{{end}}</section>
 	</aside>
 </div>
 {{end}}

@@ -76,7 +76,7 @@ var (
 	errAudienceChanged = errors.New("the board's audience has changed; review who can read this conversation and submit again")
 	errReadOnly        = errors.New("you have read-only access to this board")
 	errArchived        = errors.New("this board is archived; an owner must restore it before anyone can post or edit")
-	errEditConflict    = errors.New("this message has changed since you opened it; reload it before editing again")
+	errEditConflict    = errors.New("this post has changed since you opened it; reload it before editing again")
 )
 
 func canWrite(ctx context.Context, q rowQuerier, authorID int64) (Mode, error) {

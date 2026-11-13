@@ -19,9 +19,9 @@
 	<p>For <strong>{{.Member.Username}}</strong>.</p>
 	{{if eq .CommunityAction "suspend"}}
 	<p>They will be signed out on every device and cannot sign in, read private conversations, or post. Their reset links and unused invitations will stop working.</p>
-	<p>Their messages and board permissions stay here. You can restore access later. Public pages remain visible to anyone, including a suspended person browsing without signing in.</p>
+	<p>Their posts and board permissions stay here. You can restore access later. Public pages remain visible to anyone, including a suspended person browsing without signing in.</p>
 	{{else}}
-	<p>They can sign in again with their current password. Their messages and board permissions are unchanged. Old sessions, reset links, and invitations will stay revoked.</p>
+	<p>They can sign in again with their current password. Their posts and board permissions are unchanged. Old sessions, reset links, and invitations will stay revoked.</p>
 	{{end}}
 	{{template "error" .}}
 	<form action="/members/{{.Member.ID}}/{{.CommunityAction}}" method="post" hx-disabled-elt="find button[type='submit']">
@@ -35,16 +35,16 @@
 {{define "remove-post"}}
 {{template "crumb" .}}
 <section class="paper narrow">
-	<h1>Remove message</h1>
-	<p>Message #{{.Post.Number}} in <strong>{{.Topic.Title}}</strong>.</p>
+	<h1>Remove post</h1>
+	<p>Post #{{.Post.Number}} in <strong>{{.Topic.Title}}</strong>.</p>
 	<blockquote class="removal-preview post-body" hx-disable>{{template "body" .Post.Body}}</blockquote>
-	<p>This permanently clears the message text and its shared image links. A placeholder keeps replies and message numbers in place. Originals in Imvault are kept. Existing downloads and backups are not changed.</p>
+	<p>This permanently clears the post text and its shared image links. A placeholder keeps replies and post numbers in place. Originals in Imvault are kept. Existing downloads and backups are not changed.</p>
 	{{template "error" .}}
 	<form action="/posts/{{.Post.ID}}/remove" method="post" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Post.Revision}}">
 		{{if eq .Post.Number 1}}<label class="access-choice"><input type="checkbox" name="replace_title" value="1"><span>Also replace the conversation title with “Conversation”</span></label>{{end}}
-		<label class="access-choice"><input type="checkbox" name="confirmation" value="1" required><span>I understand this message cannot be restored.</span></label>
-		<div class="form-footer"><a href="{{.Post.URL}}">Cancel</a><button type="submit" class="danger">Remove message</button></div>
+		<label class="access-choice"><input type="checkbox" name="confirmation" value="1" required><span>I understand this post cannot be restored.</span></label>
+		<div class="form-footer"><a href="{{.Post.URL}}">Cancel</a><button type="submit" class="danger">Remove post</button></div>
 	</form>
 </section>
 {{end}}
@@ -53,7 +53,7 @@
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/members">Members</a><span aria-hidden="true">/</span><span>Owner activity</span></nav>
 <section class="paper">
 	<h1>Owner activity</h1>
-	<p class="muted">The latest 100 suspensions, restorations, message removals, and avatar removals. Visible to owners only.</p>
-	{{range .Events}}<article class="record"><p><strong>{{.Actor}}</strong> · {{if eq .Action "suspend"}}Suspended {{.Subject}}{{else if eq .Action "restore"}}Restored access for {{.Subject}}{{else if eq .Action "remove-avatar"}}Removed the avatar of {{.Subject}}{{else}}Removed {{if .URL}}<a href="{{.URL}}">{{.Subject}}</a>{{else}}{{.Subject}}{{end}}{{if .TitleReplaced}} and replaced the conversation title{{end}}{{end}}</p><time class="muted" datetime="{{iso .CreatedAt}}">{{$.Stamp .CreatedAt}}</time></article>{{else}}<p>No owner actions recorded yet.</p>{{end}}
+	<p class="muted">The latest 100 suspensions, restorations, post removals, and avatar removals. Visible to owners only.</p>
+	{{range .Events}}<article class="record"><p><strong>{{.Actor}}</strong> · {{if eq .Action "suspend"}}Suspended {{postSubject .Subject}}{{else if eq .Action "restore"}}Restored access for {{postSubject .Subject}}{{else if eq .Action "remove-avatar"}}Removed the avatar of {{postSubject .Subject}}{{else}}Removed {{if .URL}}<a href="{{.URL}}">{{postSubject .Subject}}</a>{{else}}{{postSubject .Subject}}{{end}}{{if .TitleReplaced}} and replaced the conversation title{{end}}{{end}}</p><time class="muted" datetime="{{iso .CreatedAt}}">{{$.Stamp .CreatedAt}}</time></article>{{else}}<p>No owner actions recorded yet.</p>{{end}}
 </section>
 {{end}}

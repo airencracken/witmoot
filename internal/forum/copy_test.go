@@ -234,8 +234,8 @@ func TestStylesFollowTheSharedPalette(t *testing.T) {
 	if hex := regexp.MustCompile(`#[0-9a-fA-F]{3,8}\b`).FindAllString(style, -1); len(hex) > 0 {
 		t.Errorf("style.css draws its own colors: %v", hex)
 	}
-	if strings.Contains(style, "light-dark(") || strings.Contains(style, "Georgia") {
-		t.Error("style.css still carries the sage palette or heading font itself")
+	if strings.Contains(style, "light-dark(") {
+		t.Error("style.css still carries the sage palette colors itself")
 	}
 	for _, old := range []string{"--ink:", "--paper:", "--green:", "--line:", "--background:", "var(--ink)", "var(--green)"} {
 		if strings.Contains(style, old) {

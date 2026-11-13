@@ -255,7 +255,7 @@ func (a *App) prepareImages(r *http.Request) ([]Attachment, func(), error) {
 		return nil, noop, userError("Image integration is not configured.")
 	}
 	if count > maxImages {
-		return nil, noop, userError("Attach up to four images per message.")
+		return nil, noop, userError("Attach up to four images per post.")
 	}
 	token, tokenErr := a.imageToken(r.Context(), state(r).User.ID)
 	if tokenErr != nil {

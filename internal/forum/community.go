@@ -86,7 +86,7 @@ func (a *App) removalPage(w http.ResponseWriter, r *http.Request) (Page, bool) {
 		a.storeError(w, r, err)
 		return Page{}, false
 	}
-	return Page{View: "remove-post", Title: "Remove message", Post: p, Topic: t}, true
+	return Page{View: "remove-post", Title: "Remove post", Post: p, Topic: t}, true
 }
 
 func (a *App) removePostForm(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +107,7 @@ func (a *App) removePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.PostForm.Get("confirmation") != "1" {
-		p.Error = "Confirm that you want to permanently remove this message."
+		p.Error = "Confirm that you want to permanently remove this post."
 		a.render(w, r, 422, p)
 		return
 	}

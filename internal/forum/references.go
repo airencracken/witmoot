@@ -174,6 +174,6 @@ func (a *App) completeDiscussion(w http.ResponseWriter, r *http.Request, path st
 		return false
 	}
 	link := suite.DiscussionResult(destination, strings.TrimRight(a.config.BaseURL, "/")+path)
-	a.render(w, r, 200, Page{View: "discussion-done", Title: "Message posted", SharedSource: link})
+	a.render(w, r, 200, Page{View: "discussion-done", Title: "Post posted", SharedSource: link})
 	return true
 }

@@ -59,7 +59,7 @@ async function flow(javaScriptEnabled) {
 	await act(page.getByRole('link', { name: 'Start a conversation', exact: true }), 'click');
 	const title = javaScriptEnabled ? 'Sunday lunch together' : 'An afternoon in the garden';
 	await act(page.getByLabel('Give it a title'), 'fill', title);
-	await act(page.getByLabel('Your message'), 'fill', 'Shall we get together this weekend?\nI can bring soup.');
+	await act(page.getByLabel('Your post'), 'fill', 'Shall we get together this weekend?\nI can bring soup.');
 	await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 	await page.waitForURL(/\/topics\/\d+$/);
 	const topicURL = page.url();
@@ -70,7 +70,7 @@ async function flow(javaScriptEnabled) {
 	assert.equal(await page.locator('.post').count(), 2);
 	assert.match(await page.locator('.post-body').last().innerText(), /bring bread/);
 	await act(page.getByRole('link', { name: 'Recent', exact: true }), 'click');
-	await page.getByRole('heading', { name: 'Recent messages', exact: true }).waitFor();
+	await page.getByRole('heading', { name: 'Recent posts', exact: true }).waitFor();
 	const feedPosts = page.locator('.recent-post').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
 	await feedPosts.first().waitFor();
 	assert.equal(await feedPosts.count(), 2, 'Original post and reply appear individually');
@@ -123,7 +123,7 @@ async function flow(javaScriptEnabled) {
 		assert.match(await page.locator(':target .post-body').innerText(), /Feed pagination reply 18/);
 	}
 	await act(page.getByRole('link', { name: 'Search', exact: true }), 'click');
-	await act(page.getByLabel('Search conversations and messages'), 'fill', title);
+	await act(page.getByLabel('Search conversations and posts'), 'fill', title);
 	await act(page.getByRole('button', { name: 'Search', exact: true }), 'click');
 	await page.getByRole('link', { name: title, exact: true }).waitFor();
 	await act(page.getByRole('link', { name: 'Invites', exact: true }), 'click');
@@ -230,7 +230,7 @@ async function modeFlow(javaScriptEnabled) {
 	assert.match(await page.locator('.audience-note').innerText(), /Public/);
 	const title = javaScriptEnabled ? 'An open picnic' : 'A public garden day';
 	await act(page.getByLabel('Give it a title'), 'fill', title);
-	await act(page.getByLabel('Your message'), 'fill', 'Come along and bring a friend.');
+	await act(page.getByLabel('Your post'), 'fill', 'Come along and bring a friend.');
 	await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 	await page.waitForURL(/\/topics\/\d+$/);
 	const publicURL = page.url();

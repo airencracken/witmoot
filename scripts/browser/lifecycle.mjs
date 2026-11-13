@@ -5,7 +5,7 @@ import { join } from 'node:path';
 export async function checkLifecycle({ owner, reader, outsider, guest, origin, boardURL, topicURL, name, javaScriptEnabled }) {
 	const settingsURL = boardURL + '/settings';
 	await owner.goto(topicURL);
-	const editURL = await owner.getByRole('link', { name: 'Edit message 1', exact: true }).getAttribute('href');
+	const editURL = await owner.getByRole('link', { name: 'Edit post 1', exact: true }).getAttribute('href');
 	const draft = await owner.context().newPage();
 	await draft.goto(origin + editURL);
 	const staleDelete = await owner.context().newPage();
@@ -24,7 +24,7 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 	await act(staleDelete.getByRole('button', { name: 'Delete board permanently', exact: true }), 'click');
 	await staleDelete.getByRole('alert').waitFor();
 	assert.match(await staleDelete.getByRole('alert').innerText(), /reload the confirmation page/);
-	await act(draft.getByLabel('Your message', { exact: true }), 'fill', 'An edit submitted after archiving');
+	await act(draft.getByLabel('Your post', { exact: true }), 'fill', 'An edit submitted after archiving');
 	await act(draft.getByRole('button', { name: 'Save changes', exact: true }), 'click');
 	await draft.getByRole('alert').waitFor();
 	assert.match(await draft.getByRole('alert').innerText(), /board is archived/);
@@ -47,7 +47,7 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 		await allowed.goto(topicURL);
 		assert.match(await allowed.locator('.archive-notice').innerText(), /posting and editing are paused/);
 		assert.equal(await allowed.getByRole('button', { name: 'Post reply', exact: true }).count(), 0);
-		assert.equal(await allowed.getByRole('link', { name: /^Edit message/ }).count(), 0);
+		assert.equal(await allowed.getByRole('link', { name: /^Edit post/ }).count(), 0);
 	}
 	await owner.goto(settingsURL);
 	await act(owner.getByRole('link', { name: 'Restore board', exact: true }), 'click');
@@ -55,7 +55,7 @@ export async function checkLifecycle({ owner, reader, outsider, guest, origin, b
 	await owner.waitForURL(settingsURL);
 	assert.equal(await owner.locator('.archive-notice').count(), 0);
 	await owner.goto(topicURL);
-	await owner.getByRole('link', { name: 'Edit message 1', exact: true }).waitFor();
+	await owner.getByRole('link', { name: 'Edit post 1', exact: true }).waitFor();
 	assert.match(await owner.locator('.post-body').first().innerText(), /This stays in our private room/);
 	await reader.goto(topicURL);
 	assert.equal(await reader.getByRole('button', { name: 'Post reply', exact: true }).count(), 0);

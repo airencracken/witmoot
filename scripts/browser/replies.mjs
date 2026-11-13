@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 export async function checkReplies(page, javaScriptEnabled) {
 	await page.goto(new URL('/boards/1/new', page.url()).href);
 	await act(page.getByLabel('Give it a title'), 'fill', `Reply refresh ${javaScriptEnabled ? 'with HTMX' : 'without JavaScript'}`);
-	await act(page.getByLabel('Your message'), 'fill', 'Starting a conversation for reply regression coverage.');
+	await act(page.getByLabel('Your post'), 'fill', 'Starting a conversation for reply regression coverage.');
 	await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 	await page.waitForURL(/\/topics\/\d+$/);
 	const topicURL = page.url();

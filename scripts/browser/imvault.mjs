@@ -123,12 +123,12 @@ try {
 		assert.equal(libraryRequests, beforeCompose, 'Opening the composer fetched the library');
 		const title = javaScriptEnabled ? 'Pictures with HTMX' : 'Pictures without JavaScript';
 		await act(page.getByLabel('Give it a title'), 'fill', title);
-		await act(page.getByLabel('Your message', { exact: true }), 'fill', 'A place at the table for everyone.');
+		await act(page.getByLabel('Your post', { exact: true }), 'fill', 'A place at the table for everyone.');
 		await page.getByText('Add images', { exact: true }).click();
 		await act(page.getByRole('button', { name: 'Load image library', exact: true }), 'click');
 		await page.locator('.image-choice input[type=checkbox]').first().waitFor();
 		assert.equal(await page.getByLabel('Give it a title').inputValue(), title, 'Loading images lost the title');
-		assert.equal(await page.getByLabel('Your message', { exact: true }).inputValue(), 'A place at the table for everyone.', 'Loading images lost the draft');
+		assert.equal(await page.getByLabel('Your post', { exact: true }).inputValue(), 'A place at the table for everyone.', 'Loading images lost the draft');
 		const firstID = await page.locator('.image-choice input[type=checkbox]').first().getAttribute('value');
 		await page.locator('.image-choice input[type=checkbox]').first().check();
 		if (javaScriptEnabled) {

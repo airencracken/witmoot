@@ -25,7 +25,7 @@ table with a book, a quill, and room for your people.
 
 *A test instance with sample conversations.*
 
-**Current release:** [0.24.0](docs/release-notes/0.24.0.md). Older versions are in the [release notes](docs/releases.md).
+**Current release:** [0.24.1](docs/release-notes/0.24.1.md). Older versions are in the [release notes](docs/releases.md).
 
 ## Come on in
 
@@ -123,7 +123,7 @@ page, Recent, search, and counts, and so do its conversations and images.
 Each group's page lists its boards and every member's effective access.
 
 **Archive board** moves a board to the **Archive**: still readable and
-searchable by the same people, closed to new messages until you restore it.
+searchable by the same people, closed to new posts until you restore it.
 **Delete board permanently** shows what will go, asks you to type the board's
 name, and cannot be undone. Images stay in Imvault.
 
@@ -136,14 +136,14 @@ never email addresses.
 Under **Members**, an owner can:
 
 - **Suspend** a member: they are signed out everywhere, and their reset links and
-  unused invitations stop working. Their messages and permissions stay.
+  unused invitations stop working. Their posts and permissions stay.
   **Restore access** lets them sign in again.
 - **Create a reset link** for someone locked out. It works once, expires after
   24 hours, and is shown once with a Copy button. With mail set up, **Email a
   reset link** sends it instead.
 - **Remove avatar** for moderation.
 
-Owners can also **Remove** a message. Its text and shared image links are
+Owners can also **Remove** a post. Its text and shared image links are
 deleted for good and a placeholder keeps its place in the conversation. **View
 owner activity** lists suspensions, restorations, and removals.
 
@@ -166,10 +166,10 @@ Set `WITMOOT_BASE_URL` to your public address, such as
 
 ## For members
 
-- **Recent** shows each new message and reply from boards you can read, newest
-  first. **Read in conversation** takes you to that exact message.
-- **Search** finds conversations by title or message text, archived ones too.
-- **Edit** your own messages while you can post. Edits show a timestamp and do
+- **Recent** shows each new post and reply from boards you can read, newest
+  first. **Read in conversation** takes you to that exact post.
+- **Search** finds conversations by title or post text, archived ones too.
+- **Edit** your own posts while you can post. Edits show a timestamp and do
   not bump the conversation.
 - **Your account** holds your profile (name, bio, and up to five links), your
   avatar, your timezone, your password and email, a download of your data, and
@@ -224,7 +224,7 @@ Put Witmoot behind an HTTPS proxy, keep its port private, and set
 
 Passwords use bcrypt and need at least 12 characters. Witmoot stores only hashes
 of session, invitation, and reset tokens. Sessions last seven days. Forms carry
-CSRF tokens, message text is escaped, and only bare `http://` and `https://`
+CSRF tokens, post text is escaped, and only bare `http://` and `https://`
 addresses become links. Avatars are re-encoded, which removes camera details.
 Sign-in, registration, and invitation use share a limit of 20 attempts per 15
 minutes per address. Behind a proxy, list it in `WITMOOT_TRUSTED_PROXIES` so
@@ -237,14 +237,14 @@ retention, off-host copies, and recovery. For a manual backup, stop the server
 and copy the whole data directory. Do not copy only the live `.db` file.
 
 Taking your data with you is a Comfyware promise. Each member can download their
-own messages and context from **Your account**, and owners can download a
+own posts and context from **Your account**, and owners can download a
 community archive from **Settings**. Both open offline. See
 [data portability](docs/data-portability.md).
 
-Members can delete their account with their password. Their messages become
+Members can delete their account with their password. Their posts become
 anonymous placeholders. The last owner must appoint another owner first.
 
-The owner metrics page counts members, boards, conversations, messages, and
+The owner metrics page counts members, boards, conversations, posts, and
 storage, plus site health (requests, errors, response times) and security
 events such as failed sign-ins. Witmoot does not record who signed in or what
 anyone read.

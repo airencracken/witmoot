@@ -38,7 +38,7 @@
 
 {{define "archive"}}
 {{template "crumb" .}}<div class="page-heading"><div><h1>Archived boards</h1><p class="lede">A quieter shelf for past conversations. The same access rules apply, and everything here is read only.</p></div></div>
-{{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Description}}</p><p>{{.Topics}} conversations · {{.Posts}} messages{{if .Restricted}} · Private board{{end}}</p></div></article>{{else}}<p class="paper">No archived boards to show.</p>{{end}}
+{{range .Boards}}<article class="board-row"><div class="board-description"><h2><a href="/boards/{{.ID}}">{{.Name}}</a></h2><p>{{.Description}}</p><p>{{.Topics}} conversations · {{.Posts}} posts{{if .Restricted}} · Private board{{end}}</p></div></article>{{else}}<p class="paper">No archived boards to show.</p>{{end}}
 {{end}}
 
 {{define "archive-notice"}}<p class="paper archive-notice"><strong>Archived board.</strong> You can read its conversations, but posting and editing are paused until an owner restores it.</p>{{end}}
@@ -46,8 +46,8 @@
 {{define "board-action"}}
 <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/boards/manage">Manage boards</a><span aria-hidden="true">/</span><a href="/boards/{{.Board.ID}}/settings">{{.Board.Name}}</a></nav>
 <section class="paper narrow board-confirmation"><h1>{{.Title}}</h1>
-{{if eq .BoardAction "delete"}}<p>This permanently removes <strong>{{.Board.Name}}</strong>, including all {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}}, {{.BoardContents.Posts}} message{{if ne .BoardContents.Posts 1}}s{{end}}, and {{.BoardContents.Images}} attachment link{{if ne .BoardContents.Images 1}}s{{end}}. This cannot be undone.</p><p>This also deletes other members' messages. <a href="/community/export" hx-boost="false">Download a community archive first</a>, or archive the board to keep it readable.</p><p>Original images in Imvault stay there. Archive the board instead if you want to keep its conversations.</p>
-{{else if eq .BoardAction "archive"}}<p>Move <strong>{{.Board.Name}}</strong> to the Archive. Its {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}} and {{.BoardContents.Posts}} message{{if ne .BoardContents.Posts 1}}s{{end}} stay readable by the same people. Posting and editing will stop for everyone, including owners.</p><p>You can restore the board whenever you like.</p>
+{{if eq .BoardAction "delete"}}<p>This permanently removes <strong>{{.Board.Name}}</strong>, including all {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}}, {{.BoardContents.Posts}} post{{if ne .BoardContents.Posts 1}}s{{end}}, and {{.BoardContents.Images}} attachment link{{if ne .BoardContents.Images 1}}s{{end}}. This cannot be undone.</p><p>This also deletes other members' posts. <a href="/community/export" hx-boost="false">Download a community archive first</a>, or archive the board to keep it readable.</p><p>Original images in Imvault stay there. Archive the board instead if you want to keep its conversations.</p>
+{{else if eq .BoardAction "archive"}}<p>Move <strong>{{.Board.Name}}</strong> to the Archive. Its {{.BoardContents.Topics}} conversation{{if ne .BoardContents.Topics 1}}s{{end}} and {{.BoardContents.Posts}} post{{if ne .BoardContents.Posts 1}}s{{end}} stay readable by the same people. Posting and editing will stop for everyone, including owners.</p><p>You can restore the board whenever you like.</p>
 {{else}}<p>Bring <strong>{{.Board.Name}}</strong> back to the board list and Recent. Posting and editing will resume with the same member permissions.</p>{{end}}
 {{template "error" .}}
 <form method="post" action="/boards/{{.Board.ID}}/{{.BoardAction}}" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Board.Revision}}">
@@ -57,6 +57,6 @@
 
 {{define "edit-post"}}
 {{template "crumb" .}}
-<section class="paper compose"><h1>Edit your message</h1><p class="muted">In {{.Topic.Title}}. Changes will show an edited timestamp. Attached images stay with the message.</p>{{template "error" .}}
-<form method="post" action="/posts/{{.Post.ID}}/edit" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Post.Revision}}"><label for="body">Your message</label><textarea id="body" name="body" rows="10" maxlength="20000" required>{{.BodyInput}}</textarea><div class="form-footer"><a href="{{.Post.URL}}">Back to the conversation</a><button type="submit">Save changes</button></div></form></section>
+<section class="paper compose"><h1>Edit your post</h1><p class="muted">In {{.Topic.Title}}. Changes will show an edited timestamp. Attached images stay with the post.</p>{{template "error" .}}
+<form method="post" action="/posts/{{.Post.ID}}/edit" hx-disabled-elt="find button[type='submit']">{{template "csrf" .}}<input type="hidden" name="revision" value="{{.Post.Revision}}"><label for="body">Your post</label><textarea id="body" name="body" rows="10" maxlength="20000" required>{{.BodyInput}}</textarea><div class="form-footer"><a href="{{.Post.URL}}">Back to the conversation</a><button type="submit">Save changes</button></div></form></section>
 {{end}}

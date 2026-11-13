@@ -1,7 +1,7 @@
 # Binary releases
 
 Download Witmoot from [GitHub Releases](https://github.com/airencracken/witmoot/releases).
-The latest release is [0.24.0](release-notes/0.24.0.md), with a tidier account page, site colors, and metrics that name nobody.
+The latest release is [0.24.1](release-notes/0.24.1.md), with a tidier account page, site colors, and metrics that name nobody.
 Read the [release notes](release-notes/) for every version you skip before
 upgrading.
 
@@ -22,7 +22,7 @@ system's CA certificates. To create the first account, see
 Pick the version and architecture. For example:
 
 ```sh
-release_version=0.24.0
+release_version=0.24.1
 release_arch=amd64
 release_url="https://github.com/airencracken/witmoot/releases/download/v$release_version"
 curl -fLO "$release_url/witmoot_${release_version}_${release_arch}.deb"
@@ -65,8 +65,8 @@ Download the archive and checksum file for your architecture, check them as
 above, and extract:
 
 ```sh
-tar -xzf witmoot_0.24.0_linux_amd64.tar.gz
-cd witmoot_0.24.0_linux_amd64
+tar -xzf witmoot_0.24.1_linux_amd64.tar.gz
+cd witmoot_0.24.1_linux_amd64
 sudo install -m 0755 witmoot /usr/local/bin/witmoot
 sudo install -d /usr/local/share/doc/witmoot
 sudo install -m 0644 LICENSE README.md THIRD_PARTY_NOTICES.txt /usr/local/share/doc/witmoot/

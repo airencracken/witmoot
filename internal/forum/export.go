@@ -111,10 +111,10 @@ type exportView struct {
 	Manifest exportManifest
 }
 
-const exportNote = "Your own messages only; other people's replies are not included. " +
+const exportNote = "Your own posts only; other people's replies are not included. " +
 	"Available shared previews are included, with links to their Imvault pages. " +
 	"Fetch your originals from your Imvault account export. " +
-	"Removed messages appear as placeholders, without their former text or image references. " +
+	"Removed posts appear as placeholders, without their former text or image references. " +
 	"Boards and conversations you can no longer read are listed without their names. " +
 	"Passwords, sessions, and image connections are never included."
 
@@ -206,7 +206,7 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request, community boo
 		post := exportPost{
 			ID: p.ID, TopicID: p.TopicID, BoardID: p.BoardID,
 			TopicTitle: p.TopicTitle, BoardName: p.BoardName, Number: p.Number,
-			Body:      p.Body,
+			Body:      postBody(p.Body, p.Removed, p.Author),
 			Author:    p.Author,
 			AuthorID:  p.AuthorID,
 			CreatedAt: time.Unix(p.CreatedAt, 0).UTC().Format(time.RFC3339),

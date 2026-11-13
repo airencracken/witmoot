@@ -95,7 +95,7 @@ func seedPrivateBoard(ctx context.Context, store *forum.Store, users map[string]
 	if err != nil {
 		return err
 	}
-	_, err = store.EditPost(ctx, post, users["freya"], "I will bring cake on Sunday.\n\nCorrected the day: use Edit on one of your messages to try it. The timestamp lets everyone know it changed.", 0)
+	_, err = store.EditPost(ctx, post, users["freya"], "I will bring cake on Sunday.\n\nCorrected the day: use Edit on one of your posts to try it. The timestamp lets everyone know it changed.", 0)
 	return err
 }
 

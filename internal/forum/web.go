@@ -196,6 +196,8 @@ func New(store *Store, config Config) (*App, error) {
 	}
 	var tmpl *template.Template
 	tmpl, err = template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"paletteAttrs": ui.PaletteAttrs, "imageLimit": func() string { return ui.Size(imvault.MaxImageBytes) }, "themePicker": func() template.HTML { return ui.ThemePicker(true) }, "palettes": ui.Palettes,
+		"postBody":    postBody,
+		"postSubject": func(subject string) string { return strings.Replace(subject, "message ", "post ", 1) },
 		"content": func(p Page) (template.HTML, error) {
 			var page strings.Builder
 			err := tmpl.ExecuteTemplate(&page, pageTemplate(p.View), p)
@@ -633,7 +635,7 @@ func (a *App) storeError(w http.ResponseWriter, r *http.Request, err error) {
 func notFoundMessage(r *http.Request) string {
 	_, path, _ := strings.Cut(r.Pattern, " ")
 	for _, route := range []struct{ prefix, thing string }{
-		{"/boards/", "board"}, {"/topics/", "conversation"}, {"/posts/", "message"},
+		{"/boards/", "board"}, {"/topics/", "conversation"}, {"/posts/", "post"},
 		{"/invites/members/", "member"}, {"/invites/", "invitation"},
 		{"/members/", "member"}, {"/groups/", "group"},
 	} {
@@ -736,7 +738,7 @@ func (a *App) recent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.postReferences(posts)
-	p := Page{View: "recent", Title: "Recent messages", Posts: posts}
+	p := Page{View: "recent", Title: "Recent posts", Posts: posts}
 	pagination(r, &p, page, more)
 	a.render(w, r, 200, p)
 }
@@ -820,7 +822,7 @@ func (a *App) createTopic(w http.ResponseWriter, r *http.Request) {
 	if !validText(title, 3, 160) {
 		message = "Give your conversation a title between 3 and 160 characters."
 	} else if !validText(body, 1, 20000) {
-		message = "Write a message between 1 and 20,000 characters."
+		message = "Write a post between 1 and 20,000 characters."
 	}
 	if message != "" {
 		a.render(w, r, 422, Page{View: "compose", Title: "Start a conversation", Board: b, Error: message, TitleInput: title, BodyInput: body})

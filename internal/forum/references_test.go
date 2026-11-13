@@ -161,7 +161,7 @@ func TestDiscussionReturnAfterExplicitPostAndConfiguredSource(t *testing.T) {
 	}
 	w = c.post("/boards/1/new", url.Values{"title": {"An album"}, "body": {"A listening link"}, "audience": {"members"}, "return_to": {callback}})
 	requireStatus(t, w, 200)
-	if !strings.Contains(w.Body.String(), "Your message is posted") || !strings.Contains(w.Body.String(), "thread=https%3A%2F%2Fboard.example%2Ftopics%2F") {
+	if !strings.Contains(w.Body.String(), "Your post is posted") || !strings.Contains(w.Body.String(), "thread=https%3A%2F%2Fboard.example%2Ftopics%2F") {
 		t.Fatal("missing reviewed return", w.Body.String())
 	}
 	query.Set("return_to", "https://evil.example/discussion-return?state="+strings.Repeat("a", 64))

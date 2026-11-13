@@ -42,7 +42,7 @@
 	</section>
 	<section class="paper account-section" aria-labelledby="account-data">
 		<h2 id="account-data">Your data</h2>
-		<p>Download your messages, the conversations they belong to, and available image previews as a Zip archive. It opens offline, with no Witmoot server needed.</p>
+		<p>Download your posts, the conversations they belong to, and available image previews as a Zip archive. It opens offline, with no Witmoot server needed.</p>
 		<p><a class="button secondary" href="/account/export" hx-boost="false">Download your data</a></p>
 		<p><a href="/account/delete">Delete your account and contributions</a></p>
 	</section>
@@ -115,8 +115,8 @@
 {{define "delete-account"}}
 <section class="paper narrow account-card">
 	<h1>Delete your account</h1>
-	<p>This permanently removes your profile, password, email, avatar, invitations and image connection. Your messages become anonymous placeholders; other people's replies stay where they are. Your shared image links are removed. Originals in Imvault stay with your Imvault account.</p>
-	<p>Other people's messages may still mention you, and earlier backups or exports may contain your contributions. Ask an owner about this site's backup retention.</p>
+	<p>This permanently removes your profile, password, email, avatar, invitations and image connection. Your posts become anonymous placeholders; other people's replies stay where they are. Your shared image links are removed. Originals in Imvault stay with your Imvault account.</p>
+	<p>Other people's posts may still mention you, and earlier backups or exports may contain your contributions. Ask an owner about this site's backup retention.</p>
 	<p><a href="/account/export" hx-boost="false">Download your data first</a>. This cannot be undone.</p>
 	{{template "error" .}}
 	<form method="post" action="/account/delete" hx-disabled-elt="find button[type='submit']">

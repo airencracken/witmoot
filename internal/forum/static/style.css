@@ -3,7 +3,9 @@
 	/* Colors come from the Comfyware palette tokens (palettes.css, sage by
 	   default) so an owner's palette choice reaches every page. The few
 	   Witmoot-only shades are mixed from those tokens. */
-	--comfy-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--comfy-heading-font: Georgia, "Times New Roman", serif;
+  --comfy-heading-weight: 400;
+  --comfy-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	--comfy-radius: 10px;
 	--comfy-radius-small: 7px;
 	--accent-strong: color-mix(in srgb, var(--comfy-accent) 78%, var(--comfy-text));

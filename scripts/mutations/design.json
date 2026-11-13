@@ -54,5 +54,13 @@
     "after": "\"That image is not in your imvault library.\"",
     "package": "./internal/forum",
     "run": "^TestUserFacingStringsCapitaliseProductNames$"
+  },
+  {
+    "name": "posts keep their product name",
+    "file": "internal/forum/templates/recent.html",
+    "before": "<h1>Recent posts</h1>",
+    "after": "<h1>Recent messages</h1>",
+    "package": "./internal/forum",
+    "run": "^TestPostTerminologyAcrossRoutes$"
   }
 ]

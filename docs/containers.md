@@ -1,6 +1,6 @@
 # Run Witmoot with Docker
 
-Images are published at `ghcr.io/airencracken/witmoot:v0.24.0` for Linux
+Images are published at `ghcr.io/airencracken/witmoot:v0.24.1` for Linux
 amd64 and arm64. Docker picks the right architecture. Each image holds the
 same static binary as the native release, CA certificates, timezone data, and
 zstd for automatic backups.
@@ -38,12 +38,12 @@ you bind to a specific non-loopback address.
 Pin a version or digest in `.env`:
 
 ```dotenv
-WITMOOT_IMAGE="ghcr.io/airencracken/witmoot:v0.24.0"
+WITMOOT_IMAGE="ghcr.io/airencracken/witmoot:v0.24.1"
 ```
 
 For a digest, use the full multi-platform index digest
 (`ghcr.io/airencracken/witmoot@sha256:...`) from
-`docker buildx imagetools inspect ghcr.io/airencracken/witmoot:v0.24.0`.
+`docker buildx imagetools inspect ghcr.io/airencracken/witmoot:v0.24.1`.
 There are no `latest`, major or minor tags, so a pull never moves you to a
 newer database schema.
 
@@ -93,7 +93,7 @@ volume. Restore only backups you made.
 From a source checkout:
 
 ```sh
-VERSION=0.24.0 docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
+VERSION=0.24.1 docker compose -f docker-compose.yml -f docker-compose.build.yml up --build -d
 ```
 
 This builds `witmoot:local` and does not pull the published image.
@@ -114,6 +114,6 @@ Local checks:
 
 ```sh
 make test-containers
-docker build --build-arg VERSION=0.24.0 -t witmoot:local .
-make test-container-lifecycle VERSION=0.24.0
+docker build --build-arg VERSION=0.24.1 -t witmoot:local .
+make test-container-lifecycle VERSION=0.24.1
 ```

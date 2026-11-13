@@ -48,7 +48,7 @@ export async function checkGroups(browser, origin, password, javaScriptEnabled) 
 		const boardURL = owner.url().replace('/settings?saved=1', '');
 		await owner.goto(boardURL + '/new');
 		await act(owner.getByLabel('Give it a title'), 'fill', 'Who is bringing the soup?');
-		await act(owner.getByLabel('Your message', { exact: true }), 'fill', 'A conversation for our group.');
+		await act(owner.getByLabel('Your post', { exact: true }), 'fill', 'A conversation for our group.');
 		await act(owner.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 		await owner.waitForURL(/\/topics\/\d+$/);
 		const topicURL = owner.url();
@@ -69,14 +69,14 @@ export async function checkGroups(browser, origin, password, javaScriptEnabled) 
 		assert.match(await row('jules').innerText(), /Use groups.*Read and post/s);
 		assert.match(await row('sam').innerText(), /Read only.*Individual override.*Read only/s);
 		assert.match(await row('robin').innerText(), /No access.*Individual override.*No access/s);
-		await act(writer.getByRole('link', { name: 'Edit message 2', exact: true }), 'click');
+		await act(writer.getByRole('link', { name: 'Edit post 2', exact: true }), 'click');
 		await writer.waitForURL(/\/posts\/\d+\/edit$/);
 		await owner.getByRole('checkbox', { name: 'jules', exact: true }).uncheck();
 		await act(owner.getByRole('button', { name: 'Save group', exact: true }), 'click');
 		await owner.waitForURL(groupURL + '?saved=1');
 		await owner.getByRole('status').waitFor();
 		assert.equal(await row('jules').count(), 0);
-		await act(writer.getByLabel('Your message', { exact: true }), 'fill', 'A stale group edit');
+		await act(writer.getByLabel('Your post', { exact: true }), 'fill', 'A stale group edit');
 		await act(writer.getByRole('button', { name: 'Save changes', exact: true }), 'click');
 		await writer.getByRole('heading', { name: 'Nothing here', exact: true }).waitFor();
 		assert.equal((await writer.goto(topicURL)).status(), 404);

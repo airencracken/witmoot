@@ -93,7 +93,7 @@ in or what anyone reads.
 
 Witmoot already has boards, groups and per-member permissions, member and
 community archives, account deletion, house rules and owner names, member
-suspension, message removal, and a private owner activity log. Password
+suspension, post removal, and a private owner activity log. Password
 changes, reset links and `set-password` cover account recovery.
 
 1. Ownership and recovery: self-service email recovery and imports.

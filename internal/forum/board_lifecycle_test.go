@@ -54,7 +54,7 @@ func TestArchivePreservesAccessAndBlocksWrites(t *testing.T) {
 				if tc.read && !strings.Contains(w.Body.String(), "Archived board.") {
 					t.Fatal("missing archive notice")
 				}
-				for _, unwanted := range []string{"Start a conversation</a>", "Post reply</button>", "Edit message", "Sign in to reply"} {
+				for _, unwanted := range []string{"Start a conversation</a>", "Post reply</button>", "Edit post", "Sign in to reply"} {
 					if strings.Contains(w.Body.String(), unwanted) {
 						t.Fatalf("archived board offered %s", unwanted)
 					}

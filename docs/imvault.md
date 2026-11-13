@@ -63,14 +63,14 @@ Open **Add images** when you start a conversation or reply:
   Your selections stay as you move between pages. Without JavaScript, loading
   the library keeps your draft and selections. You can pick from the first
   page of results, or use **Open your full library** to browse further and
-  copy a link into your message.
+  copy a link into your post.
 - **Paste Imvault image links** accepts image pages and raw, preview or
   thumbnail links from the configured server, including ones with `?v=…`.
   Public thumbnails need no connection. Other images must be reachable through
   your own account.
 
-A message can hold four images of up to 8 MiB each: JPEG, PNG, WebP or GIF.
-Messages still need text. If posting fails, your text and chosen images stay,
+A post can hold four images of up to 8 MiB each: JPEG, PNG, WebP or GIF.
+Posts still need text. If posting fails, your text and chosen images stay,
 but you have to pick upload files again.
 
 Witmoot shows Imvault's preview for still images and a still thumbnail for
@@ -82,7 +82,7 @@ In the **Profile** section of the account page, members can pick an avatar
 from their Imvault library. Witmoot copies the preview, crops it square and
 keeps a small PNG, plus a short GIF animation when the image is animated. The
 avatar keeps working if Imvault goes away or you disconnect. This is the only
-image Witmoot stores itself; message images stay in Imvault.
+image Witmoot stores itself; post images stay in Imvault.
 
 ## Who can see a shared image
 
@@ -117,9 +117,9 @@ server.
 
 If Imvault is down, conversations stay readable and images may not load.
 Posting with an unreachable image fails with an explanation; text-only
-messages still work.
+posts still work.
 
-If a message fails after an upload, Witmoot deletes the files it just uploaded
+If a post fails after an upload, Witmoot deletes the files it just uploaded
 for it. It never deletes library images or pasted links. A crash or network
 failure can still leave an unattached private file in Imvault. Witmoot logs
 failed cleanups with their file IDs.

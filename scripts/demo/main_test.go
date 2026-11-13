@@ -130,7 +130,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 				t.Fatal("missing demo archive")
 			}
 			archived := getPage(t, client, base+"/topics/9", 200)
-			if !strings.Contains(archived, "Archived board.") || strings.Contains(archived, "Post reply</button>") || strings.Contains(archived, "Edit message") {
+			if !strings.Contains(archived, "Archived board.") || strings.Contains(archived, "Post reply</button>") || strings.Contains(archived, "Edit post") {
 				t.Fatal("archived demo conversation is not read only")
 			}
 			if strings.Contains(home, "The planning nook") != (tc.name != "") || !strings.Contains(home, "Public conversations are open to everyone.") {
