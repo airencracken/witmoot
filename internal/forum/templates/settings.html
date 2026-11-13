@@ -1,35 +1,17 @@
 {{define "settings"}}
 {{template "crumb" .}}
-	<div class="page-heading"><div><h1>Site settings</h1><p><a href="/admin/metrics">Instance metrics and health</a></p><p class="lede">Set the welcome, membership, and house rules.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
-<p class="muted">Running Witmoot {{.Version}}.</p>
+<div class="page-heading"><div><h1>Site settings</h1><p class="lede">Set the welcome, membership, and house rules.</p></div><span class="private-label">Currently {{.Mode.Label}}</span></div>
 {{if .Saved}}<p class="save-notice comfy-notice" role="status">Your site settings are saved.</p>{{end}}
 {{template "error" .}}
-<section class="comfy-admin-section paper stack" aria-labelledby="backup-heading"><h2 id="backup-heading">Automatic backups</h2>
-{{if .Backups.Enabled}}<p>A verified backup runs every {{.Backups.Interval}}. At most {{.Backups.Keep}} automatic copies are kept, with a total archive cap of {{.Backups.ArchiveCap}} and an uncompressed copy cap of {{.Backups.CopyCap}} per backup.</p>
-<p>Private destination: <code>{{.Backups.Directory}}</code>.</p>
-{{if .Backups.Running}}<p role="status" class="comfy-notice">A backup is running.</p>{{end}}
-{{if .Backups.LastSuccess.IsZero}}<p>No automatic backup has succeeded yet. The first attempt starts one minute after service startup.</p>{{else}}<p>Last successful backup: <time>{{.Backups.LastSuccess.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
-{{if .Backups.LastError}}<p role="alert" class="comfy-notice comfy-notice-error">Last backup error: {{.Backups.LastError}}</p>{{end}}
-{{if not .Backups.NextAttempt.IsZero}}<p>Next attempt: <time>{{.Backups.NextAttempt.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
-{{else}}<p>Automatic backups are disabled or no service worker is attached.</p>{{end}}
-<p>Copy completed backups to another machine. Local copies cannot recover from a lost disk. Schedule and caps are configured in the service environment and take effect after a restart.</p></section>
-
 <form class="paper settings-form" action="/settings" method="post" hx-disabled-elt="find button[type='submit']">
 	{{template "csrf" .}}
 	<fieldset>
 		<legend>Make this place yours</legend>
 		<label for="site-name">Site name</label><input id="site-name" name="site_name" maxlength="80" value="{{.Name}}" required>
-		<label for="source-url">Source link</label><input id="source-url" name="source_url" type="url" maxlength="512" value="{{.SourceURL}}" placeholder="Leave blank to hide the link"><p class="field-help">The link appears in the footer. Use an HTTP(S) URL; blank hides it.</p>
+		<label for="source-url">Source link</label><input id="source-url" name="source_url" type="url" maxlength="512" value="{{.SourceURL}}" placeholder="Leave blank to hide the link"><p class="field-help">Shown in the footer. Leave it blank to hide it.</p>
 		<label><input type="checkbox" name="show_version" value="1" {{if .ShowVersion}}checked{{end}}> Show version in the footer</label>
 		<label for="welcome-title">Welcome heading</label><input id="welcome-title" name="welcome_title" maxlength="120" value="{{.WelcomeTitle}}">
 		<label for="welcome-text">Welcome text</label><textarea id="welcome-text" name="welcome_text" rows="4" maxlength="2000">{{.WelcomeText}}</textarea>
-	</fieldset>
-	<fieldset class="community-settings">
-		<legend>House rules and owners</legend>
-		<p class="muted">Published on <a href="/about">House rules &amp; owners</a>, including before sign-in. Owner usernames are listed there; account email addresses are kept private.</p>
-		<label for="house-rules">House rules (optional)</label><textarea id="house-rules" name="house_rules" rows="6" maxlength="5000">{{.HouseRules}}</textarea>
-		<label for="owner-contact">How to contact the owners (optional)</label><textarea id="owner-contact" name="owner_contact" rows="3" maxlength="500">{{.OwnerContact}}</textarea>
-		<p class="field-help">Choose details you are happy to make public. Plain text and web links are supported.</p>
 	</fieldset>
 	<fieldset>
 		<legend>Who is this site for?</legend>
@@ -47,19 +29,20 @@
 				<span><strong>Open</strong><span id="open-help">An open door. Visitors can browse public conversations. Anyone can register; an account is required to post.</span><small>New conversations: public.</small></span>
 			</label>
 		</div>
+		<p class="settings-note">Conversations keep their audience when you switch modes, and accounts and invitations are kept. In Open mode anyone can become a member and read members-only conversations on shared boards, so use <a href="/boards/manage">private boards</a> for anything closer.</p>
 	</fieldset>
-	<div class="settings-note">
-		<h2>What happens to the conversations already here?</h2>
-		<p>Each conversation keeps its audience when you change modes. Owners-only conversations stay with owners. Members-only conversations stay behind sign-in. Replies use the conversation's audience.</p>
-		<p><strong>Open signup lets anyone become a member.</strong> Those new members can read members-only conversations on shared boards. Private boards remain limited to their selected members.</p>
-		<p>These settings apply to the whole site. Use <a href="/boards/manage">Manage boards</a> to create boards and set access for individual people.</p>
-		<p>Private mode hides the whole board from visitors. Personal mode also blocks member access. Existing accounts, invitations, and conversations are kept; unexpired invitations work again when joining is enabled.</p>
-	</div>
-	<div class="form-footer"><span class="muted">Changes take effect for new requests and are kept after a restart.</span><button type="submit">Save settings</button></div>
+	<fieldset class="community-settings">
+		<legend>House rules and owners</legend>
+		<p class="muted">Published on <a href="/about">House rules &amp; owners</a>, including before sign-in. Owner usernames are listed there; email addresses stay private.</p>
+		<label for="house-rules">House rules (optional)</label><textarea id="house-rules" name="house_rules" rows="6" maxlength="5000">{{.HouseRules}}</textarea>
+		<label for="owner-contact">How to contact the owners (optional)</label><textarea id="owner-contact" name="owner_contact" rows="3" maxlength="500">{{.OwnerContact}}</textarea>
+		<p class="field-help">Choose details you are happy to make public. Plain text and web links work.</p>
+	</fieldset>
+	<div class="form-footer"><span class="muted">Changes apply right away.</span><button type="submit">Save settings</button></div>
 </form>
 <section class="comfy-admin-section paper settings-form">
 	<h2>Favicon and mascot</h2>
-	<p class="muted">Upload a PNG, JPEG, or GIF image up to 2 MiB. Images are converted to PNG before they are served.</p>
+	<p class="muted">Upload a PNG, JPEG, or GIF image. Witmoot converts it to PNG.</p>
 	<form action="/settings/branding-assets" method="post" enctype="multipart/form-data">
 		{{template "csrf" .}}
 		<label for="mascot">Mascot image</label><input id="mascot" name="mascot" type="file" accept="image/png,image/jpeg,image/gif">
@@ -70,4 +53,16 @@
 	</form>
 </section>
 <section class="comfy-admin-section paper settings-form"><h2>Keep a community archive</h2><p>This includes every board and message, including private conversations, and available image previews. Keep it somewhere private.</p><p><a class="button secondary" href="/community/export" hx-boost="false">Download community archive</a></p></section>
+<section class="comfy-admin-section paper stack server-section" aria-labelledby="server-heading"><h2 id="server-heading">Server</h2>
+<p class="muted">Running Witmoot {{.Version}}.</p>
+<p><a href="/admin/metrics">Instance metrics and health</a></p>
+<h3 id="backup-heading">Automatic backups</h3>
+{{if .Backups.Enabled}}<p>A verified backup runs every {{.Backups.Interval}}. Witmoot keeps up to {{.Backups.Keep}} copies, {{.Backups.ArchiveCap}} in total and {{.Backups.CopyCap}} for each uncompressed copy.</p>
+<p>Saved in <code>{{.Backups.Directory}}</code>.</p>
+{{if .Backups.Running}}<p role="status" class="comfy-notice">A backup is running.</p>{{end}}
+{{if .Backups.LastSuccess.IsZero}}<p>No automatic backup has succeeded yet. The first one starts a minute after the server starts.</p>{{else}}<p>Last successful backup: <time>{{.Backups.LastSuccess.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
+{{if .Backups.LastError}}<p role="alert" class="comfy-notice comfy-notice-error">Last backup error: {{.Backups.LastError}}</p>{{end}}
+{{if not .Backups.NextAttempt.IsZero}}<p>Next attempt: <time>{{.Backups.NextAttempt.UTC.Format "2006-01-02 15:04:05 UTC"}}</time>.</p>{{end}}
+{{else}}<p>Automatic backups are off.</p>{{end}}
+<p>Copy backups to another machine; a local copy will not survive a lost disk. The schedule and size caps live in the service settings and change after a restart.</p></section>
 {{end}}

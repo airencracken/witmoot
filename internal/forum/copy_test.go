@@ -83,3 +83,28 @@ func TestBoardGrantsWaitForSelectedMembers(t *testing.T) {
 		t.Fatalf("site-rules board should show only the waiting note:\n%s", group)
 	}
 }
+
+// Settings lead with identity and mode, and keep server details at the bottom.
+func TestSettingsOrderAndServerSection(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	body := owner.request("GET", "/settings", nil, nil).Body.String()
+	order := []string{"<h1>Site settings</h1>", "<legend>Make this place yours</legend>", "<legend>Who is this site for?</legend>", "<legend>House rules and owners</legend>", "<h2>Favicon and mascot</h2>", `<h2 id="server-heading">Server</h2>`, "Running Witmoot devel.", `<a href="/admin/metrics">Instance metrics and health</a>`, `<h3 id="backup-heading">Automatic backups</h3>`, "Automatic backups are off."}
+	last := -1
+	for _, part := range order {
+		at := strings.Index(body, part)
+		if at <= last {
+			t.Fatalf("%q is missing or out of order (at %d, after %d)", part, at, last)
+		}
+		last = at
+	}
+	for _, gone := range []string{"service worker", "What happens to the conversations already here?"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("settings still say %q", gone)
+		}
+	}
+	heading := body[strings.Index(body, `<div class="page-heading">`):strings.Index(body, "<legend>Make this place yours</legend>")]
+	if strings.Contains(heading, "/admin/metrics") || strings.Contains(heading, "Running Witmoot") {
+		t.Fatal("server details are back in the page heading")
+	}
+}
