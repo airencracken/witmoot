@@ -1,8 +1,8 @@
 {{define "recent"}}
 {{template "crumb" .}}
-<div class="page-heading"><div><h1>Recent posts</h1><p class="lede">Messages and replies from your boards, newest first. Catch up in your own time.</p></div></div>
+<div class="page-heading"><div><h1>Recent messages</h1><p class="lede">Messages and replies from your boards, newest first. Catch up in your own time.</p></div></div>
 {{template "pager" .}}
-<section class="recent-posts" aria-label="Recent posts">
+<section class="recent-posts" aria-label="Recent messages">
 {{range .Posts}}
 <article class="paper recent-post" id="recent-post-{{.ID}}">
 	<header class="recent-post-header">

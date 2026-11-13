@@ -709,7 +709,7 @@ func (a *App) recent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.postReferences(posts)
-	p := Page{View: "recent", Title: "Recent posts", Posts: posts}
+	p := Page{View: "recent", Title: "Recent messages", Posts: posts}
 	pagination(r, &p, page, more)
 	a.render(w, r, 200, p)
 }

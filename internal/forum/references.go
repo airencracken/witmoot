@@ -16,11 +16,11 @@ type Reference struct{ URL, Label, Preview string }
 func (a *App) discussionHandoff(w http.ResponseWriter, r *http.Request) {
 	d, err := reference.Read(r.URL.Query())
 	if err != nil {
-		a.fail(w, r, 400, "That discussion draft is not valid.")
+		a.fail(w, r, 400, "That conversation draft is not valid.")
 		return
 	}
 	if _, err = suite.DiscussionReturn(r.URL.Query().Get("return_to"), d.Source, os.Getenv("WITMOOT_APPS")); err != nil {
-		a.fail(w, r, 400, "Your host must configure this source app before discussion links can return there.")
+		a.fail(w, r, 400, "Ask the owner to add this app to the Comfyware apps list before conversation links can return there.")
 		return
 	}
 	body := strings.TrimSpace(d.Body) + "\n\n" + d.Source
@@ -67,7 +67,31 @@ func (a *App) discussionHandoff(w http.ResponseWriter, r *http.Request) {
 		a.storeError(w, r, err)
 		return
 	}
-	a.render(w, r, 200, Page{View: "share", Title: "Bring a link to the conversation", Boards: boards, SharedSource: d.Source, TitleInput: d.Title, BodyInput: d.Body})
+	topics, err := a.replyableTopics(r)
+	if err != nil {
+		a.storeError(w, r, err)
+		return
+	}
+	a.render(w, r, 200, Page{View: "share", Title: "Bring a link to the conversation", Boards: boards, Topics: topics, SharedSource: d.Source, TitleInput: d.Title, BodyInput: d.Body})
+}
+
+// shareChoices is how many recent conversations the share page offers.
+const shareChoices = 20
+
+// replyableTopics lists the recent conversations the member can read and
+// reply to, newest first. Choosing one is still checked when the draft opens.
+func (a *App) replyableTopics(r *http.Request) ([]Topic, error) {
+	recent, _, err := a.store.Topics(r.Context(), 0, "", shareChoices*3, 0, state(r).User)
+	if err != nil {
+		return nil, err
+	}
+	topics := make([]Topic, 0, shareChoices)
+	for _, t := range recent {
+		if boardWriteError(t.BoardAccess, t.BoardArchived) == nil && len(topics) < shareChoices {
+			topics = append(topics, t)
+		}
+	}
+	return topics, nil
 }
 
 func (a *App) postReferences(posts []Post) {
@@ -150,6 +174,6 @@ func (a *App) completeDiscussion(w http.ResponseWriter, r *http.Request, path st
 		return false
 	}
 	link := suite.DiscussionResult(destination, strings.TrimRight(a.config.BaseURL, "/")+path)
-	a.render(w, r, 200, Page{View: "discussion-done", Title: "Discussion posted", SharedSource: link})
+	a.render(w, r, 200, Page{View: "discussion-done", Title: "Message posted", SharedSource: link})
 	return true
 }

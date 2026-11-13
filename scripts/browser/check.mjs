@@ -70,7 +70,7 @@ async function flow(javaScriptEnabled) {
 	assert.equal(await page.locator('.post').count(), 2);
 	assert.match(await page.locator('.post-body').last().innerText(), /bring bread/);
 	await act(page.getByRole('link', { name: 'Recent', exact: true }), 'click');
-	await page.getByRole('heading', { name: 'Recent posts', exact: true }).waitFor();
+	await page.getByRole('heading', { name: 'Recent messages', exact: true }).waitFor();
 	const feedPosts = page.locator('.recent-post').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
 	await feedPosts.first().waitFor();
 	assert.equal(await feedPosts.count(), 2, 'Original post and reply appear individually');

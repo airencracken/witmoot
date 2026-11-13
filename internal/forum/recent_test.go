@@ -259,7 +259,7 @@ func TestRecentPostsHTTPRenderingPaginationAndAdversarialInputs(t *testing.T) {
 			t.Fatal("incorrect content type")
 		}
 		body := first.Body.String()
-		for _, text := range []string{"<h1>Recent posts</h1>", "Message 19", "Songstead recommendation", fmt.Sprintf(`/avatars/%d`, id), `href="/recent?page=2"`, `aria-current="page">Recent`} {
+		for _, text := range []string{"<h1>Recent messages</h1>", "Message 19", "Songstead recommendation", fmt.Sprintf(`/avatars/%d`, id), `href="/recent?page=2"`, `aria-current="page">Recent`} {
 			if !strings.Contains(body, text) {
 				t.Fatalf("missing feed content %q", text)
 			}

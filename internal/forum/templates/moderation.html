@@ -19,9 +19,9 @@
 	<p>For <strong>{{.Member.Username}}</strong>.</p>
 	{{if eq .CommunityAction "suspend"}}
 	<p>They will be signed out on every device and cannot sign in, read private conversations, or post. Their reset links and unused invitations will stop working.</p>
-	<p>Posts and board permissions stay here. You can restore access later. Public pages remain visible to anyone, including a suspended person browsing without signing in.</p>
+	<p>Their messages and board permissions stay here. You can restore access later. Public pages remain visible to anyone, including a suspended person browsing without signing in.</p>
 	{{else}}
-	<p>They can sign in again with their current password. Their posts and board permissions are unchanged. Old sessions, reset links, and invitations will stay revoked.</p>
+	<p>They can sign in again with their current password. Their messages and board permissions are unchanged. Old sessions, reset links, and invitations will stay revoked.</p>
 	{{end}}
 	{{template "error" .}}
 	<form action="/members/{{.Member.ID}}/{{.CommunityAction}}" method="post" hx-disabled-elt="find button[type='submit']">
