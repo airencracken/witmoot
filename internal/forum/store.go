@@ -131,12 +131,10 @@ func openStore(path string, allowMigration bool) (*Store, error) {
 	if err := s.backupBeforeMigration(abs); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	// The shared activity tables exist before migrations so that a migration
-	// can clear rows the shared library stores.
-	if err := analytics.Initialize(context.Background(), db, time.Now()); err != nil {
+	if err := s.migrate(); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	if err := s.migrate(); err != nil {
+	if err := analytics.Initialize(context.Background(), db, time.Now()); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 	return s, nil

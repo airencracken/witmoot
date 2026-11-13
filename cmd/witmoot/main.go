@@ -134,6 +134,15 @@ func runServer() error {
 		slog.Info("Witmoot is ready", "version", buildVersion(), "address", server.Addr)
 		done <- server.ListenAndServe()
 	}()
+	// Request counts are held in memory between flushes; write the rest on
+	// the way out.
+	defer func() {
+		flush, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := app.Flush(flush); err != nil {
+			slog.Warn("save site health counts", "error", err)
+		}
+	}()
 	select {
 	case err := <-done:
 		if errors.Is(err, http.ErrServerClosed) {

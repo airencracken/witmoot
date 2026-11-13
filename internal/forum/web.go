@@ -67,6 +67,7 @@ type App struct {
 	vault       *imvault.Client
 	mailer      smtp.Sender
 	exportSlots chan struct{}
+	monitor     *analytics.Monitor
 }
 
 type requestState struct {
@@ -325,7 +326,9 @@ func New(store *Store, config Config) (*App, error) {
 	if err = a.registerSharedSignIn(mux); err != nil {
 		return nil, err
 	}
-	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(analytics.Maintenance(a.store.AnalyticsDB(), mux)))
+	a.monitor = analytics.NewMonitor(a.store.AnalyticsDB())
+	// The monitor wraps the mux itself so it can read each request's route pattern.
+	a.handler = http.NewCrossOriginProtection().Handler(a.middleware(analytics.Maintenance(a.store.AnalyticsDB(), a.monitor.Middleware(mux))))
 	return a, nil
 }
 

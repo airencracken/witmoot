@@ -3,6 +3,7 @@ package forum
 import (
 	"database/sql"
 	"errors"
+	"github.com/airencracken/comfylib/analytics"
 	"net/http"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ func (a *App) authAllowed(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	if !a.limiter.allow(a.rateKey(r)) {
+		a.countSecurity(r, analytics.RecordRateLimited)
 		w.Header().Set("Retry-After", "900")
 		a.fail(w, r, 429, "Too many attempts. Take a little break and try again in 15 minutes.")
 		return false
@@ -59,6 +61,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	}
 	check := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil || check != nil || len(password) > 72 {
+		a.countSecurity(r, analytics.RecordFailedSignIn)
 		a.render(w, r, 422, Page{View: "login", Title: "Welcome back", Username: name, Error: "That username and password did not match. Give it another try."})
 		return
 	}
@@ -86,6 +89,9 @@ func (a *App) join(w http.ResponseWriter, r *http.Request) {
 	p := Page{View: "join", Title: "Make yourself at home", Username: name, Invitation: invite}
 	p.Error = ValidateCredentials(name, password)
 	if (invite != "" || state(r).Mode != ModeOpen) && !validToken(invite) {
+		if invite != "" {
+			a.countSecurity(r, analytics.RecordRejectedToken)
+		}
 		p.Error = "You will need an invitation from the owner to join."
 	}
 	if p.Error != "" {
@@ -107,6 +113,9 @@ func (a *App) join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, errUsernameTaken) || errors.Is(err, errInvitation) {
+		if errors.Is(err, errInvitation) {
+			a.countSecurity(r, analytics.RecordRejectedToken)
+		}
 		p.Error = err.Error()
 		a.render(w, r, 422, p)
 		return

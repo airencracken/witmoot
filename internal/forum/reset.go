@@ -3,6 +3,7 @@ package forum
 import (
 	"errors"
 	"fmt"
+	"github.com/airencracken/comfylib/analytics"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -120,6 +121,7 @@ func (a *App) resetForm(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("token")
 	page := Page{View: "reset", Title: "Choose a new password", ResetToken: code}
 	if !validToken(code) {
+		a.countSecurity(r, analytics.RecordRejectedToken)
 		page.Error = errAuthToken.Error()
 		a.render(w, r, 400, page)
 		return
@@ -127,6 +129,7 @@ func (a *App) resetForm(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.AuthTokenValid(r.Context(), token.Hash(code), TokenPasswordReset, time.Now())
 	if err != nil {
 		if errors.Is(err, errAuthToken) {
+			a.countSecurity(r, analytics.RecordRejectedToken)
 			page.Error = errAuthToken.Error()
 			a.render(w, r, 400, page)
 			return
@@ -148,6 +151,7 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, status, page)
 	}
 	if !validToken(code) {
+		a.countSecurity(r, analytics.RecordRejectedToken)
 		renderErr(400, errAuthToken.Error())
 		return
 	}
@@ -156,6 +160,7 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.AuthTokenValid(r.Context(), token.Hash(code), TokenPasswordReset, time.Now())
 	if err != nil {
 		if errors.Is(err, errAuthToken) {
+			a.countSecurity(r, analytics.RecordRejectedToken)
 			renderErr(400, errAuthToken.Error())
 			return
 		}
@@ -180,6 +185,7 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 	user, err = a.store.ResetPassword(r.Context(), token.Hash(code), hash, time.Now())
 	if err != nil {
 		if errors.Is(err, errAuthToken) {
+			a.countSecurity(r, analytics.RecordRejectedToken)
 			page.ResetUser = ""
 			renderErr(400, errAuthToken.Error())
 			return
