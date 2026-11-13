@@ -137,3 +137,42 @@ func TestHeadingsHaveNoTrailingPeriods(t *testing.T) {
 		}
 	}
 }
+
+// The offline archive uses the same palette and headings as the site, so an
+// export still looks like Witmoot without a server.
+func TestExportUsesTheFamilyPalette(t *testing.T) {
+	app, client := newTestApp(t, false)
+	signInTest(t, app, client, false)
+	entries, _, _ := readExport(t, client)
+	page := string(entries["archive.html"])
+	css, err := assets.ReadFile("static/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := regexp.MustCompile(`--(ink|muted|green|line|paper|background|soft): ([^;]+);`)
+	site := map[string]string{}
+	for _, match := range token.FindAllStringSubmatch(string(css), -1) {
+		if _, seen := site[match[1]]; !seen {
+			site[match[1]] = match[2]
+		}
+	}
+	found := token.FindAllStringSubmatch(page, -1)
+	if len(found) != 7 {
+		t.Fatalf("archive defines %d palette tokens, want 7", len(found))
+	}
+	for _, match := range found {
+		if site[match[1]] != match[2] {
+			t.Errorf("--%s is %q in the archive but %q on the site", match[1], match[2], site[match[1]])
+		}
+	}
+	for _, want := range []string{`font-family: Georgia, "Times New Roman", serif`, "color: var(--ink)", "background: var(--background)"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("archive lacks %q", want)
+		}
+	}
+	for _, gone := range []string{"system-ui", "#14161a", "#b9c", "#dde"} {
+		if strings.Contains(page, gone) {
+			t.Errorf("archive still uses %q", gone)
+		}
+	}
+}
