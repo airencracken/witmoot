@@ -4,10 +4,10 @@
 Linux amd64/arm64 binary archives and Debian packages. See [binary releases](releases.md)
 for installation without Go, checksums, and package upgrade behavior.
 
-Witmoot runs as one unprivileged process. Native service packages listen on
-`127.0.0.1:8082`, leaving imvault's usual port free, and keep the database and
-optional imvault encryption key in `/var/lib/witmoot`. The standalone binary
-still defaults to `127.0.0.1:8080` and `./data`.
+Witmoot runs as one unprivileged process. It listens on
+`127.0.0.1:8082`, leaving Imvault's usual port free. Native service packages
+keep the database and optional Imvault encryption key in `/var/lib/witmoot`;
+the standalone binary uses `./data`.
 
 ## Source install on Gentoo / OpenRC
 

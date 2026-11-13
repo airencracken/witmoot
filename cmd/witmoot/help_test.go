@@ -211,3 +211,28 @@ func TestHelpExplainsDeployment(t *testing.T) {
 		}
 	}
 }
+
+// The help text, the binary, and the packaged services must agree on one
+// default address, and every setting the server reads belongs in the table.
+func TestHelpDefaultAddressAndSettingsTable(t *testing.T) {
+	if !strings.Contains(commandHelp, "WITMOOT_ADDR            Listen address (default: "+defaultAddr+").") {
+		t.Fatalf("help does not state the default address %s", defaultAddr)
+	}
+	if strings.Contains(commandHelp, "8080") {
+		t.Fatal("help still mentions the old 8080 default")
+	}
+	for _, path := range []string{"../../contrib/systemd/witmoot.env", "../../contrib/openrc/witmoot.confd"} {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(content), `WITMOOT_ADDR="`+defaultAddr+`"`) {
+			t.Fatalf("%s does not use the binary default %s", path, defaultAddr)
+		}
+	}
+	for _, name := range []string{"WITMOOT_BACKUP_INTERVAL", "WITMOOT_BACKUP_KEEP", "WITMOOT_BACKUP_MAX_BYTES", "WITMOOT_BACKUP_COPY_MAX_BYTES"} {
+		if !strings.Contains(commandHelp, "\n  "+name+" ") {
+			t.Errorf("%s is missing from the settings table", name)
+		}
+	}
+}

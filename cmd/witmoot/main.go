@@ -112,11 +112,11 @@ func runServer() error {
 	if err != nil {
 		return err
 	}
-	wizard, err := firstSetup(store, dataDir, config.BaseURL, env("WITMOOT_ADDR", "127.0.0.1:8080"))
+	wizard, err := firstSetup(store, dataDir, config.BaseURL, env("WITMOOT_ADDR", defaultAddr))
 	if err != nil {
 		return err
 	}
-	server := newHTTPServer(env("WITMOOT_ADDR", "127.0.0.1:8080"), wizard.Wrap(app))
+	server := newHTTPServer(env("WITMOOT_ADDR", defaultAddr), wizard.Wrap(app))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	backupCtx, cancelBackups := context.WithCancel(ctx)
@@ -165,6 +165,10 @@ func loadImageKey(dataDir string) ([]byte, error) {
 func newHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 16}
 }
+
+// defaultAddr matches the packaged services and proxy examples, and leaves
+// 8080 free for an Imvault server on the same machine.
+const defaultAddr = "127.0.0.1:8082"
 
 func env(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {

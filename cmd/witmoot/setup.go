@@ -68,7 +68,7 @@ func setupCommand(args []string, out io.Writer, paths svcconfig.Paths) error {
 	}
 	addr := settings["WITMOOT_ADDR"]
 	if addr == "" {
-		addr = "127.0.0.1:8080"
+		addr = defaultAddr
 	}
 	wizard, err := firstSetup(store, *data, settings["WITMOOT_BASE_URL"], addr)
 	if err != nil {

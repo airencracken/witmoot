@@ -36,10 +36,8 @@ Commands:
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
   help [COMMAND] Show help; COMMAND --help also works.
 
-Built-in backups: WITMOOT_BACKUP_INTERVAL (24h; 0 disables), WITMOOT_BACKUP_KEEP (7),
-WITMOOT_BACKUP_MAX_BYTES (10 GiB), WITMOOT_BACKUP_COPY_MAX_BYTES (5 GiB).
 Server configuration uses environment variables:
-  WITMOOT_ADDR            Listen address (binary default: 127.0.0.1:8080).
+  WITMOOT_ADDR            Listen address (default: 127.0.0.1:8082).
   WITMOOT_DATA_DIR        Database directory (default: ./data).
   WITMOOT_NAME            Board name (default: Witmoot).
   WITMOOT_SOURCE_URL      Footer source link (default: upstream repository).
@@ -53,16 +51,19 @@ Server configuration uses environment variables:
   WITMOOT_SMTP_PASSWORD   Relay password, if it needs one.
   WITMOOT_SMTP_FROM       From address (default: no-reply@ the WITMOOT_BASE_URL domain).
   WITMOOT_SMTP_TLS        starttls (default), implicit, or none.
+  WITMOOT_BACKUP_INTERVAL Time between automatic backups (default: 24h; 0 turns them off).
+  WITMOOT_BACKUP_KEEP     Automatic backups to keep (default: 7).
+  WITMOOT_BACKUP_MAX_BYTES      Total size cap for kept backups (default: 10 GiB).
+  WITMOOT_BACKUP_COPY_MAX_BYTES Size cap for one uncompressed copy (default: 5 GiB).
   SSL_CERT_FILE           Optional PEM bundle of trusted CAs, also used in the sandbox.
 
-Native services and proxy examples use 127.0.0.1:8082 by default.
 Service settings: /etc/conf.d/witmoot (OpenRC), /etc/witmoot/witmoot.env (systemd).
 Account commands read WITMOOT_DATA_DIR from the active service configuration when
 it is not set in the environment. When run as root, they repeat the database
 operation as the service user to preserve ownership.
 
 Examples:
-  WITMOOT_ADDR=127.0.0.1:8082 WITMOOT_DATA_DIR=/var/lib/witmoot witmoot serve
+  WITMOOT_DATA_DIR=/var/lib/witmoot witmoot serve
   witmoot create-owner --username alex --password-prompt
   witmoot create-owner --username alex --password-stdin < password-file
   witmoot set-password --username freya --password-prompt

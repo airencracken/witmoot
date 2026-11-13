@@ -145,7 +145,7 @@ make build
 For scripts, pass one password line on standard input with
 `./bin/witmoot create-owner --username alex --password-stdin`.
 
-Open <http://127.0.0.1:8080>, sign in, and choose **Settings** to select Personal,
+Open <http://127.0.0.1:8082>, sign in, and choose **Settings** to select Personal,
 Private, or Open. New installations start in Private mode. Use **Invites** to
 make a link for someone you know. Invitations default to one use and seven days;
 owners choose labels, use limits, and expiry when creating them, and can revoke
@@ -302,7 +302,7 @@ shared among all owner accounts.
 | `WITMOOT_NAME` | `Witmoot` | Name in the header and page titles |
 | `WITMOOT_BASE_URL` | request origin | Public HTTP(S) origin for shareable invitation links |
 | `WITMOOT_DATA_DIR` | `./data` | Database, journal files, and optional imvault encryption key |
-| `WITMOOT_ADDR` | `127.0.0.1:8080` | HTTP listen address |
+| `WITMOOT_ADDR` | `127.0.0.1:8082` | HTTP listen address |
 | `WITMOOT_SECURE_COOKIES` | automatic for HTTPS | HTTPS base URLs force secure cookies; set `true` to require them elsewhere |
 | `WITMOOT_TRUSTED_PROXIES` | unset | Comma-separated proxy IPs/CIDRs allowed to supply client addresses |
 | `WITMOOT_IMVAULT_URL` | unset | Optional imvault server URL, such as `https://photos.example.org` |
@@ -312,6 +312,10 @@ shared among all owner accounts.
 | `WITMOOT_SMTP_PASSWORD` | unset | Relay password, if it needs one |
 | `WITMOOT_SMTP_FROM` | `no-reply@` the `WITMOOT_BASE_URL` domain | From address for outgoing mail; required with a relay when the base URL has no domain name |
 | `WITMOOT_SMTP_TLS` | `starttls` | `starttls`, `implicit`, or `none` |
+| `WITMOOT_BACKUP_INTERVAL` | `24h` | Time between automatic backups; `0` turns them off |
+| `WITMOOT_BACKUP_KEEP` | `7` | Automatic backups to keep |
+| `WITMOOT_BACKUP_MAX_BYTES` | 10 GiB | Total size cap for kept backups |
+| `WITMOOT_BACKUP_COPY_MAX_BYTES` | 5 GiB | Size cap for one uncompressed copy |
 | `SSL_CERT_FILE` | system bundle | Optional PEM bundle of trusted CAs, for example for a private relay; also used in the sandbox |
 
 ```bash
