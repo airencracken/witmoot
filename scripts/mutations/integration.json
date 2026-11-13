@@ -286,5 +286,13 @@
     "after": "a.render(w, r, status, p)",
     "package": "./internal/forum",
     "run": "^TestActivityCountsAuthorizedOpensAndSuccessfulLogins$"
+  },
+  {
+    "name": "page views fall back to the error page",
+    "file": "internal/forum/web.go",
+    "before": "if name, ok := pageTemplates[view]; ok {",
+    "after": "if name, ok := view, view != \"\"; ok {",
+    "package": "./internal/forum",
+    "run": "^TestPageTemplatesCoverEveryViewAndRejectOthers$"
   }
 ]

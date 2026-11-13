@@ -305,7 +305,7 @@
   },
   {
     "name": "avatar reduced motion",
-    "file": "internal/forum/templates/resets.html",
+    "file": "internal/forum/templates/account.html",
     "before": "media=\"(prefers-reduced-motion: reduce)\" srcset=\"/avatars/{{.User.ID}}?still=1\"",
     "after": "media=\"(prefers-reduced-motion: no-preference)\" srcset=\"/avatars/{{.User.ID}}?still=1\"",
     "package": "./internal/forum",

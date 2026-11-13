@@ -90,7 +90,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		assert.equal(await member.getByRole('link', { name: 'Edit message 1', exact: true }).count(), 0);
 		assert.match(await member.locator('main').innerText(), /reply that should stay/);
 		await owner.goto(origin + '/members');
-		const record = owner.locator('.invitation-record').filter({ has: owner.getByRole('heading', { name: username, exact: true }) });
+		const record = owner.locator('.record').filter({ has: owner.getByRole('heading', { name: username, exact: true }) });
 		await act(record.getByRole('link', { name: `Suspend member ${username}`, exact: true }), 'click');
 		await act(owner.getByLabel(`Type ${username} to confirm`, { exact: true }), 'fill', username);
 		await screenshot(owner, 'suspend-member');
@@ -102,7 +102,7 @@ export async function checkCommunity(browser, origin, password, javaScriptEnable
 		await member.getByRole('alert').waitFor();
 		assert.match(await member.getByRole('alert').innerText(), /account is suspended/);
 		await screenshot(owner, 'members');
-		const suspendedRecord = owner.locator('.invitation-record').filter({ has: owner.getByRole('heading', { name: new RegExp(`^${username}`) }) });
+		const suspendedRecord = owner.locator('.record').filter({ has: owner.getByRole('heading', { name: new RegExp(`^${username}`) }) });
 		await act(suspendedRecord.getByRole('link', { name: `Restore access for ${username}`, exact: true }), 'click');
 		await act(owner.getByLabel(`Type ${username} to confirm`, { exact: true }), 'fill', username);
 		await act(owner.getByRole('button', { name: 'Restore member access', exact: true }), 'click');

@@ -41,7 +41,7 @@
 	<h2>Take your data with you</h2>
 	<p class="muted">Download your posts, the conversations they belong to, and available image previews as a Zip archive. It opens offline and needs no Witmoot server.</p>
 	<p><a class="button secondary" href="/account/export" hx-boost="false">Download your data</a></p>
- <h2>Leave this site</h2><p><a href="/account/delete">Delete your account and contributions</a>.</p>
+	<h2>Leave this site</h2><p><a href="/account/delete">Delete your account and contributions</a>.</p>
 </section>
 {{end}}
 
@@ -79,7 +79,7 @@
 		<p><a href="{{.ResetLink}}">Reset link</a> · It works once and expires in {{resetExpiry}}. Copy it now; it cannot be shown again.</p>
 	</div>
 	{{end}}
-	{{range .Members}}<article class="invitation-record">
+	{{range .Members}}<article class="record">
 		{{if .HasAvatar}}<picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.ID}}?still=1"><img class="avatar" src="/avatars/{{.ID}}" alt=""></picture>{{else}}<span class="avatar" aria-hidden="true">{{initial .Username}}</span>{{end}}
 		<h3>{{.Username}}{{if eq .Role "owner"}} <span class="muted">· owner</span>{{else if .Suspended}} <span class="member-status">· suspended</span>{{end}}</h3>
 		<p class="muted">{{if .Email}}{{.Email}}{{else}}No email address on file{{end}}{{if .Pending}} · reset link waiting{{end}}</p>
@@ -110,18 +110,18 @@
 
 {{define "delete-account"}}
 <section class="paper narrow account-card">
-  <h1>Delete your account</h1>
-  <p>This permanently removes your profile, password, email, avatar, invitations and image connection. Your messages become anonymous placeholders; other people's replies stay where they are. Your shared image links are removed. Originals in Imvault stay with your Imvault account.</p>
-  <p>Other people's messages may still mention you, and earlier backups or exports may contain your contributions. Ask an owner about this site's backup retention.</p>
-  <p><a href="/account/export" hx-boost="false">Download your data first</a>. This cannot be undone.</p>
-  {{template "error" .}}
-  <form method="post" action="/account/delete" hx-disabled-elt="find button[type='submit']">
-    {{template "csrf" .}}
-    <label for="delete-confirmation">Type your username: {{.User.Username}}</label>
-    <input id="delete-confirmation" name="confirmation" autocomplete="off" required>
-    <label for="delete-password">Current password</label>
-    <input id="delete-password" type="password" name="current_password" autocomplete="current-password" required>
-    <div class="form-footer"><a href="/account">Keep my account</a><button class="danger" type="submit">Delete my account</button></div>
-  </form>
+	<h1>Delete your account</h1>
+	<p>This permanently removes your profile, password, email, avatar, invitations and image connection. Your messages become anonymous placeholders; other people's replies stay where they are. Your shared image links are removed. Originals in Imvault stay with your Imvault account.</p>
+	<p>Other people's messages may still mention you, and earlier backups or exports may contain your contributions. Ask an owner about this site's backup retention.</p>
+	<p><a href="/account/export" hx-boost="false">Download your data first</a>. This cannot be undone.</p>
+	{{template "error" .}}
+	<form method="post" action="/account/delete" hx-disabled-elt="find button[type='submit']">
+		{{template "csrf" .}}
+		<label for="delete-confirmation">Type your username: {{.User.Username}}</label>
+		<input id="delete-confirmation" name="confirmation" autocomplete="off" required>
+		<label for="delete-password">Current password</label>
+		<input id="delete-password" type="password" name="current_password" autocomplete="current-password" required>
+		<div class="form-footer"><a href="/account">Keep my account</a><button class="danger" type="submit">Delete my account</button></div>
+	</form>
 </section>
 {{end}}

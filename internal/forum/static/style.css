@@ -265,8 +265,8 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .post-images figure { margin: 0; max-width: 100%; }
 .post-images img { display: block; max-width: 100%; max-height: 500px; border-radius: 6px; }
 .post-images figcaption { font-size: .8rem; overflow-wrap: anywhere; margin-top: .4rem; color: var(--muted); }
-.invitation-record { padding: 1rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
-.invitation-record form { display: inline-flex; flex-wrap: wrap; gap: .5rem; margin: .3rem .5rem .3rem 0; }
+.record { padding: 1rem 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.record form { display: inline-flex; flex-wrap: wrap; gap: .5rem; margin: .3rem .5rem .3rem 0; }
 .community-settings { margin: 30px 0 !important; }
 .community-about { overflow-wrap: anywhere; }
 .community-about .post-body { margin-bottom: 1.5rem; }

@@ -143,6 +143,29 @@ type Page struct {
 	timezone                                                    *time.Location
 }
 
+// pageTemplates names the template that draws each view. Any other view,
+// including "error", is drawn as a plain error page.
+var pageTemplates = map[string]string{
+	"about": "about", "account": "account", "album-preview": "album-preview", "archive": "archive",
+	"avatar-library": "avatar-library", "board": "board", "board-action": "board-action",
+	"board-settings": "board-settings", "boards": "boards", "compose": "compose",
+	"delete-account": "delete-account", "discussion-done": "discussion-done", "edit-post": "edit-post",
+	"group-delete": "group-delete", "group-settings": "group-settings", "groups": "groups",
+	"home": "home", "image-account": "image-account", "invites": "invites", "join": "join",
+	"library": "library", "login": "login", "member-action": "member-action",
+	"member-profile": "member-profile", "members": "members", "metrics": "metrics",
+	"moderation": "moderation", "profile-settings": "profile-settings", "recent": "recent",
+	"remove-post": "remove-post", "reset": "reset", "search": "listing", "settings": "settings",
+	"share": "share", "topic": "topic", "welcome": "welcome",
+}
+
+func pageTemplate(view string) string {
+	if name, ok := pageTemplates[view]; ok {
+		return name
+	}
+	return "error-page"
+}
+
 func New(store *Store, config Config) (*App, error) {
 	suiteFuncs, suiteErr := suite.TemplateFuncs("WITMOOT_")
 	if suiteErr != nil {
@@ -168,7 +191,12 @@ func New(store *Store, config Config) (*App, error) {
 	if strings.HasPrefix(baseURL, "https://") {
 		config.SecureCookies = true
 	}
-	tmpl, err := template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"timezonePreference": displaytime.RenderPreference, "adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
+	var tmpl *template.Template
+	tmpl, err = template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"content": func(p Page) (template.HTML, error) {
+		var page strings.Builder
+		err := tmpl.ExecuteTemplate(&page, pageTemplate(p.View), p)
+		return template.HTML(page.String()), err // already escaped by html/template
+	}, "timezonePreference": displaytime.RenderPreference, "adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
