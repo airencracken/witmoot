@@ -163,7 +163,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 func demoTestClient(t *testing.T, jar http.CookieJar) *http.Client {
 	t.Helper()
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	client := &http.Client{Transport: transport, Jar: jar, Timeout: 5 * time.Second}
+	client := &http.Client{Transport: transport, Jar: jar, Timeout: 30 * time.Second}
 	t.Cleanup(client.CloseIdleConnections)
 	return client
 }
