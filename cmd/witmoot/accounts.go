@@ -27,16 +27,16 @@ import (
 
 // commandSummary describes each command for its --help output.
 var commandSummary = map[string]string{
-	"setup":        "Show the private first-owner setup key and browser address.",
-	"version":      "Print this binary's build version without opening a database.",
-	"migrate":      "Back up and migrate an existing database. Stop the server first. Account commands never migrate.",
-	"sandbox":      "Start the server confined by Bubblewrap. Run as the service user.\nThe data directory must already exist; see docs/sandbox.md.",
-	"serve":        "Start the HTTP server using WITMOOT_* variables; see witmoot --help for defaults.",
-	"create-owner": "Create a new owner locally. Existing accounts are never promoted or changed.\nWITMOOT_DATA_DIR is read from the active service configuration unless set in the environment. Root invocations use the configured service user. Use a hidden terminal prompt or read from stdin.",
-	"set-password": "Replace an account's password and end its signed-in sessions.\nThis is the forced reset for someone who cannot use a one-time link. Root invocations use the configured service user.",
-	"reset-link":   "Make a single-use link an account can open to choose its own password.\nThe link expires (" + forum.HumanDuration(forum.ResetLinkTTL) + " by default) and is shown once. WITMOOT_BASE_URL is read from the\nactive service configuration unless set in the environment. Root invocations use the configured service user.",
-	"list-users":   "List every account in the local database with its role and email address.",
-	"admin":        "Open an interactive manager for accounts: browse members, create owners,\nissue or cancel reset links, and set passwords. It needs an interactive terminal;\nuse set-password, reset-link, or list-users for scripts. Site and mail settings\nare read from the active service configuration unless set in the environment.",
+	"setup":        "Show the private key and address for setting up the first owner in a browser.",
+	"version":      "Print the build version.",
+	"migrate":      "Back up and migrate the database. Stop the server first.",
+	"sandbox":      "Start the server inside Bubblewrap, as the service user.\nThe data directory must exist; see docs/sandbox.md.",
+	"serve":        "Start the HTTP server. See witmoot --help for settings.",
+	"create-owner": "Create a new owner. Existing accounts are left unchanged.\nType the password at a hidden prompt or pass it on stdin.",
+	"set-password": "Replace an account's password and sign it out everywhere.\nUse this when someone cannot use a reset link.",
+	"reset-link":   "Print a single-use link an account can open to choose a new password.\nThe link expires after " + forum.HumanDuration(forum.ResetLinkTTL) + " unless you set --expires, and is shown once.",
+	"list-users":   "List accounts with their roles and email addresses.",
+	"admin":        "Manage accounts interactively: browse members, create owners, issue or\ncancel reset links, and set passwords. Needs a terminal; scripts can use\nset-password, reset-link, and list-users.",
 }
 
 // instanceSettings are the service settings reset links and mail depend on.

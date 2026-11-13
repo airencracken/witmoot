@@ -23,18 +23,18 @@ const commandHelp = `witmoot - a little bulletin board for your people
 Usage: witmoot [COMMAND] [OPTIONS]
 
 Commands:
-  version        Print the running build version (also --version).
-  sandbox        Start the server confined by Bubblewrap (Linux).
-  serve          Start the HTTP server (also the default with no arguments).
-  setup          Show the private key for browser setup.
-  create-owner   Provision a new owner using a hidden prompt or stdin.
-  set-password   Replace an account's password and end its sessions.
-  reset-link     Make a single-use link an account can use to choose a password.
+  serve          Start the HTTP server (the default with no command).
+  sandbox        Start the server inside Bubblewrap (Linux).
+  setup          Show the private key for setting up the first owner in a browser.
+  create-owner   Create a new owner.
+  set-password   Replace an account's password and sign it out everywhere.
+  reset-link     Print a single-use password reset link.
+  list-users     List accounts with their roles and email addresses.
+  admin          Manage accounts interactively (needs a terminal).
   migrate        Back up and migrate the database with the server stopped.
-  list-users     List local accounts with their roles and email addresses.
-  admin          Open an interactive manager for accounts (needs a terminal).
   proxy-config   Print a Caddy, nginx, or Apache HTTPS site configuration.
-  help [COMMAND] Show help; COMMAND --help also works.
+  version        Print the build version (also --version).
+  help [COMMAND] Show help for a command (COMMAND --help works too).
 
 Server configuration uses environment variables:
   WITMOOT_ADDR            Listen address (default: 127.0.0.1:8082).
@@ -57,10 +57,9 @@ Server configuration uses environment variables:
   WITMOOT_BACKUP_COPY_MAX_BYTES Size cap for one uncompressed copy (default: 5 GiB).
   SSL_CERT_FILE           Optional PEM bundle of trusted CAs, also used in the sandbox.
 
-Service settings: /etc/conf.d/witmoot (OpenRC), /etc/witmoot/witmoot.env (systemd).
-Account commands read WITMOOT_DATA_DIR from the active service configuration when
-it is not set in the environment. When run as root, they repeat the database
-operation as the service user to preserve ownership.
+Service settings live in /etc/conf.d/witmoot (OpenRC) or /etc/witmoot/witmoot.env
+(systemd). Account commands read WITMOOT_DATA_DIR and site settings from there
+when they are not set, and act as the service user when run as root.
 
 Examples:
   WITMOOT_DATA_DIR=/var/lib/witmoot witmoot serve
@@ -70,9 +69,8 @@ Examples:
   witmoot reset-link --username freya --expires 48h
   witmoot proxy-config caddy --domain board.example.org > witmoot.Caddyfile
 
-Logs: stdout/stderr; systemd uses journald, OpenRC uses /var/log/witmoot.log.
-OpenRC packages include /etc/logrotate.d/witmoot; a cron job or timer runs rotation.
-More settings and deployment examples: docs/deployment.md and docs/reverse-proxies.md.`
+Logs go to stdout and stderr: journald under systemd, /var/log/witmoot.log under
+OpenRC, rotated by /etc/logrotate.d/witmoot. Deployment guides: docs/deployment.md and docs/reverse-proxies.md.`
 
 func runCommand(args []string, stdin io.Reader, stdout io.Writer) error {
 	if len(args) == 0 {
