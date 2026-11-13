@@ -16,7 +16,7 @@
 <section class="paper topic-list" aria-label="Conversations">
 	{{if .Topics}}<div class="topic-list-header"><span>Conversation</span><span>Replies</span><span>Last activity</span></div>{{end}}
 	{{range .Topics}}<article class="topic-row"><div><h2><a href="/topics/{{.ID}}">{{.Title}}</a></h2><p class="muted">{{.Author}} <span aria-hidden="true">·</span> <a href="/boards/{{.BoardID}}">{{.BoardName}}</a> · {{.AudienceLabel}}{{if .BoardArchived}} · Archived{{end}}</p></div><span class="reply-count">{{.Replies}}<span class="mobile-only"> replies</span></span><time datetime="{{iso .UpdatedAt}}">{{$.Date .UpdatedAt}}</time></article>
-	{{else}}<div class="empty-state"><span class="empty-mark" aria-hidden="true">w</span><h2>{{if eq .View "search"}}No matching conversations.{{else}}No conversations yet.{{end}}</h2><p>{{if eq .View "search"}}Try a different word or a shorter phrase.{{else}}Start with an update or a question.{{end}}</p>{{if eq .View "recent"}}<a href="/">Find a place to start</a>{{end}}</div>{{end}}
+	{{else}}<div class="empty-state"><span class="empty-mark" aria-hidden="true">w</span><h2>{{if eq .View "search"}}No matching conversations{{else}}No conversations yet{{end}}</h2><p>{{if eq .View "search"}}Try a different word or a shorter phrase.{{else}}Start with an update or a question.{{end}}</p>{{if eq .View "recent"}}<a href="/">Find a place to start</a>{{end}}</div>{{end}}
 </section>
 {{end}}
 

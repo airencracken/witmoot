@@ -18,8 +18,8 @@ export async function checkAvatars(browser, origin, password, javaScriptEnabled)
   const preference = page.getByRole('checkbox', {name:'Show animated avatars',exact:true});
   if (!javaScriptEnabled) assert.equal(await preference.isChecked(), false, 'Preference survives restart');
   await preference.check();
-  await act(page.getByRole('button', {name:'Save animation preference',exact:true}), 'click');
-  await page.getByRole('status').filter({hasText:'animation preference has been saved'}).waitFor();
+  await act(page.getByRole('button', {name:'Save avatar',exact:true}), 'click');
+  await page.getByRole('status').filter({hasText:'avatar settings have been saved'}).waitFor();
   await act(page.getByLabel('Choose a picture', {exact:true}), 'setInputFiles', {name:'profile.gif',mimeType:'image/gif',buffer:animation});
   await act(page.getByRole('button', {name:'Save avatar',exact:true}), 'click');
   await page.getByRole('status').filter({hasText:'avatar has been saved'}).waitFor();
@@ -34,8 +34,8 @@ export async function checkAvatars(browser, origin, password, javaScriptEnabled)
   await page.emulateMedia({reducedMotion:'no-preference'});
   await page.reload();
   await preference.uncheck();
-  await act(page.getByRole('button', {name:'Save animation preference',exact:true}), 'click');
-  await page.getByRole('status').filter({hasText:'animation preference has been saved'}).waitFor();
+  await act(page.getByRole('button', {name:'Save avatar',exact:true}), 'click');
+  await page.getByRole('status').filter({hasText:'avatar settings have been saved'}).waitFor();
   assert.equal((await context.request.get(origin + avatarURL)).headers()['content-type'], 'image/png');
   await act(page.getByLabel('Choose a picture', {exact:true}), 'setInputFiles', {name:'bad.gif',mimeType:'image/gif',buffer:Buffer.from('not a picture')});
   await act(page.getByRole('button', {name:'Save avatar',exact:true}), 'click');

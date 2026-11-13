@@ -56,6 +56,8 @@ func (a *App) account(w http.ResponseWriter, r *http.Request) {
 		notice = "Your avatar has been saved."
 	case "animation":
 		notice = "Your avatar animation preference has been saved."
+	case "avatar-settings":
+		notice = "Your avatar settings have been saved."
 	case "timezone":
 		notice = "Your display timezone has been saved."
 	}

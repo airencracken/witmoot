@@ -161,7 +161,7 @@ async function flow(javaScriptEnabled) {
 	assert.match(await latePage.getByRole('alert').innerText(), /revoked/);
 	await lateGuest.close();
 	await act(page.getByRole('link', { name: 'Our board', exact: true }).first(), 'click');
-	await page.getByRole('heading', { name: 'Good to see you, alex.', exact: true }).waitFor();
+	await page.getByRole('heading', { name: 'Good to see you, alex', exact: true }).waitFor();
 	if (javaScriptEnabled) {
 		const screenshotDir = process.env.WITMOOT_SCREENSHOT_DIR;
 		if (screenshotDir) {

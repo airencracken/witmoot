@@ -217,6 +217,10 @@ func (a *App) saveBrandingAssets(w http.ResponseWriter, r *http.Request) {
 	a.redirect(w, r, "/settings?saved=1")
 }
 
+// errBrandImageTooLarge refuses an upload over the 2 MiB that branding and
+// avatar forms accept.
+const errBrandImageTooLarge = userError("Choose an image no larger than 2 MiB.")
+
 func uploadedImage(r *http.Request, name string) ([]byte, error) {
 	file, header, err := r.FormFile(name)
 	if errors.Is(err, http.ErrMissingFile) {
@@ -227,14 +231,14 @@ func uploadedImage(r *http.Request, name string) ([]byte, error) {
 	}
 	defer closeLogged("uploaded image", file)
 	if header.Size > maxBrandImageBytes {
-		return nil, errors.New("choose an image no larger than 2 MiB")
+		return nil, errBrandImageTooLarge
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxBrandImageBytes+1))
 	if err != nil {
 		return nil, err
 	}
 	if len(data) > maxBrandImageBytes {
-		return nil, errors.New("choose an image no larger than 2 MiB")
+		return nil, errBrandImageTooLarge
 	}
 	return data, nil
 }

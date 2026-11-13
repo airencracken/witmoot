@@ -294,7 +294,7 @@ func TestRecentPostsHTTPRenderingPaginationAndAdversarialInputs(t *testing.T) {
 	}
 	empty := c.request("GET", "/recent", nil, nil)
 	requireStatus(t, empty, 200)
-	if !strings.Contains(empty.Body.String(), "No posts yet.") || strings.Contains(empty.Body.String(), `class="pagination"`) {
+	if !strings.Contains(empty.Body.String(), "No messages yet</h2>") || strings.Contains(empty.Body.String(), `class="pagination"`) {
 		t.Fatal("empty feed is not bounded")
 	}
 }

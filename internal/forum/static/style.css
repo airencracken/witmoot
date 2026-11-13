@@ -304,3 +304,9 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 
 /* Backup destinations may contain long directory components. */
 [aria-labelledby="backup-heading"] code { overflow-wrap: anywhere; }
+.account-sections { max-width: 640px; margin: 36px auto; }
+.account-section { margin-top: 23px; }
+.account-section h3 { margin: 23px 0 8px; font-size: 16px; }
+.account-section h2 + h3, .account-section h2 + p + h3 { margin-top: 16px; }
+.account-section form { margin-bottom: 14px; }
+.account-sections .comfy-timezone { margin-top: 23px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 28px; }

@@ -1,60 +1,64 @@
 {{define "account"}}
-<section class="paper narrow account-card">
-	<h1>Your account.</h1>
+<div class="account-sections">
+	<h1>Your account</h1>
 	<p class="muted">Signed in as <strong>{{.User.Username}}</strong>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="comfy-notice save-notice" role="status">{{.Notice}}</p>{{end}}
-	<h2>Your profile</h2><p><a href="/members/{{.User.ID}}">View your profile</a> · <a href="/account/profile">Edit your profile</a></p>
-{{timezonePreference .TimezoneControl}}
-	<h2 id="profile-avatar">Your avatar</h2>
-	{{if .HasAvatar}}<p><picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.User.ID}}?still=1"><img class="avatar large" src="/avatars/{{.User.ID}}" alt="Your current avatar"></picture></p>{{end}}
-	<form action="/account/avatar" method="post" enctype="multipart/form-data" hx-disabled-elt="find button[type='submit']">
-		{{template "csrf" .}}
-		<label for="avatar">Choose a picture</label><input id="avatar" name="avatar" type="file" accept="image/png,image/jpeg,image/gif">
-		<p class="field-help">PNG or JPEG up to 2 MiB and 4 megapixels. GIFs may be up to 512 by 512 pixels and 64 frames. Camera details are removed; animated GIFs keep their animation.</p>
-		<button type="submit" class="secondary">Save avatar</button>
-	</form>
-	{{if .ImageConnected}}<p class="muted"><a href="/account/avatar/imvault">Choose an image from your imvault library</a> instead. Witmoot copies it, so the avatar keeps working even if imvault is unavailable.</p>{{end}}
-	{{if .HasAvatar}}<form action="/account/avatar" method="post"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="remove" value="1"><button type="submit" class="secondary">Remove my avatar</button></form>{{end}}
-	<form action="/account/avatar-preference" method="post" hx-disabled-elt="find button[type='submit']">
-		{{template "csrf" .}}
-		<label><input type="checkbox" name="animate" value="1" {{if .AnimateAvatars}}checked{{end}}> Show animated avatars</label>
-		<p class="field-help">Turn this off to see still pictures throughout Witmoot. Your device's reduced-motion preference also uses still pictures. Visitors see still pictures.</p>
-		<button type="submit" class="secondary">Save animation preference</button>
-	</form>
-	<h2>Change your password</h2>
-	<form action="/account/password" method="post" hx-disabled-elt="find button[type='submit']">
-		{{template "csrf" .}}
-		<label for="current_password">Current password</label><input id="current_password" type="password" name="current_password" autocomplete="current-password" required>
-		<label for="new_password">New password</label><input id="new_password" type="password" name="password" autocomplete="new-password" minlength="12" aria-describedby="password-help" required>
-		<p class="field-help" id="password-help">At least 12 characters, at most 72 bytes. A few memorable words work well.</p>
-		<label for="confirm_password">Confirm new password</label><input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required>
-		<button type="submit">Change password</button>
-	</form>
-	<h2>Email address</h2>
-	{{if .MailEnabled}}<p class="muted">Optional. If set, an owner can email you a password reset link.</p>{{else}}<p class="muted">Mail is not configured on this server. An address is optional and can be left blank.</p>{{end}}
-	<form action="/account/email" method="post" hx-disabled-elt="find button[type='submit']">
-		{{template "csrf" .}}
-		<label for="email">Email address (optional)</label><input id="email" type="email" name="email" maxlength="254" value="{{.Email}}" autocomplete="email">
-		<button type="submit" class="secondary">Save email</button>
-	</form>
-	<h2>Take your data with you</h2>
-	<p class="muted">Download your posts, the conversations they belong to, and available image previews as a Zip archive. It opens offline and needs no Witmoot server.</p>
-	<p><a class="button secondary" href="/account/export" hx-boost="false">Download your data</a></p>
-	<h2>Leave this site</h2><p><a href="/account/delete">Delete your account and contributions</a>.</p>
-</section>
+	<section class="paper account-section" aria-labelledby="account-profile">
+		<h2 id="account-profile">Profile</h2>
+		<p><a href="/members/{{.User.ID}}">View your profile</a> · <a href="/account/profile">Edit your name, bio, and links</a></p>
+		<h3 id="profile-avatar">Avatar</h3>
+		{{if .HasAvatar}}<p><picture class="avatar-picture"><source media="(prefers-reduced-motion: reduce)" srcset="/avatars/{{.User.ID}}?still=1"><img class="avatar large" src="/avatars/{{.User.ID}}" alt="Your current avatar"></picture></p>{{end}}
+		<form action="/account/avatar" method="post" enctype="multipart/form-data" hx-disabled-elt="find button[type='submit']">
+			{{template "csrf" .}}<input type="hidden" name="preference" value="1">
+			<label for="avatar">Choose a picture</label><input id="avatar" name="avatar" type="file" accept="image/png,image/jpeg,image/gif" aria-describedby="avatar-help">
+			<p class="field-help" id="avatar-help">PNG, JPEG, or GIF. Camera details are removed, and animated GIFs keep moving.</p>
+			<label><input type="checkbox" name="animate" value="1" {{if .AnimateAvatars}}checked{{end}} aria-describedby="animate-help"> Show animated avatars</label>
+			<p class="field-help" id="animate-help">Turn this off to see still pictures everywhere. Your device's reduced-motion setting does the same.</p>
+			<button type="submit" class="secondary">Save avatar</button>
+		</form>
+		{{if .ImageConnected}}<p class="muted"><a href="/account/avatar/imvault">Choose an image from your Imvault library</a> instead. Witmoot keeps a copy, so your avatar still works when Imvault is away.</p>{{end}}
+		{{if .HasAvatar}}<form action="/account/avatar" method="post">{{template "csrf" .}}<input type="hidden" name="remove" value="1"><button type="submit" class="secondary">Remove my avatar</button></form>{{end}}
+	</section>
+	{{timezonePreference .TimezoneControl}}
+	<section class="paper account-section" aria-labelledby="account-signin">
+		<h2 id="account-signin">Sign-in</h2>
+		<h3>Change your password</h3>
+		<form action="/account/password" method="post" hx-disabled-elt="find button[type='submit']">
+			{{template "csrf" .}}
+			<label for="current_password">Current password</label><input id="current_password" type="password" name="current_password" autocomplete="current-password" required>
+			<label for="new_password">New password</label><input id="new_password" type="password" name="password" autocomplete="new-password" minlength="12" aria-describedby="password-help" required>
+			<p class="field-help" id="password-help">At least 12 characters. A few memorable words work well.</p>
+			<label for="confirm_password">Confirm new password</label><input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required>
+			<button type="submit">Change password</button>
+		</form>
+		<h3>Email address</h3>
+		<form action="/account/email" method="post" hx-disabled-elt="find button[type='submit']">
+			{{template "csrf" .}}
+			<label for="email">Email address (optional)</label><input id="email" type="email" name="email" maxlength="254" value="{{.Email}}" autocomplete="email" aria-describedby="email-help">
+			<p class="field-help" id="email-help">{{if .MailEnabled}}An owner can email you a link if you forget your password.{{else}}This server does not send mail, so you can leave this blank.{{end}}</p>
+			<button type="submit" class="secondary">Save email</button>
+		</form>
+	</section>
+	<section class="paper account-section" aria-labelledby="account-data">
+		<h2 id="account-data">Your data</h2>
+		<p>Download your messages, the conversations they belong to, and available image previews as a Zip archive. It opens offline, with no Witmoot server needed.</p>
+		<p><a class="button secondary" href="/account/export" hx-boost="false">Download your data</a></p>
+		<p><a href="/account/delete">Delete your account and contributions</a></p>
+	</section>
+</div>
 {{end}}
 
 {{define "reset"}}
 <section class="paper narrow account-card">
-	<h1>Choose a new password.</h1>
+	<h1>Choose a new password</h1>
 	{{if .ResetUser}}<p class="muted">For <strong>{{.ResetUser}}</strong>.</p>{{end}}
 	{{template "error" .}}
 	{{if .ResetUser}}
 	<form action="/reset/{{.ResetToken}}" method="post" hx-disabled-elt="find button[type='submit']">
 		{{template "csrf" .}}
 		<label for="password">New password</label><input id="password" type="password" name="password" autocomplete="new-password" minlength="12" aria-describedby="password-help" required>
-		<p class="field-help" id="password-help">At least 12 characters, at most 72 bytes. A few memorable words work well.</p>
+		<p class="field-help" id="password-help">At least 12 characters. A few memorable words work well.</p>
 		<label for="confirm_password">Confirm new password</label><input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required>
 		<button class="full-width" type="submit">Save and sign in</button>
 	</form>
@@ -66,13 +70,13 @@
 {{define "members"}}
 {{template "crumb" .}}
 <section class="paper narrow">
-	<h1>Members.</h1>
+	<h1>Members</h1>
 	<p>Manage access and help people sign in. <a href="/moderation">View owner activity</a>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="comfy-notice save-notice" role="status">{{.Notice}}</p>{{end}}
 	{{if .ResetLink}}
 	<div class="comfy-notice invitation-result" role="status">
-		<h2>A reset link is ready.</h2>
+		<h2>A reset link is ready</h2>
 		{{if .ResetEmailed}}<p>It was emailed to {{.ResetFor}}.</p>{{end}}
 		<label for="reset-link">Link for {{.ResetFor}}</label>
 		<input id="reset-link" type="text" readonly value="{{.ResetLink}}">
@@ -98,7 +102,7 @@
 {{define "avatar-library"}}
 {{template "crumb" .}}
 <section class="paper">
-	<h1>Choose an avatar.</h1>
+	<h1>Choose an avatar</h1>
 	<p>Pick an image from your imvault library. Witmoot copies it, crops it square, and scales it down; your original stays in imvault.</p>
 	<form class="search-form" method="get" action="/account/avatar/imvault" hx-boost="false"><label for="avatar-search">Search your library</label><div><input id="avatar-search" name="q" type="search" value="{{.Query}}" maxlength="100"><button type="submit">Find images</button></div></form>
 	{{template "error" .}}{{if .ImageError}}<p role="alert" class="comfy-notice comfy-notice-error">{{.ImageError}}</p>{{end}}

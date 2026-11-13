@@ -36,15 +36,18 @@ const (
 // crop keeps faces from being stretched by the layout.
 func normalizeAvatarImage(data []byte) ([]byte, error) {
 	if len(data) == 0 || len(data) > maxAvatarInputBytes {
-		return nil, errors.New("choose an image no larger than 2 MiB")
+		return nil, errAvatarTooLarge
 	}
 	config, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > maxAvatarDimension || config.Height > maxAvatarDimension || int64(config.Width)*int64(config.Height) > maxImagePixels {
-		return nil, errors.New("choose a valid image of at most 4 megapixels, such as 2048 by 2048 pixels")
+	if err != nil {
+		return nil, errAvatarFormat
+	}
+	if config.Width < 1 || config.Height < 1 || config.Width > maxAvatarDimension || config.Height > maxAvatarDimension || int64(config.Width)*int64(config.Height) > maxImagePixels {
+		return nil, errAvatarTooBig
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, errors.New("choose a PNG, JPEG, or GIF image")
+		return nil, errAvatarFormat
 	}
 	bounds := img.Bounds()
 	side := bounds.Dx()
@@ -72,7 +75,7 @@ func (s *Store) SaveAvatar(ctx context.Context, userID int64, content []byte) er
 	if err == nil && format == "gif" {
 		picture, err := profileimage.Normalize(content)
 		if err != nil {
-			return err
+			return errAvatarAnimation
 		}
 		if picture.Animation != nil {
 			animation = picture.Animation
@@ -163,7 +166,8 @@ func (a *App) avatar(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// saveAvatar handles the member's own upload or removal.
+// saveAvatar handles the member's own upload or removal, and the animation
+// preference that shares its form. Nothing is saved unless every part is valid.
 func (a *App) saveAvatar(w http.ResponseWriter, r *http.Request) {
 	user := *state(r).User
 	if r.PostForm.Get("remove") == "1" {
@@ -178,20 +182,70 @@ func (a *App) saveAvatar(w http.ResponseWriter, r *http.Request) {
 		a.redirect(w, r, "/account?saved=avatar")
 		return
 	}
-	data, err := uploadedImage(r, "avatar")
-	if err != nil {
-		a.render(w, r, http.StatusUnprocessableEntity, a.accountPage(r, err.Error(), "", user.Email))
+	withPreference := r.PostForm.Get("preference") == "1"
+	animate, ok := animationChoice(r.PostForm["animate"])
+	if withPreference && !ok {
+		a.render(w, r, 422, a.accountPage(r, "Choose a valid animation preference.", "", user.Email))
 		return
 	}
-	if len(data) == 0 {
+	data, err := uploadedImage(r, "avatar")
+	if err != nil {
+		a.render(w, r, http.StatusUnprocessableEntity, a.accountPage(r, avatarProblem(err), "", user.Email))
+		return
+	}
+	if len(data) == 0 && !withPreference {
 		a.render(w, r, http.StatusUnprocessableEntity, a.accountPage(r, "Choose an image to use as your avatar.", "", user.Email))
 		return
 	}
-	if err := a.store.SaveAvatar(r.Context(), user.ID, data); err != nil {
-		a.render(w, r, http.StatusUnprocessableEntity, a.accountPage(r, err.Error(), "", user.Email))
-		return
+	saved := "avatar-settings"
+	if len(data) > 0 {
+		if err := a.store.SaveAvatar(r.Context(), user.ID, data); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				a.storeError(w, r, err)
+				return
+			}
+			a.render(w, r, http.StatusUnprocessableEntity, a.accountPage(r, avatarProblem(err), "", user.Email))
+			return
+		}
+		saved = "avatar"
 	}
-	a.redirect(w, r, "/account?saved=avatar")
+	if withPreference {
+		if err := a.store.SetAnimateAvatars(r.Context(), user.ID, animate); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	a.redirect(w, r, "/account?saved="+saved+"#profile-avatar")
+}
+
+// animationChoice reads the "Show animated avatars" checkbox: absent means
+// off, a single "1" means on, and anything else is not a choice.
+func animationChoice(values []string) (animate, ok bool) {
+	if len(values) > 1 || (len(values) == 1 && values[0] != "1") {
+		return false, false
+	}
+	return len(values) == 1, true
+}
+
+// Avatar limits are stated when a picture breaks them, so the form itself
+// can stay short.
+const (
+	errAvatarTooLarge  = userError("Choose a picture no larger than 2 MiB.")
+	errAvatarTooBig    = userError("Choose a picture of at most 4 megapixels, such as 2048 by 2048 pixels.")
+	errAvatarFormat    = userError("Choose a PNG, JPEG, or GIF picture.")
+	errAvatarAnimation = userError("Choose a GIF that opens properly, up to 512 by 512 pixels and 64 frames.")
+)
+
+// avatarProblem turns a failed avatar save into a sentence for the member.
+func avatarProblem(err error) string {
+	var problem userError
+	if errors.As(err, &problem) {
+		return string(problem)
+	}
+	if errors.Is(err, errBrandImageTooLarge) {
+		return string(errAvatarTooLarge)
+	}
+	return string(errAvatarFormat)
 }
 
 // avatarLibrary lists the member's imvault images to import as an avatar.
@@ -292,12 +346,12 @@ func (s *Store) AvatarAnimation(ctx context.Context, userID int64) ([]byte, erro
 }
 
 func (a *App) saveAvatarPreference(w http.ResponseWriter, r *http.Request) {
-	values := r.PostForm["animate"]
-	if len(values) > 1 || (len(values) == 1 && values[0] != "1") {
+	animate, ok := animationChoice(r.PostForm["animate"])
+	if !ok {
 		a.render(w, r, 422, a.accountPage(r, "Choose a valid animation preference.", "", state(r).User.Email))
 		return
 	}
-	if err := a.store.SetAnimateAvatars(r.Context(), state(r).User.ID, len(values) == 1); err != nil {
+	if err := a.store.SetAnimateAvatars(r.Context(), state(r).User.ID, animate); err != nil {
 		a.serverError(w, r, err)
 		return
 	}

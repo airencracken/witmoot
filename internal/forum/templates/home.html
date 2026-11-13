@@ -1,12 +1,12 @@
 {{define "welcome"}}
 <section class="welcome-grid">
 	<div class="welcome-copy"><h1>{{.WelcomeTitle}}</h1><p class="lede">{{.WelcomeText}}</p><p>{{if eq .Mode "personal"}}{{.Name}} is a personal board for its owners. A quiet place for thoughts worth keeping.{{else}}{{.Name}} is a private gathering place for family and friends. Pull up a chair.{{end}}</p><a class="button" href="/login">Sign in <span aria-hidden="true">→</span></a><p class="muted invitation-note">{{if eq .Mode "personal"}}Owner sign-in only. This board is not accepting new members.{{else}}New here? Ask the owner for an invitation.{{end}}</p></div>
-	<aside class="welcome-note"><img class="mascot welcome-mascot" src="{{.MascotURL}}" alt="" width="240" height="240"><h2>Our own<br>little corner.</h2><div class="note-rule"></div><p>Conversations stay here for when you have time to catch up.</p></aside>
+	<aside class="welcome-note"><img class="mascot welcome-mascot" src="{{.MascotURL}}" alt="" width="240" height="240"><h2>Our own<br>little corner</h2><div class="note-rule"></div><p>Conversations stay here for when you have time to catch up.</p></aside>
 </section>
 {{end}}
 
 {{define "home"}}
-<div class="page-heading"><div><h1>{{if .User}}Good to see you, {{.User.Username}}.{{else}}Welcome to {{.Name}}.{{end}}</h1><p class="lede">{{if eq .Mode "personal"}}A little room for your thoughts, plans, and good finds.{{else}}Pick a corner. See what everyone has been up to.{{end}}</p></div></div>
+<div class="page-heading"><div><h1>{{if .User}}Good to see you, {{.User.Username}}{{else}}Welcome to {{.Name}}{{end}}</h1><p class="lede">{{if eq .Mode "personal"}}A little room for your thoughts, plans, and good finds.{{else}}Pick a corner. See what everyone has been up to.{{end}}</p></div></div>
 <div class="home-grid">
 	<div class="board-list">
 		{{$category := ""}}

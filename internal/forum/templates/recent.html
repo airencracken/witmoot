@@ -14,7 +14,7 @@
 	{{template "message-content" .}}
 	<footer><a href="{{.URL}}" hx-boost="false">Read in conversation</a></footer>
 </article>
-{{else}}<div class="paper empty-state"><span class="empty-mark" aria-hidden="true">w</span><h2>No posts yet.</h2><p>When someone starts a conversation or replies, it will appear here.</p><a href="/">Find a place to start</a></div>{{end}}
+{{else}}<div class="paper empty-state"><span class="empty-mark" aria-hidden="true">w</span><h2>No messages yet</h2><p>When someone starts a conversation or replies, it will appear here.</p><a href="/">Find a place to start</a></div>{{end}}
 </section>
 {{template "pager" .}}
 {{end}}

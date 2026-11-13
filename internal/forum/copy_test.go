@@ -5,6 +5,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -106,5 +109,31 @@ func TestSettingsOrderAndServerSection(t *testing.T) {
 	heading := body[strings.Index(body, `<div class="page-heading">`):strings.Index(body, "<legend>Make this place yours</legend>")]
 	if strings.Contains(heading, "/admin/metrics") || strings.Contains(heading, "Running Witmoot") {
 		t.Fatal("server details are back in the page heading")
+	}
+}
+
+// Headings are labels, not sentences, so none ends with a period.
+func TestHeadingsHaveNoTrailingPeriods(t *testing.T) {
+	files, err := filepath.Glob("templates/*.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	heading := regexp.MustCompile(`(?s)<h([1-6])[^>]*>(.*?)</h[1-6]>`)
+	action := regexp.MustCompile(`{{[^}]*}}`)
+	tag := regexp.MustCompile(`<[^>]*>`)
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range heading.FindAllStringSubmatch(string(content), -1) {
+			// Each branch of a conditional heading is checked on its own.
+			for _, part := range action.Split(match[2], -1) {
+				text := strings.TrimSpace(tag.ReplaceAllString(part, ""))
+				if strings.HasSuffix(text, ".") {
+					t.Errorf("%s: heading %q ends with a period", file, match[2])
+				}
+			}
+		}
 	}
 }
