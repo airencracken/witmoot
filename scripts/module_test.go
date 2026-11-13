@@ -63,7 +63,7 @@ func TestReplaceCheckSeesEveryForm(t *testing.T) {
 // unreleased commit.
 func TestComfylibIsPinnedToARelease(t *testing.T) {
 	expected := map[string]string{
-		"github.com/airencracken/comfylib":      "v0.7.0",
+		"github.com/airencracken/comfylib":      "v0.7.1",
 		"github.com/airencracken/comfylib/oidc": "v0.1.0",
 	}
 	for _, req := range readGoMod(t, "../go.mod").Require {

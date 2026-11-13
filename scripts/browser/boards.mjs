@@ -93,7 +93,7 @@ export async function checkBoards(browser, origin, password, javaScriptEnabled) 
 		await owner.getByRole('status').waitFor();
 		await act(writer.getByLabel('Your message', { exact: true }), 'fill', 'Cannot save after revocation');
 		await act(writer.getByRole('button', { name: 'Save changes', exact: true }), 'click');
-		await writer.getByRole('heading', { name: 'Not Found', exact: true }).waitFor();
+		await writer.getByRole('heading', { name: 'Nothing here', exact: true }).waitFor();
 		await reader.goto(topicURL);
 		assert.match(await reader.locator('.post-body').last().innerText(), /Sunday/);
 

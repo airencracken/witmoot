@@ -78,7 +78,7 @@ export async function checkGroups(browser, origin, password, javaScriptEnabled) 
 		assert.equal(await row('jules').count(), 0);
 		await act(writer.getByLabel('Your message', { exact: true }), 'fill', 'A stale group edit');
 		await act(writer.getByRole('button', { name: 'Save changes', exact: true }), 'click');
-		await writer.getByRole('heading', { name: 'Not Found', exact: true }).waitFor();
+		await writer.getByRole('heading', { name: 'Nothing here', exact: true }).waitFor();
 		assert.equal((await writer.goto(topicURL)).status(), 404);
 		await owner.getByRole('checkbox', { name: 'jules', exact: true }).check();
 		await act(owner.getByRole('button', { name: 'Save group', exact: true }), 'click');
