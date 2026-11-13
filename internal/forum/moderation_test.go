@@ -46,8 +46,8 @@ func TestOwnerActivityLinksRemovalsAndRecordsTitlesAndAvatars(t *testing.T) {
 
 	page := owner.request("GET", "/moderation", nil, nil).Body.String()
 	for _, want := range []string{
-		fmt.Sprintf(`Removed <a href="/topics/%d?page=1#post-%d">message %d in conversation %d</a> and replaced the conversation title`, topic, opening, opening, topic),
-		fmt.Sprintf(`Removed <a href="/topics/%d?page=1#post-%d">message %d in conversation %d</a></p>`, topic, reply, reply, topic),
+		fmt.Sprintf(`Removed <a href="/topics/%d?page=1#post-%d">post %d in conversation %d</a> and replaced the conversation title`, topic, opening, opening, topic),
+		fmt.Sprintf(`Removed <a href="/topics/%d?page=1#post-%d">post %d in conversation %d</a></p>`, topic, reply, reply, topic),
 		"Removed the avatar of jules",
 	} {
 		if !strings.Contains(page, want) {

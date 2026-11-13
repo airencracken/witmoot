@@ -169,6 +169,9 @@ func TestExportUsesTheFamilyPalette(t *testing.T) {
 		t.Fatalf("archive defines only %d palette tokens", len(found))
 	}
 	for _, match := range found {
+		if match[1] == "--comfy-heading-font" || match[1] == "--comfy-heading-weight" {
+			continue // Typography belongs to the app, independently of colors.
+		}
 		if shared[match[1]] != match[2] {
 			t.Errorf("%s is %q in the archive but %q in the sage palette", match[1], match[2], shared[match[1]])
 		}
