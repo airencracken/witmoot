@@ -272,22 +272,6 @@
     "run": "^TestMultipartTokenCheckReadsOnlyTheFirstPart$"
   },
   {
-    "name": "verified sign-ins differ from session rotations",
-    "file": "internal/forum/store.go",
-    "before": "return s.newSession(ctx, hash, userID, expires, true)",
-    "after": "return s.newSession(ctx, hash, userID, expires, false)",
-    "package": "./internal/forum",
-    "run": "^TestActivityCountsAuthorizedOpensAndSuccessfulLogins$"
-  },
-  {
-    "name": "rendered posts reach the shared collector",
-    "file": "internal/forum/web.go",
-    "before": "a.renderTopicActivity(w, r, status, p)",
-    "after": "a.render(w, r, status, p)",
-    "package": "./internal/forum",
-    "run": "^TestActivityCountsAuthorizedOpensAndSuccessfulLogins$"
-  },
-  {
     "name": "page views fall back to the error page",
     "file": "internal/forum/web.go",
     "before": "if name, ok := pageTemplates[view]; ok {",

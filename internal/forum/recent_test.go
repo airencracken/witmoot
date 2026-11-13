@@ -375,7 +375,7 @@ func TestRecentPostsMigrationPreservesMessagesAndCreatesIndex(t *testing.T) {
 		t.Fatalf("missing feed index: %s %v", definition, err)
 	}
 	var version int
-	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 20 {
+	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != len(migrationFiles) {
 		t.Fatalf("schema=%d err=%v", version, err)
 	}
 	backups, err := filepath.Glob(filepath.Join(filepath.Dir(path), "witmoot-before-v19-*", "witmoot.db"))

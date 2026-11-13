@@ -321,7 +321,7 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("POST /account/imvault/disconnect", a.signedIn(a.disconnectImages))
 	mux.HandleFunc("GET /imvault/library", a.private(a.library))
 	mux.HandleFunc("GET /imvault/library/{id}/image", a.private(a.libraryImage))
-	mux.HandleFunc("GET /images/{id}", a.readable(a.trackOpen(analytics.Image, a.image)))
+	mux.HandleFunc("GET /images/{id}", a.readable(a.image))
 	if err = a.registerSharedSignIn(mux); err != nil {
 		return nil, err
 	}
@@ -752,7 +752,7 @@ func (a *App) showTopic(w http.ResponseWriter, r *http.Request, status int, mess
 	a.postReferences(posts)
 	p := Page{View: "topic", Title: topic.Title, Topic: topic, Posts: posts, Error: message, BodyInput: body}
 	pagination(r, &p, page, more)
-	a.renderTopicActivity(w, r, status, p)
+	a.render(w, r, status, p)
 }
 
 func (a *App) newTopic(w http.ResponseWriter, r *http.Request) {

@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package forum
 
-import (
-	"context"
-	"database/sql"
-	"github.com/airencracken/comfylib/analytics"
-	"time"
-)
+import "database/sql"
 
+// AnalyticsDB lets the shared maintenance handler prune the activity table.
+// Witmoot records no per-member or per-item activity, so there is nothing to
+// collect; owners see aggregate counts from Metrics instead.
 func (s *Store) AnalyticsDB() *sql.DB { return s.db }
-func (s *Store) Analytics(ctx context.Context, now time.Time) (analytics.Summary, error) {
-	return analytics.Collect(ctx, s.db, "SELECT id,username FROM users WHERE deleted=0", now)
-}

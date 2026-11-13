@@ -131,10 +131,12 @@ func openStore(path string, allowMigration bool) (*Store, error) {
 	if err := s.backupBeforeMigration(abs); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	if err := s.migrate(); err != nil {
+	// The shared activity tables exist before migrations so that a migration
+	// can clear rows the shared library stores.
+	if err := analytics.Initialize(context.Background(), db, time.Now()); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	if err := analytics.Initialize(context.Background(), db, time.Now()); err != nil {
+	if err := s.migrate(); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 	return s, nil
@@ -425,13 +427,9 @@ func (s *Store) Session(ctx context.Context, hash string) (*User, error) {
 	return &u, err
 }
 
+// NewSession stores a session for an active account. Sign-ins are not recorded
+// per member: activity metrics keep only counts a server log would show.
 func (s *Store) NewSession(ctx context.Context, hash string, userID int64, expires time.Time) error {
-	return s.newSession(ctx, hash, userID, expires, false)
-}
-func (s *Store) NewLoginSession(ctx context.Context, hash string, userID int64, expires time.Time) error {
-	return s.newSession(ctx, hash, userID, expires, true)
-}
-func (s *Store) newSession(ctx context.Context, hash string, userID int64, expires time.Time, login bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -445,11 +443,6 @@ func (s *Store) newSession(ctx context.Context, hash string, userID int64, expir
 	}
 	if _, err := tx.ExecContext(ctx, "INSERT INTO sessions(token_hash, user_id, expires_at) VALUES (?, ?, ?)", hash, userID, expires.Unix()); err != nil {
 		return err
-	}
-	if login {
-		if err := analytics.RecordLogin(ctx, tx, analytics.MemberID(userID), time.Now()); err != nil {
-			return err
-		}
 	}
 	return tx.Commit()
 }

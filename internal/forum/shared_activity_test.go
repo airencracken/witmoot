@@ -4,21 +4,21 @@ package forum
 import (
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
-func TestSharedSignInRecordsOnlySuccessfulActiveAccounts(t *testing.T) {
+// Shared sign-ins start sessions for active accounts only, and record no
+// per-member activity.
+func TestSharedSignInRecordsNoMemberActivity(t *testing.T) {
 	a, _ := newTestApp(t, false)
 	id := testMember(t, a.store, "sharedmember")
 	request := httptest.NewRequest("GET", "http://example.test/auth/shared/callback", nil)
 	if _, err := a.sharedSignIn(httptest.NewRecorder(), request, id); err != nil {
 		t.Fatal(err)
 	}
-	report, err := a.store.Analytics(t.Context(), time.Now())
-	if err != nil || report.Logins != 1 {
-		t.Fatal(report, err)
+	if n := activityRows(t, a.store); n != 0 {
+		t.Fatalf("shared sign-in stored %d activity rows", n)
 	}
-	if _, err = a.store.AnalyticsDB().Exec("UPDATE users SET suspended=1 WHERE id=?", id); err != nil {
+	if _, err := a.store.AnalyticsDB().Exec("UPDATE users SET suspended=1 WHERE id=?", id); err != nil {
 		t.Fatal(err)
 	}
 	response := httptest.NewRecorder()
@@ -27,9 +27,5 @@ func TestSharedSignInRecordsOnlySuccessfulActiveAccounts(t *testing.T) {
 	}
 	if len(response.Result().Cookies()) != 0 {
 		t.Fatal("inactive account received a session")
-	}
-	report, err = a.store.Analytics(t.Context(), time.Now())
-	if err != nil || report.Logins != 1 {
-		t.Fatal("inactive sign-in counted", report, err)
 	}
 }
