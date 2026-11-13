@@ -133,7 +133,7 @@ func TestDemoAccountsAudiencesAndCleanup(t *testing.T) {
 			if !strings.Contains(archived, "Archived board.") || strings.Contains(archived, "Post reply</button>") || strings.Contains(archived, "Edit message") {
 				t.Fatal("archived demo conversation is not read only")
 			}
-			if strings.Contains(home, "The planning nook") != (tc.name != "") || !strings.Contains(home, "Public browsing") {
+			if strings.Contains(home, "The planning nook") != (tc.name != "") || !strings.Contains(home, "Public conversations are open to everyone.") {
 				t.Fatal("private demo board or site status is not shown correctly")
 			}
 			if tc.name != "" {
