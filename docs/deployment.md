@@ -149,8 +149,11 @@ status.
 
 Owners open `/admin/metrics` from **Settings**. It shows counts of members,
 boards, conversations and messages, new messages in the past seven UTC days,
-and the database size, plus automatic backups and configured apps. Witmoot
-does not record who signs in or what anyone reads.
+and the database size. **Site health** shows requests, errors, response times
+and data served per route, and **Security** counts failed sign-ins,
+rate-limited attempts and refused invitation or reset links. Automatic backups
+and configured apps appear below. Witmoot does not record who signs in or what
+anyone reads.
 
 ## Gentoo ebuild
 
