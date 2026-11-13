@@ -13,9 +13,9 @@
 		<h2 id="invitation-ready">Copy this invitation now</h2>
 		<p class="muted">Send the link privately to the person you're inviting. It cannot be shown again.</p>
 		<label for="invite-link">Invitation link</label>
-		<div class="copy-field"><input id="invite-link" type="text" readonly value="{{.InviteLink}}"><button type="button" class="secondary" data-copy="invite-link" hidden>Copy link</button></div>
+		<input id="invite-link" type="text" readonly data-comfy-copy value="{{.InviteLink}}">
 		<label for="invite-code">Invitation code</label>
-		<div class="copy-field"><input id="invite-code" type="text" readonly value="{{.InviteCode}}"><button type="button" class="secondary" data-copy="invite-code" hidden>Copy code</button></div>
+		<input id="invite-code" type="text" readonly value="{{.InviteCode}}">
 	</section>
 	{{end}}
 	<div class="invitation-layout">

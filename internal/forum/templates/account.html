@@ -79,7 +79,7 @@
 		<h2>A reset link is ready</h2>
 		{{if .ResetEmailed}}<p>It was emailed to {{.ResetFor}}.</p>{{end}}
 		<label for="reset-link">Link for {{.ResetFor}}</label>
-		<div class="copy-field"><input id="reset-link" type="text" readonly value="{{.ResetLink}}"><button type="button" class="secondary" data-copy="reset-link" hidden>Copy link</button></div>
+		<input id="reset-link" type="text" readonly data-comfy-copy value="{{.ResetLink}}">
 		<p>It works once and expires in {{resetExpiry}}. Copy it now; it cannot be shown again.</p>
 	</div>
 	{{end}}

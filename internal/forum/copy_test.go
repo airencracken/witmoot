@@ -4,12 +4,15 @@ package forum
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/airencracken/comfylib/ui"
 )
 
 // The home page explains access in one plain sidebar sentence, for every mode,
@@ -142,47 +145,46 @@ func TestHeadingsHaveNoTrailingPeriods(t *testing.T) {
 	}
 }
 
-// The offline archive uses the same palette and headings as the site, so an
-// export still looks like Witmoot without a server.
+// The offline archive inlines the sage palette, so an export still looks like
+// Witmoot without a server.
 func TestExportUsesTheFamilyPalette(t *testing.T) {
 	app, client := newTestApp(t, false)
 	signInTest(t, app, client, false)
 	entries, _, _ := readExport(t, client)
 	page := string(entries["archive.html"])
-	css, err := assets.ReadFile("static/style.css")
+	palettes, err := fs.ReadFile(ui.Assets(), "palettes.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	token := regexp.MustCompile(`--(ink|muted|green|line|paper|background|soft): ([^;]+);`)
-	site := map[string]string{}
-	for _, match := range token.FindAllStringSubmatch(string(css), -1) {
-		if _, seen := site[match[1]]; !seen {
-			site[match[1]] = match[2]
-		}
+	sage := string(palettes)
+	sage = sage[strings.Index(sage, `:root[data-palette="sage"] {`):]
+	sage = sage[:strings.Index(sage, "}")]
+	token := regexp.MustCompile(`(--comfy-[a-z-]+): ([^;]+);`)
+	shared := map[string]string{}
+	for _, match := range token.FindAllStringSubmatch(sage, -1) {
+		shared[match[1]] = match[2]
 	}
 	found := token.FindAllStringSubmatch(page, -1)
-	if len(found) != 7 {
-		t.Fatalf("archive defines %d palette tokens, want 7", len(found))
+	if len(found) < 7 {
+		t.Fatalf("archive defines only %d palette tokens", len(found))
 	}
 	for _, match := range found {
-		if site[match[1]] != match[2] {
-			t.Errorf("--%s is %q in the archive but %q on the site", match[1], match[2], site[match[1]])
+		if shared[match[1]] != match[2] {
+			t.Errorf("%s is %q in the archive but %q in the sage palette", match[1], match[2], shared[match[1]])
 		}
 	}
-	for _, want := range []string{`font-family: Georgia, "Times New Roman", serif`, "color: var(--ink)", "background: var(--background)"} {
+	for _, want := range []string{"font-family: var(--comfy-heading-font)", "color: var(--comfy-text)", "background: var(--comfy-surface)"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("archive lacks %q", want)
 		}
 	}
-	for _, gone := range []string{"system-ui", "#14161a", "#b9c", "#dde"} {
-		if strings.Contains(page, gone) {
-			t.Errorf("archive still uses %q", gone)
-		}
+	if strings.Contains(page, "system-ui") || strings.Contains(page, "#14161a") {
+		t.Error("archive still uses the old blue-grey look")
 	}
 }
 
-// A one-time link is shown once, in a read-only field, with a Copy button
-// that the script reveals only where the clipboard works.
+// A one-time link is shown once, in a read-only field marked for the shared
+// Copy link button.
 func TestOneTimeLinksHaveOneFieldAndACopyButton(t *testing.T) {
 	app, owner := newTestApp(t, false)
 	signInTest(t, app, owner, true)
@@ -197,35 +199,111 @@ func TestOneTimeLinksHaveOneFieldAndACopyButton(t *testing.T) {
 	if reset.Code == 303 {
 		reset = owner.request("GET", reset.Header().Get("Location"), nil, nil)
 	}
-	link := regexp.MustCompile(`<input id="(invite-link|reset-link)" type="text" readonly value="([^"]+)">`)
-	for name, c := range map[string]struct {
-		body string
-		ids  []string
-	}{
-		"invitation": {invite.Body.String(), []string{"invite-link", "invite-code"}},
-		"reset":      {reset.Body.String(), []string{"reset-link"}},
-	} {
-		match := link.FindStringSubmatch(c.body)
+	link := regexp.MustCompile(`<input id="(invite-link|reset-link)" type="text" readonly data-comfy-copy value="([^"]+)">`)
+	for name, body := range map[string]string{"invitation": invite.Body.String(), "reset": reset.Body.String()} {
+		match := link.FindStringSubmatch(body)
 		if match == nil {
-			t.Fatalf("%s: no read-only link field\n%s", name, c.body)
+			t.Fatalf("%s: no read-only link field marked for copying\n%s", name, body)
 		}
-		if n := strings.Count(c.body, match[2]); n != 1 {
+		if n := strings.Count(body, match[2]); n != 1 {
 			t.Errorf("%s: the link appears %d times, want once", name, n)
 		}
-		for _, id := range c.ids {
-			if !strings.Contains(c.body, fmt.Sprintf(`data-copy="%s" hidden>`, id)) || !strings.Contains(c.body, fmt.Sprintf(`id="%s" type="text" readonly`, id)) {
-				t.Errorf("%s: %s lacks a hidden copy button for its read-only field", name, id)
+		for _, gone := range []string{"data-invitation", "data-copy=", "/static/copy.js"} {
+			if strings.Contains(body, gone) {
+				t.Errorf("%s: %s is back", name, gone)
 			}
 		}
-		if strings.Contains(c.body, "data-invitation") {
-			t.Errorf("%s: unused data-invitation attribute is back", name)
-		}
-		if !strings.Contains(c.body, `<script src="/static/copy.js" defer></script>`) {
-			t.Errorf("%s: copy script is not loaded", name)
+		if !strings.Contains(body, `<script src="/static/comfyware/suite.js"></script>`) {
+			t.Errorf("%s: the shared script that adds Copy buttons is not loaded", name)
 		}
 	}
-	w := owner.request("GET", "/static/copy.js", nil, nil)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "navigator.clipboard") {
-		t.Fatalf("copy script not served: %d", w.Code)
+	if w := owner.request("GET", "/static/copy.js", nil, nil); w.Code != 404 {
+		t.Fatalf("the app-local copy script is still served: %d", w.Code)
 	}
+}
+
+// Witmoot's pages read the Comfyware tokens, which the shared palettes set,
+// so an owner's palette reaches every page. The app sets only its fonts and
+// corners, and draws no colors of its own.
+func TestStylesFollowTheSharedPalette(t *testing.T) {
+	css, err := assets.ReadFile("static/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style := string(css)
+	if hex := regexp.MustCompile(`#[0-9a-fA-F]{3,8}\b`).FindAllString(style, -1); len(hex) > 0 {
+		t.Errorf("style.css draws its own colors: %v", hex)
+	}
+	if strings.Contains(style, "light-dark(") || strings.Contains(style, "Georgia") {
+		t.Error("style.css still carries the sage palette or heading font itself")
+	}
+	for _, old := range []string{"--ink:", "--paper:", "--green:", "--line:", "--background:", "var(--ink)", "var(--green)"} {
+		if strings.Contains(style, old) {
+			t.Errorf("style.css still uses the old variable %s", old)
+		}
+	}
+	for _, want := range []string{"--comfy-font:", "--comfy-radius:", "var(--comfy-heading-font)", "var(--comfy-heading-weight)", "var(--comfy-accent)", "var(--comfy-surface)"} {
+		if !strings.Contains(style, want) {
+			t.Errorf("style.css lacks %s", want)
+		}
+	}
+	layout, err := assets.ReadFile("templates/layout.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	order := []string{`<script src="/static/comfyware/theme.js"></script>`, `href="/static/style.css"`, `href="/static/comfyware/components.css"`, `href="/static/comfyware/palettes.css"`}
+	last := -1
+	for _, part := range order {
+		at := strings.Index(string(layout), part)
+		if at <= last {
+			t.Fatalf("%s is missing or out of order in the head", part)
+		}
+		last = at
+	}
+	if strings.Contains(string(layout), `theme.js" defer`) {
+		t.Fatal("theme.js must run before the page is drawn")
+	}
+	app, visitor := newTestApp(t, false)
+	body := visitor.request("GET", "/login", nil, nil).Body.String()
+	if !strings.Contains(body, `<html lang="en" data-comfy-app="witmoot" data-theme-key="witmoot-theme" data-palettes="sage slate" data-palette="sage" data-palette-default="sage">`) {
+		t.Fatalf("pages do not render the sage palette by default:\n%.400s", body)
+	}
+	_ = app
+}
+
+// Owners pick the site palette; anything outside the shared list is refused
+// and changes nothing.
+func TestOwnerSitePaletteSetting(t *testing.T) {
+	app, owner := newTestApp(t, false)
+	signInTest(t, app, owner, true)
+	form := func(palette string) url.Values {
+		return url.Values{"mode": {"private"}, "site_name": {"Our board"}, "palette": {palette}}
+	}
+	requireStatus(t, owner.post("/settings", form("slate")), 303)
+	body := owner.request("GET", "/", nil, nil).Body.String()
+	if !strings.Contains(body, `data-palette="slate" data-palette-default="slate"`) {
+		t.Fatal("site palette not applied")
+	}
+	settings := owner.request("GET", "/settings", nil, nil).Body.String()
+	if !strings.Contains(settings, `<option value="slate" selected>Slate</option>`) {
+		t.Fatal("settings do not show the saved palette")
+	}
+	for _, bad := range []string{"purple", "SAGE", " slate", "slate\n", `"><script>`, "../sage", strings.Repeat("s", 500)} {
+		w := owner.post("/settings", form(bad))
+		if w.Code != 422 || !strings.Contains(w.Body.String(), "Choose one of the listed color palettes.") {
+			t.Errorf("palette %q: %d", bad, w.Code)
+		}
+		if strings.Contains(w.Body.String(), "<script>") {
+			t.Fatal("palette draft not escaped")
+		}
+	}
+	if !strings.Contains(owner.request("GET", "/", nil, nil).Body.String(), `data-palette="slate"`) {
+		t.Fatal("a refused palette changed the site")
+	}
+	requireStatus(t, owner.post("/settings", form("")), 303)
+	if !strings.Contains(owner.request("GET", "/", nil, nil).Body.String(), `data-palette="sage"`) {
+		t.Fatal("blank palette should restore the sage default")
+	}
+	member := memberClient(t, app, "jules")
+	requireStatus(t, member.post("/settings", form("slate")), 403)
 }

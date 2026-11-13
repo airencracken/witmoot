@@ -104,6 +104,8 @@ type Page struct {
 	Name, Title, View, CSRF, Error                              string
 	SourceURL, WelcomeTitle, WelcomeText, MascotURL, FaviconURL string
 	CustomMascot, BrandingDraft                                 bool
+	Palette                                                     string
+	SitePalette                                                 ui.Palette
 	User                                                        *User
 	Mode                                                        Mode
 	CanRead, CanPost, Saved                                     bool
@@ -192,11 +194,12 @@ func New(store *Store, config Config) (*App, error) {
 		config.SecureCookies = true
 	}
 	var tmpl *template.Template
-	tmpl, err = template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"content": func(p Page) (template.HTML, error) {
-		var page strings.Builder
-		err := tmpl.ExecuteTemplate(&page, pageTemplate(p.View), p)
-		return template.HTML(page.String()), err // already escaped by html/template
-	}, "timezonePreference": displaytime.RenderPreference, "adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
+	tmpl, err = template.New("forum").Funcs(suiteFuncs).Funcs(template.FuncMap{"paletteAttrs": ui.PaletteAttrs, "themePicker": func() template.HTML { return ui.ThemePicker(true) }, "palettes": ui.Palettes,
+		"content": func(p Page) (template.HTML, error) {
+			var page strings.Builder
+			err := tmpl.ExecuteTemplate(&page, pageTemplate(p.View), p)
+			return template.HTML(page.String()), err // already escaped by html/template
+		}, "timezonePreference": displaytime.RenderPreference, "adminSummary": admin.Render, "linkNumber": func(i int) int { return i + 1 },
 		"add":         func(a, b int) int { return a + b },
 		"access":      accessLabel,
 		"iso":         func(unix int64) string { return time.Unix(unix, 0).UTC().Format(time.RFC3339) },
@@ -514,8 +517,9 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 		if !p.BrandingDraft {
 			p.ShowVersion = brand.ShowVersion
 			p.Name, p.SourceURL, p.WelcomeTitle, p.WelcomeText = brand.Name, brand.SourceURL, brand.WelcomeTitle, brand.WelcomeText
-			p.HouseRules, p.OwnerContact = brand.HouseRules, brand.OwnerContact
+			p.HouseRules, p.OwnerContact, p.Palette = brand.HouseRules, brand.OwnerContact, brand.Palette
 		}
+		p.SitePalette = sitePalette(brand.Palette)
 		mascot, favicon, assetErr := a.store.BrandingAssetState(r.Context())
 		if assetErr == nil {
 			p.MascotURL = "/static/moot-knight.png"
@@ -530,6 +534,7 @@ func (a *App) render(w http.ResponseWriter, r *http.Request, status int, p Page)
 		slog.Error("load site branding", "error", err)
 		p.Name, p.SourceURL = a.config.Name, a.config.SourceURL
 		p.MascotURL = "/static/moot-knight.png"
+		p.SitePalette = sitePalette("")
 	}
 	if p.Name == "" {
 		p.Name = a.config.Name

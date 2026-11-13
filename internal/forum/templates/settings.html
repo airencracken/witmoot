@@ -10,6 +10,8 @@
 		<label for="site-name">Site name</label><input id="site-name" name="site_name" maxlength="80" value="{{.Name}}" required>
 		<label for="source-url">Source link</label><input id="source-url" name="source_url" type="url" maxlength="512" value="{{.SourceURL}}" placeholder="Leave blank to hide the link"><p class="field-help">Shown in the footer. Leave it blank to hide it.</p>
 		<label><input type="checkbox" name="show_version" value="1" {{if .ShowVersion}}checked{{end}}> Show version in the footer</label>
+		<label for="palette">Colors</label><select id="palette" name="palette" aria-describedby="palette-help"><option value="" {{if eq .Palette ""}}selected{{end}}>Witmoot default (Sage)</option>{{range palettes}}<option value="{{.}}" {{if eq (print .) $.Palette}}selected{{end}}>{{.Label}}</option>{{end}}</select>
+		<p class="field-help" id="palette-help">Everyone sees these colors unless they pick their own from the theme menu.</p>
 		<label for="welcome-title">Welcome heading</label><input id="welcome-title" name="welcome_title" maxlength="120" value="{{.WelcomeTitle}}">
 		<label for="welcome-text">Welcome text</label><textarea id="welcome-text" name="welcome_text" rows="4" maxlength="2000">{{.WelcomeText}}</textarea>
 	</fieldset>

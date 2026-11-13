@@ -29,11 +29,8 @@ run: ## Run your board using WITMOOT_* settings (default data: ./data)
 test: ## Run Go tests with the race detector
 	go test -race -count=1 ./...
 
-test-js: ## Run JavaScript behavior tests (needs Node)
-	node --check internal/forum/static/theme.js
+test-js: ## Check the JavaScript syntax (needs Node)
 	node --check internal/forum/static/app.js
-	node --check internal/forum/static/copy.js
-	node --test scripts/*.test.cjs
 
 test-browser: build ## Run browser checks (needs Node and Playwright; see README)
 	node scripts/browser/check.mjs

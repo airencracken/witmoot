@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/airencracken/comfylib/brandimage"
+	"github.com/airencracken/comfylib/ui"
 	"io"
 	"log/slog"
 	"net/http"
@@ -29,12 +30,14 @@ type SiteBranding struct {
 	WelcomeText  string
 	HouseRules   string
 	OwnerContact string
+	// Palette is the owner's site palette; empty means the Witmoot default.
+	Palette string
 }
 
 func (s *Store) LoadBranding(ctx context.Context, defaults SiteBranding) (SiteBranding, error) {
 	branding := defaults
-	err := s.db.QueryRowContext(ctx, `SELECT name, source_url, welcome_title, welcome_text, house_rules, owner_contact, show_version
-		FROM instance_branding WHERE id = 1`).Scan(&branding.Name, &branding.SourceURL, &branding.WelcomeTitle, &branding.WelcomeText, &branding.HouseRules, &branding.OwnerContact, &branding.ShowVersion)
+	err := s.db.QueryRowContext(ctx, `SELECT name, source_url, welcome_title, welcome_text, house_rules, owner_contact, show_version, palette
+		FROM instance_branding WHERE id = 1`).Scan(&branding.Name, &branding.SourceURL, &branding.WelcomeTitle, &branding.WelcomeText, &branding.HouseRules, &branding.OwnerContact, &branding.ShowVersion, &branding.Palette)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaults, nil
 	}
@@ -73,16 +76,27 @@ func cleanBranding(branding SiteBranding) (SiteBranding, error) {
 	if len(branding.SourceURL) > 512 || !validSourceURL(branding.SourceURL) {
 		return SiteBranding{}, errors.New("source link must be blank or an HTTP(S) URL")
 	}
+	if branding.Palette != "" {
+		if _, err := ui.ParsePalette(branding.Palette); err != nil {
+			return SiteBranding{}, errPalette
+		}
+	}
 	return branding, nil
 }
 
+// errPalette refuses a palette name the shared stylesheet does not define.
+const errPalette = userError("Choose one of the listed color palettes.")
+
+// sitePalette is the palette pages are drawn in: the owner's choice, or sage.
+func sitePalette(setting string) ui.Palette { return ui.SiteDefault(setting, ui.Sage) }
+
 func saveBranding(ctx context.Context, writer brandingWriter, branding SiteBranding) error {
-	_, err := writer.ExecContext(ctx, `INSERT INTO instance_branding(id, name, source_url, welcome_title, welcome_text, house_rules, owner_contact, show_version)
-		VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+	_, err := writer.ExecContext(ctx, `INSERT INTO instance_branding(id, name, source_url, welcome_title, welcome_text, house_rules, owner_contact, show_version, palette)
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET name=excluded.name, source_url=excluded.source_url,
 		welcome_title=excluded.welcome_title, welcome_text=excluded.welcome_text,
-		house_rules=excluded.house_rules, owner_contact=excluded.owner_contact, show_version=excluded.show_version`,
-		branding.Name, branding.SourceURL, branding.WelcomeTitle, branding.WelcomeText, branding.HouseRules, branding.OwnerContact, branding.ShowVersion)
+		house_rules=excluded.house_rules, owner_contact=excluded.owner_contact, show_version=excluded.show_version, palette=excluded.palette`,
+		branding.Name, branding.SourceURL, branding.WelcomeTitle, branding.WelcomeText, branding.HouseRules, branding.OwnerContact, branding.ShowVersion, branding.Palette)
 	if err != nil {
 		return err
 	}

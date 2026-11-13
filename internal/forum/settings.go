@@ -98,6 +98,7 @@ func (a *App) settingsDraft(r *http.Request, message string) Page {
 		page.WelcomeText = r.PostForm.Get("welcome_text")
 		page.HouseRules = r.PostForm.Get("house_rules")
 		page.OwnerContact = r.PostForm.Get("owner_contact")
+		page.Palette = r.PostForm.Get("palette")
 	}
 	return page
 }
@@ -114,6 +115,7 @@ func (a *App) saveSettings(w http.ResponseWriter, r *http.Request) {
 			Name:        r.PostForm.Get("site_name"), SourceURL: r.PostForm.Get("source_url"),
 			WelcomeTitle: r.PostForm.Get("welcome_title"), WelcomeText: r.PostForm.Get("welcome_text"),
 			HouseRules: r.PostForm.Get("house_rules"), OwnerContact: r.PostForm.Get("owner_contact"),
+			Palette: r.PostForm.Get("palette"),
 		}
 		if err := a.store.SaveInstanceSettings(r.Context(), mode, branding); err != nil {
 			a.render(w, r, 422, a.settingsDraft(r, err.Error()))

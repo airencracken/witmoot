@@ -73,23 +73,22 @@ func TestUnknownViewRendersEscapedErrorPage(t *testing.T) {
 	}
 }
 
-// One partial draws the theme picker for visitors and members alike.
+// One partial draws the shared theme menu for visitors and members alike.
 func TestThemePickerComesFromOnePartial(t *testing.T) {
 	layout, err := os.ReadFile("templates/layout.html")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := bytes.Count(layout, []byte("data-theme-select")); n != 1 {
-		t.Fatalf("layout has %d theme selects, want one partial", n)
+	if bytes.Contains(layout, []byte("data-theme-select")) || bytes.Count(layout, []byte("{{themePicker}}")) != 1 {
+		t.Fatal("layout should draw the theme menu from the shared picker, once")
 	}
 	app, visitor := newTestApp(t, false)
 	signInTest(t, app, &testClient{app: app, cookies: map[string]*http.Cookie{}}, true)
-	if body := visitor.request("GET", "/login", nil, nil).Body.String(); strings.Count(body, "data-theme-select") != 1 {
-		t.Fatal("visitor page should render the theme picker once")
-	}
 	member := memberClient(t, app, "jules")
-	if body := member.request("GET", "/account", nil, nil).Body.String(); strings.Count(body, "data-theme-select") != 1 {
-		t.Fatal("member page should render the theme picker once")
+	for name, body := range map[string]string{"visitor": visitor.request("GET", "/login", nil, nil).Body.String(), "member": member.request("GET", "/account", nil, nil).Body.String()} {
+		if strings.Count(body, "data-theme-select") != 1 || strings.Count(body, "data-palette-select") != 1 {
+			t.Errorf("%s page should render one theme and one palette menu", name)
+		}
 	}
 }
 
