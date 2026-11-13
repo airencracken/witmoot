@@ -284,6 +284,8 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .post-content header { gap: 16px; align-items: flex-start; }
 .post-content header > div { flex: 1; }
 .settings-form .board-visibility, .settings-form .board-members { margin-top: 30px; }
+/* Group and individual grants matter only for Selected members boards. */
+.settings-form:has(input[name="visibility"][value="site"]:checked) .selected-access { display: none; }
 .access-choice { display: flex; align-items: flex-start; gap: 12px; }
 .access-choice input { width: auto; margin-top: 5px; accent-color: var(--green); }
 .access-choice small { display: block; color: var(--muted); font-weight: 400; }
