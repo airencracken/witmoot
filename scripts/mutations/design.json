@@ -38,5 +38,21 @@
     "after": "",
     "package": "./internal/forum",
     "run": "^TestSharedAccountAssets$"
+  },
+  {
+    "name": "lowercase product name in template copy",
+    "file": "internal/forum/templates/images.html",
+    "before": "<h1>Your Imvault library</h1>",
+    "after": "<h1>Your imvault library</h1>",
+    "package": "./internal/forum",
+    "run": "^TestTemplatesCapitaliseProductNames$"
+  },
+  {
+    "name": "lowercase product name in interface strings",
+    "file": "internal/forum/avatar.go",
+    "before": "\"That image is not in your Imvault library.\"",
+    "after": "\"That image is not in your imvault library.\"",
+    "package": "./internal/forum",
+    "run": "^TestUserFacingStringsCapitaliseProductNames$"
   }
 ]

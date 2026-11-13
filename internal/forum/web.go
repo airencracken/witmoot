@@ -224,7 +224,7 @@ func New(store *Store, config Config) (*App, error) {
 	a := &App{store: store, config: config, templates: tmpl, dummyHash: dummy, limiter: newLimiter(), mailer: mailer, exportSlots: make(chan struct{}, 1)}
 	if config.ImvaultURL != "" {
 		if len(config.ImageKey) != 32 {
-			return nil, errors.New("imvault integration requires a 32-byte encryption key")
+			return nil, errors.New("Imvault integration requires a 32-byte encryption key")
 		}
 		a.vault, err = imvault.New(config.ImvaultURL)
 		if err != nil {

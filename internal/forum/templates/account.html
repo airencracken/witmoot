@@ -103,7 +103,7 @@
 {{template "crumb" .}}
 <section class="paper">
 	<h1>Choose an avatar</h1>
-	<p>Pick an image from your imvault library. Witmoot copies it, crops it square, and scales it down; your original stays in imvault.</p>
+	<p>Pick an image from your Imvault library. Witmoot copies it, crops it square, and scales it down; your original stays in Imvault.</p>
 	<form class="search-form" method="get" action="/account/avatar/imvault" hx-boost="false"><label for="avatar-search">Search your library</label><div><input id="avatar-search" name="q" type="search" value="{{.Query}}" maxlength="100"><button type="submit">Find images</button></div></form>
 	{{template "error" .}}{{if .ImageError}}<p role="alert" class="comfy-notice comfy-notice-error">{{.ImageError}}</p>{{end}}
 	{{if .LibraryLoaded}}<div class="image-grid">{{range .Library}}<div class="image-choice"><img src="/imvault/library/{{.ID}}/image" alt="{{.Name}}" loading="lazy"><span>{{.Name}}</span><form action="/account/avatar/imvault" method="post">{{template "csrf" $}}<input type="hidden" name="image_id" value="{{.ID}}"><button type="submit" class="secondary">Use as avatar</button></form></div>{{else}}<p class="muted">No images on this page.</p>{{end}}</div>

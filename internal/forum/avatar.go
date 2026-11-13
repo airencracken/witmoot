@@ -251,7 +251,7 @@ func avatarProblem(err error) string {
 // avatarLibrary lists the member's imvault images to import as an avatar.
 func (a *App) avatarLibrary(w http.ResponseWriter, r *http.Request) {
 	if a.vault == nil {
-		a.fail(w, r, 503, "Image integration is not configured. Ask the owner to connect an imvault server.")
+		a.fail(w, r, 503, "Image integration is not configured. Ask the owner to connect an Imvault server.")
 		return
 	}
 	token, err := a.imageToken(r.Context(), state(r).User.ID)
@@ -283,7 +283,7 @@ func (a *App) importAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	id := strings.TrimSpace(r.PostForm.Get("image_id"))
 	if !imvault.IDPattern.MatchString(id) {
-		a.fail(w, r, 400, "Choose an image from your imvault library.")
+		a.fail(w, r, 400, "Choose an image from your Imvault library.")
 		return
 	}
 	token, err := a.imageToken(r.Context(), state(r).User.ID)
@@ -293,12 +293,12 @@ func (a *App) importAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	file, err := a.vault.File(r.Context(), token, id)
 	if err != nil {
-		a.fail(w, r, 422, "That image is not in your imvault library.")
+		a.fail(w, r, 422, "That image is not in your Imvault library.")
 		return
 	}
 	data, _, err := a.vault.Image(r.Context(), token, file.ID, file.Rendition())
 	if err != nil {
-		a.fail(w, r, 502, "That image could not be fetched from imvault right now.")
+		a.fail(w, r, 502, "That image could not be fetched from Imvault right now.")
 		return
 	}
 	if err := a.store.SaveAvatar(r.Context(), state(r).User.ID, data); err != nil {

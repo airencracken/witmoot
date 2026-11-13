@@ -315,7 +315,7 @@ func TestRecentPostsSharedImagesAndReferencesRemainLocal(t *testing.T) {
 	response := client.request("GET", "/recent", nil, nil)
 	requireStatus(t, response, 200)
 	body := response.Body.String()
-	for _, text := range []string{fmt.Sprintf(`src="/images/%d"`, imageID), "Family &lt;photo&gt;.png", "Songstead recommendation", "imvault album", "View current public album preview"} {
+	for _, text := range []string{fmt.Sprintf(`src="/images/%d"`, imageID), "Family &lt;photo&gt;.png", "Songstead recommendation", "Imvault album", "View current public album preview"} {
 		if !strings.Contains(body, text) {
 			t.Fatalf("feed lost shared content: %s", text)
 		}

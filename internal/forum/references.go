@@ -95,7 +95,7 @@ func (a *App) postReferences(posts []Post) {
 			preview := ""
 			if a.vault != nil {
 				if _, err := a.vault.ParseAlbumLink(s.URL); err == nil {
-					label = "imvault album"
+					label = "Imvault album"
 					preview = "/posts/" + strconv.FormatInt(posts[i].ID, 10) + "/album-preview?url=" + url.QueryEscape(s.URL)
 				}
 			}
@@ -132,12 +132,12 @@ func (a *App) albumPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := a.imageToken(r.Context(), post.AuthorID)
 	if err != nil {
-		a.fail(w, r, 404, "Album preview unavailable. Open its link in imvault.")
+		a.fail(w, r, 404, "Album preview unavailable. Open its link in Imvault.")
 		return
 	}
 	album, err := a.vault.AlbumPreview(r.Context(), token, slug)
 	if err != nil {
-		a.fail(w, r, 404, "Album preview unavailable. Open its link in imvault.")
+		a.fail(w, r, 404, "Album preview unavailable. Open its link in Imvault.")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -20,10 +19,10 @@ const maxImages = 4
 
 func (a *App) imageAccount(w http.ResponseWriter, r *http.Request) {
 	if a.vault == nil {
-		a.fail(w, r, 503, "Image integration is not configured. Ask the owner to connect an imvault server.")
+		a.fail(w, r, 503, "Image integration is not configured. Ask the owner to connect an Imvault server.")
 		return
 	}
-	a.render(w, r, 200, Page{View: "image-account", Title: "Your imvault connection", Saved: r.URL.Query().Get("saved") == "1"})
+	a.render(w, r, 200, Page{View: "image-account", Title: "Your Imvault connection", Saved: r.URL.Query().Get("saved") == "1"})
 }
 
 func (a *App) connectImages(w http.ResponseWriter, r *http.Request) {
@@ -39,12 +38,12 @@ func (a *App) connectImages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !valid {
-		a.render(w, r, 422, Page{View: "image-account", Title: "Your imvault connection", Error: "Enter a valid imvault API key."})
+		a.render(w, r, 422, Page{View: "image-account", Title: "Your Imvault connection", Error: "Enter a valid Imvault API key."})
 		return
 	}
 	name, err := a.vault.Me(r.Context(), token)
 	if err != nil {
-		a.render(w, r, 422, Page{View: "image-account", Title: "Your imvault connection", Error: "That key could not connect to imvault. Check the key and try again."})
+		a.render(w, r, 422, Page{View: "image-account", Title: "Your Imvault connection", Error: "That key could not connect to Imvault. Check the key and try again."})
 		return
 	}
 	encrypted, err := a.encryptImageToken(state(r).User.ID, token)
@@ -86,7 +85,7 @@ func (a *App) decorateImages(r *http.Request, p *Page) {
 		return
 	}
 	if err != nil {
-		p.ImageError = "Your imvault connection could not be loaded."
+		p.ImageError = "Your Imvault connection could not be loaded."
 		return
 	}
 	if connection.Server != a.vault.Base {
@@ -106,7 +105,7 @@ func (a *App) decorateImages(r *http.Request, p *Page) {
 	}
 	token, err := a.imageToken(r.Context(), state(r).User.ID)
 	if err != nil {
-		p.ImageError = "Reconnect your imvault account to use your images."
+		p.ImageError = "Reconnect your Imvault account to use your images."
 		return
 	}
 	p.Query = strings.TrimSpace(r.PostForm.Get("q"))
@@ -160,7 +159,7 @@ func (a *App) library(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	files, more, err := a.vault.List(r.Context(), token, query, offset)
-	p := Page{View: "library", Title: "Your imvault library", Library: files, LibraryMore: more, LibraryLoaded: true, LibraryOffset: offset, Query: query, ImageServer: a.vault.Base}
+	p := Page{View: "library", Title: "Your Imvault library", Library: files, LibraryMore: more, LibraryLoaded: true, LibraryOffset: offset, Query: query, ImageServer: a.vault.Base}
 	if err != nil {
 		p.ImageError = imvault.ErrUnavailable.Error()
 	}
@@ -252,10 +251,10 @@ func (a *App) prepareImages(r *http.Request) ([]Attachment, func(), error) {
 		return nil, noop, nil
 	}
 	if a.vault == nil {
-		return nil, noop, errors.New("image integration is not configured")
+		return nil, noop, userError("Image integration is not configured.")
 	}
 	if count > maxImages {
-		return nil, noop, errors.New("attach up to four images per message")
+		return nil, noop, userError("Attach up to four images per message.")
 	}
 	token, tokenErr := a.imageToken(r.Context(), state(r).User.ID)
 	if tokenErr != nil {
@@ -286,59 +285,67 @@ func (a *App) prepareImages(r *http.Request) ([]Attachment, func(), error) {
 	}
 	for _, id := range r.PostForm["image_ids"] {
 		if token == "" {
-			return nil, cleanup, errors.New("connect your imvault account to choose images")
+			return nil, cleanup, userError("Connect your Imvault account to choose images.")
 		}
 		f, err := a.vault.File(r.Context(), token, id)
 		if err != nil {
-			return nil, cleanup, errors.New("one of the chosen images is no longer available in your imvault library")
+			return nil, cleanup, userError("One of the chosen images is no longer in your Imvault library.")
 		}
 		add(f, true)
 	}
 	for _, link := range strings.Fields(r.PostForm.Get("image_links")) {
 		id, err := a.vault.ParseLink(link)
 		if err != nil {
-			return nil, cleanup, err
+			return nil, cleanup, userError("Paste links to images on " + a.vault.Base + ", one per line.")
 		}
 		if seen[id] {
 			continue
 		}
 		if _, _, err := a.vault.Image(r.Context(), "", id, "thumb"); err == nil {
-			add(imvault.File{ID: id, Name: "Image from imvault", Kind: "animated"}, false)
+			add(imvault.File{ID: id, Name: "Image from Imvault", Kind: "animated"}, false)
 			continue
 		}
 		if token == "" {
-			return nil, cleanup, errors.New("that image is not public; connect the imvault account that owns it")
+			return nil, cleanup, userError("That image is not public. Connect the Imvault account that owns it.")
 		}
 		f, err := a.vault.File(r.Context(), token, id)
 		if err != nil {
-			return nil, cleanup, errors.New("that image is not public or in your connected imvault library")
+			return nil, cleanup, userError("That image is not public or in your connected Imvault library.")
 		}
 		add(f, true)
 	}
 	if uploads != nil {
 		for _, header := range uploads.File["images"] {
 			if token == "" {
-				return nil, cleanup, errors.New("connect your imvault account to upload images")
+				return nil, cleanup, userError("Connect your Imvault account to upload images.")
 			}
 			if header.Size > imvault.MaxImageBytes {
-				return nil, cleanup, errors.New("each image must be 8 MiB or smaller")
+				return nil, cleanup, userError("Each image must be 8 MiB or smaller.")
 			}
 			file, err := header.Open()
 			if err != nil {
-				return nil, cleanup, errors.New("that image could not be read")
+				return nil, cleanup, userError("That image could not be read. Choose it again.")
 			}
 			data, err := io.ReadAll(io.LimitReader(file, imvault.MaxImageBytes+1))
 			closeLogged("uploaded image", file)
 			if err != nil {
-				return nil, cleanup, errors.New("that image could not be read")
+				return nil, cleanup, userError("That image could not be read. Choose it again.")
 			}
 			f, err := a.vault.Upload(r.Context(), token, header.Filename, data)
 			if err != nil {
-				return nil, cleanup, fmt.Errorf("image upload failed: %w", err)
+				return nil, cleanup, uploadProblem(err)
 			}
 			created = append(created, f.ID)
 			add(f, true)
 		}
 	}
 	return images, cleanup, nil
+}
+
+// uploadProblem explains a refused upload to the member who sent it.
+func uploadProblem(err error) error {
+	if errors.Is(err, imvault.ErrUnavailable) {
+		return userError(imvault.ErrUnavailable.Error())
+	}
+	return userError("Choose JPEG, PNG, WebP, or GIF images up to 8 MiB each.")
 }

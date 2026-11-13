@@ -113,7 +113,7 @@ type exportView struct {
 
 const exportNote = "Your own messages only; other people's replies are not included. " +
 	"Available shared previews are included, with links to their Imvault pages. " +
-	"Fetch your originals from your imvault account export. " +
+	"Fetch your originals from your Imvault account export. " +
 	"Removed messages appear as placeholders, without their former text or image references. " +
 	"Boards and conversations you can no longer read are listed without their names. " +
 	"Passwords, sessions, and image connections are never included."

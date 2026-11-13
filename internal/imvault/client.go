@@ -22,7 +22,9 @@ const MaxImageBytes = 8 << 20
 
 var IDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 var renditionVersionPattern = regexp.MustCompile(`^[0-9a-f]{16}$`)
-var ErrUnavailable = errors.New("imvault could not complete that request; check your connection and try again")
+
+// ErrUnavailable is shown to members as written, so it reads as a sentence.
+var ErrUnavailable = errors.New("Imvault could not complete that request. Check your connection and try again.")
 
 type Client struct {
 	Base      string
