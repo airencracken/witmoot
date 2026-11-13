@@ -17,14 +17,15 @@ One Go binary and one data directory: server-rendered HTML, SQLite, and HTMX,
 with no frontend build step and no outside service.
 
 Sage and cream by day, dark greens by night. Pick **System**, **Light**, or
-**Dark** from the header. Meet the **Moot Knight**, a little keeper of the round
+**Dark** from the header, and owners can switch the whole site to the Slate
+colors. Meet the **Moot Knight**, a little keeper of the round
 table with a book, a quill, and room for your people.
 
 ![Witmoot's private board with a sample conversation](docs/images/board.png)
 
 *A test instance with sample conversations.*
 
-**What's new:** see the [release notes](docs/releases.md).
+**Current release:** [0.24.0](docs/release-notes/0.24.0.md). Older versions are in the [release notes](docs/releases.md).
 
 ## Come on in
 
@@ -244,7 +245,9 @@ Members can delete their account with their password. Their messages become
 anonymous placeholders. The last owner must appoint another owner first.
 
 The owner metrics page counts members, boards, conversations, messages, and
-storage. Witmoot does not record who signed in or what anyone read.
+storage, plus site health (requests, errors, response times) and security
+events such as failed sign-ins. Witmoot does not record who signed in or what
+anyone read.
 
 SQLite data is not encrypted at rest. Keep another copy of anything
 irreplaceable.
