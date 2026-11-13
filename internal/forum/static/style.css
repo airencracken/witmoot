@@ -326,7 +326,7 @@ input::placeholder, textarea::placeholder { color: light-dark(#798077, #a5b29d);
 .profile-link-fields { display:grid; gap:.5rem; min-width:0; margin-block:1rem; padding:1rem; }
 
 /* Backup destinations may contain long directory components. */
-[aria-labelledby="backup-heading"] code { overflow-wrap: anywhere; }
+.server-section code { overflow-wrap: anywhere; }
 .account-sections { max-width: 640px; margin: 36px auto; }
 .account-section { margin-top: 23px; }
 .account-section h3 { margin: 23px 0 8px; font-size: 16px; }

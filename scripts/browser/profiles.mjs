@@ -14,7 +14,7 @@ export async function checkProfiles(browser, origin, password, javaScriptEnabled
   await act(page.getByRole('button',{name:'Sign in',exact:true}), 'click');
   await page.waitForURL(origin+'/');
   await act(page.getByRole('link',{name:'Your account',exact:true}), 'click');
-  await act(page.getByRole('link',{name:'Edit your profile',exact:true}), 'click');
+  await act(page.getByRole('link',{name:'Edit your name, bio, and links',exact:true}), 'click');
   await page.waitForURL(origin+'/account/profile');
   await act(page.getByLabel('Name (optional)',{exact:true}), 'fill', 'A demo name');
   await act(page.getByLabel('Bio (optional)',{exact:true}), 'fill', 'A short bio.\nBooks and rainy walks.');

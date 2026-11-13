@@ -109,6 +109,10 @@ func TestSettingsOrderAndServerSection(t *testing.T) {
 			t.Errorf("settings still say %q", gone)
 		}
 	}
+	css, err := assets.ReadFile("static/style.css")
+	if err != nil || !strings.Contains(string(css), ".server-section code { overflow-wrap: anywhere; }") || !strings.Contains(body, `class="comfy-admin-section paper stack server-section"`) {
+		t.Fatal("long backup paths in the Server section must wrap on small screens")
+	}
 	heading := body[strings.Index(body, `<div class="page-heading">`):strings.Index(body, "<legend>Make this place yours</legend>")]
 	if strings.Contains(heading, "/admin/metrics") || strings.Contains(heading, "Running Witmoot") {
 		t.Fatal("server details are back in the page heading")
