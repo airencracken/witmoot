@@ -37,7 +37,6 @@ func (a *App) accountPage(r *http.Request, message, notice, email string) Page {
 	if user := state(r).User; user != nil {
 		page.AnimateAvatars, _ = a.store.AnimateAvatars(r.Context(), user.ID)
 		page.TimezoneInput = displayTimezone(user.Timezone).String()
-		page.TimezoneSuggestions = timezoneSuggestions
 		if has, err := a.store.HasAvatar(r.Context(), user.ID); err == nil {
 			page.HasAvatar = has
 		}

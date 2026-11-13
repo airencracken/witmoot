@@ -139,7 +139,6 @@ type Page struct {
 	Member                                                      User
 	Events                                                      []CommunityEvent
 	TimezoneInput                                               string
-	TimezoneSuggestions                                         []string
 	timezone                                                    *time.Location
 }
 
