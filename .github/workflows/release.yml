@@ -168,7 +168,37 @@ jobs:
       release_tag: ${{ inputs.release_tag || github.ref_name }}
       publish: ${{ (startsWith(github.ref, 'refs/tags/v') || startsWith(inputs.release_tag, 'v')) && github.repository == 'airencracken/witmoot' }}
 
+  imvault-interop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: airencracken/imvault
+          ref: 6beb9e10bb3cbe43773f52d57ee22d5d978cd69f # v0.26.1
+          path: .interop/imvault
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: "1.26.11"
+          cache-dependency-path: |
+            go.sum
+            .interop/imvault/go.sum
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - name: Build Imvault and run the integration
+        run: |
+          go -C .interop/imvault build -o "$RUNNER_TEMP/imvault" ./cmd/imvault || exit 1
+          npm ci --prefix scripts/browser || exit 1
+          npm exec --prefix scripts/browser -- playwright install --with-deps chromium || exit 1
+          IMVAULT_BINARY="$RUNNER_TEMP/imvault" make test-imvault || exit 1
+
   browser:
+    needs: imvault-interop
     uses: ./.github/workflows/browser.yml
     with:
       source_ref: ${{ inputs.release_tag || github.ref }}

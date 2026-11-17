@@ -25,7 +25,7 @@ table with a book, a quill, and room for your people.
 
 *A test instance with sample conversations.*
 
-**Current release:** [0.24.1](docs/release-notes/0.24.1.md). Older versions are in the [release notes](docs/releases.md).
+**Current release:** [0.24.2](docs/release-notes/0.24.2.md). Older versions are in the [release notes](docs/releases.md).
 
 ## Come on in
 

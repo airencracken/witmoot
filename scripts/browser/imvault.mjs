@@ -108,13 +108,13 @@ try {
 		await page.waitForURL(origin + '/');
 		assert.equal(await page.locator('.mascot').evaluate(img => img.complete && img.naturalWidth > 0), true);
 		await act(page.getByRole('link', { name: 'Images', exact: true }), 'click');
-		await act(page.getByLabel('imvault API key', { exact: true }), 'fill', key);
-		await act(page.getByRole('button', { name: 'Connect imvault', exact: true }), 'click');
+		await act(page.getByLabel('Imvault API key', { exact: true }), 'fill', key);
+		await act(page.getByRole('button', { name: 'Connect Imvault', exact: true }), 'click');
 		await page.waitForURL(origin + '/account/imvault?saved=1');
 		assert.match(await page.getByRole('status').innerText(), /settings are saved/);
 		assert.equal((await page.content()).includes(key), false, 'API key leaked in HTML');
 		await act(page.getByRole('link', { name: 'Browse your library' }), 'click');
-		await page.getByRole('heading', { name: 'Your imvault library', exact: true }).waitFor();
+		await page.getByRole('heading', { name: 'Your Imvault library', exact: true }).waitFor();
 		await act(page.getByLabel('Search your library', { exact: true }), 'fill', 'Public-table');
 		await act(page.getByRole('button', { name: 'Find images' }), 'click');
 		await page.getByRole('link', { name: 'Public-table.png', exact: true }).waitFor();
@@ -142,7 +142,7 @@ try {
 		}
 		await act(page.getByLabel('Upload images', { exact: true }), 'setInputFiles', { name: 'New-table.png', mimeType: 'image/png', buffer: png });
 		assert.match(publicImage.thumb_url, /\?v=[0-9a-f]{16}$/);
-		await act(page.getByLabel('Paste imvault image links', { exact: true }), 'fill', publicImage.thumb_url);
+		await act(page.getByLabel('Paste Imvault image links', { exact: true }), 'fill', publicImage.thumb_url);
 		await act(page.getByRole('button', { name: 'Start conversation', exact: true }), 'click');
 		await page.waitForURL(/\/topics\/\d+$/);
 		const topicURL = page.url();
@@ -174,7 +174,7 @@ try {
 		await act(page.getByRole('button', { name: 'Load image library', exact: true }), 'click');
 		await page.locator('.image-choice input[type=checkbox]').first().waitFor();
 		assert.equal(await page.getByLabel('Your reply', { exact: true }).inputValue(), 'Another look at the same memory.', 'Loading images lost the reply');
-		await act(page.getByLabel('Paste imvault image links', { exact: true }), 'fill', privateImage.thumb_url.replace('/thumb?', '/preview?'));
+		await act(page.getByLabel('Paste Imvault image links', { exact: true }), 'fill', privateImage.thumb_url.replace('/thumb?', '/preview?'));
 		await act(page.getByRole('button', { name: 'Post reply', exact: true }), 'click');
 		await page.waitForURL(/#post-/);
 		assert.equal(await page.locator('.post-images img').count(), 4);
@@ -186,7 +186,7 @@ try {
 			await page.screenshot({ path: join(process.env.WITMOOT_SCREENSHOT_DIR, 'images-mobile.png'), fullPage: true });
 		}
 		await page.goto(origin + '/account/imvault');
-		await act(page.getByRole('button', { name: 'Disconnect imvault', exact: true }), 'click');
+		await act(page.getByRole('button', { name: 'Disconnect Imvault', exact: true }), 'click');
 		await page.waitForURL(origin + '/account/imvault?saved=1');
 		assert.equal((await context.request.get(origin + paths[0])).status(), 404, 'Disconnect left a private image accessible');
 		assert.equal((await context.request.get(origin + paths[1])).status(), 200, 'Public pasted image should survive disconnect');
