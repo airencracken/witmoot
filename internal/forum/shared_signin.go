@@ -39,6 +39,9 @@ func (a *App) sharedSignIn(w http.ResponseWriter, r *http.Request, id int64) (st
 	if err != nil || u.Suspended || state(r).Mode == ModePersonal && u.Role != "owner" {
 		return "", fmt.Errorf("account unavailable")
 	}
+	if target, handled, err := a.factor.Start(w, r, id, ""); handled {
+		return target, err
+	}
 	if err = a.startSession(w, r, id); err != nil {
 		return "", err
 	}

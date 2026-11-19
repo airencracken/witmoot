@@ -1,6 +1,7 @@
 {{define "account"}}
 <div class="account-sections">
 	<h1>Your account</h1>
+	{{if .FactorEnabled}}<p><a href="/account/two-factor">Two-factor sign-in</a></p>{{end}}
 	<p class="muted">Signed in as <strong>{{.User.Username}}</strong>.</p>
 	{{template "error" .}}
 	{{if .Notice}}<p class="comfy-notice save-notice" role="status">{{.Notice}}</p>{{end}}

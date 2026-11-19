@@ -193,6 +193,9 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	if a.finishFirstFactor(w, r, user.ID, hash) {
+		return
+	}
 	if err := a.startSession(w, r, user.ID); err != nil {
 		a.serverError(w, r, err)
 		return

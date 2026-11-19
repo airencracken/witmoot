@@ -74,6 +74,9 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, 403, Page{View: "login", Title: "Welcome back", Username: name, Error: errPersonal.Error()})
 		return
 	}
+	if a.finishFirstFactor(w, r, user.ID, hash) {
+		return
+	}
 	a.limiter.refund(a.rateKey(r))
 	a.signIn(w, r, user.ID)
 }

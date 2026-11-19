@@ -14,6 +14,7 @@ import (
 	"github.com/airencracken/comfylib/displaytime"
 	"github.com/airencracken/comfylib/problem"
 	"github.com/airencracken/comfylib/suite"
+	"github.com/airencracken/comfylib/twofactor"
 	"html/template"
 	"io"
 	"io/fs"
@@ -59,6 +60,7 @@ type Config struct {
 }
 
 type App struct {
+	factor      *twofactor.HTTP
 	store       *Store
 	config      Config
 	templates   *template.Template
@@ -79,6 +81,8 @@ type requestState struct {
 type stateKey struct{}
 
 type Page struct {
+	FactorEnabled   bool
+	FactorContent   template.HTML
 	TimezoneControl displaytime.Preference
 	TimezoneError   string
 	Overview        admin.View
@@ -149,7 +153,7 @@ type Page struct {
 // pageTemplates names the template that draws each view. Any other view,
 // including "error", is drawn as a plain error page.
 var pageTemplates = map[string]string{
-	"about": "about", "account": "account", "album-preview": "album-preview", "archive": "archive",
+	"about": "about", "account": "account", "two-factor": "two-factor", "album-preview": "album-preview", "archive": "archive",
 	"avatar-library": "avatar-library", "board": "board", "board-action": "board-action",
 	"board-settings": "board-settings", "boards": "boards", "compose": "compose",
 	"delete-account": "delete-account", "discussion-done": "discussion-done", "edit-post": "edit-post",
@@ -329,6 +333,9 @@ func New(store *Store, config Config) (*App, error) {
 	mux.HandleFunc("GET /imvault/library", a.private(a.library))
 	mux.HandleFunc("GET /imvault/library/{id}/image", a.private(a.libraryImage))
 	mux.HandleFunc("GET /images/{id}", a.readable(a.image))
+	if err = a.registerTwoFactor(mux); err != nil {
+		return nil, err
+	}
 	if err = a.registerSharedSignIn(mux); err != nil {
 		return nil, err
 	}
@@ -552,6 +559,7 @@ func (a *App) renderPage(w http.ResponseWriter, r *http.Request, status int, p P
 		p.Name = a.config.Name
 	}
 	p.CSRF, p.User = state(r).CSRF, state(r).User
+	p.FactorEnabled = a.factor.Enabled()
 	p.timezone = time.UTC
 	if p.User != nil {
 		p.timezone = displayTimezone(p.User.Timezone)

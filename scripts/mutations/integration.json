@@ -1,5 +1,13 @@
 [
   {
+    "name": "password sign-in requires the enrolled authenticator",
+    "file": "internal/forum/auth.go",
+    "before": "if a.finishFirstFactor(w, r, user.ID, hash) {",
+    "after": "if false && a.finishFirstFactor(w, r, user.ID, hash) {",
+    "package": "./internal/forum",
+    "run": "^TestAuthenticatorSignIn$"
+  },
+  {
     "name": "trusted proxy list",
     "file": "internal/forum/proxy.go",
     "before": "clientip.Resolver{Trusted: a.config.TrustedProxies}",

@@ -9,6 +9,21 @@ Witmoot runs as one unprivileged process listening on `127.0.0.1:8082`, which
 leaves Imvault's usual 8080 free. Native services keep the database and
 `imvault.key` in `/var/lib/witmoot`. The standalone binary uses `./data`.
 
+## Authenticator sign-in
+
+Set `WITMOOT_TOTP_KEY` to a unique 32-byte key encoded as hex. You can
+generate one with `openssl rand -hex 32`. Put it in the service's private
+environment configuration, or in the private environment file used by
+Docker Compose, then restart the app.
+
+Members can then open **Two-factor sign-in** from their account page. Add the
+setup key to an authenticator and enter a current code to confirm. Save the
+single-use recovery codes somewhere safe. After enrollment, both password and
+community sign-in ask for an authenticator or recovery code.
+
+Keep the original instance key with your server's private configuration
+backups. A restored database with enrolled accounts requires the same key.
+
 ## Source install on Gentoo / OpenRC
 
 You need Go 1.26.11 or later, Make, `app-admin/logrotate` and
