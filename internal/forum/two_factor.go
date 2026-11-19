@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/airencracken/comfylib/twofactor"
 	"golang.org/x/crypto/bcrypt"
@@ -18,7 +17,7 @@ func (a *App) registerTwoFactor(mux *http.ServeMux) error {
 		"Witmoot", "/", twofactor.Sessions{
 			CredentialSQL: `SELECT password_hash FROM users WHERE id=? AND suspended=0 AND deleted=0 AND (role='owner' OR (SELECT mode FROM settings WHERE id=1)<>'personal')`,
 			TokenColumn:   "token_hash", ExpiryColumn: "expires_at",
-			Lifetime: 7 * 24 * time.Hour, Milliseconds: false,
+			Lifetime: sessionLifetime, Milliseconds: false,
 		}, twofactor.Hooks{
 			Request: func(r *http.Request) (int64, string, string) {
 				u, csrf := state(r).User, state(r).CSRF
@@ -33,8 +32,7 @@ func (a *App) registerTwoFactor(mux *http.ServeMux) error {
 			},
 			CookieName: func(r *http.Request) string { return a.cookieName("twofactor") },
 			Session: func(w http.ResponseWriter, r *http.Request, raw string) {
-				a.cookie(w, "session", raw, 7*86400)
-				a.cookie(w, "csrf", sessionCSRFToken(raw), 86400)
+				a.setSessionCookies(w, raw)
 			},
 			CheckPassword: func(hash, plain string) bool {
 				return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil

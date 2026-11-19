@@ -105,8 +105,8 @@
   },
   {
     "name": "successful sign-in refund",
-    "file": "internal/forum/auth.go",
-    "before": "\ta.limiter.refund(a.rateKey(r))\n",
+    "file": "internal/forum/two_factor.go",
+    "before": "\t\t\ta.limiter.refund(a.rateKey(r))\n",
     "after": "",
     "package": "./internal/forum",
     "run": "^TestSuccessfulSignInsDoNotSpendTheBudget$"
@@ -171,7 +171,7 @@
     "name": "sign-in CSRF binding",
     "file": "internal/forum/auth.go",
     "before": "a.cookie(w, \"csrf\", sessionCSRFToken(session), 86400)",
-    "after": "a.cookie(w, \"csrf\", sessionCSRFToken(hash), 86400)",
+    "after": "a.cookie(w, \"csrf\", sessionCSRFToken(token.Hash(session)), 86400)",
     "package": "./internal/forum",
     "run": "^TestSignedOutFormsKeepDoubleSubmit$"
   },

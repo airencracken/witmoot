@@ -139,17 +139,22 @@ func (a *App) signIn(w http.ResponseWriter, r *http.Request, userID int64) {
 	a.redirect(w, r, "/")
 }
 
+const sessionLifetime = 7 * 24 * time.Hour
+
 // startSession issues a fresh session and CSRF cookie without redirecting, so
 // a password change can sign the caller back in on the page it started from.
 func (a *App) startSession(w http.ResponseWriter, r *http.Request, userID int64) error {
 	session, hash := token.New()
-	const lifetime = 7 * 24 * time.Hour
-	if err := a.store.NewSession(r.Context(), hash, userID, time.Now().Add(lifetime)); err != nil {
+	if err := a.store.NewSession(r.Context(), hash, userID, time.Now().Add(sessionLifetime)); err != nil {
 		return err
 	}
-	a.cookie(w, "session", session, int(lifetime.Seconds()))
-	a.cookie(w, "csrf", sessionCSRFToken(session), 86400)
+	a.setSessionCookies(w, session)
 	return nil
+}
+
+func (a *App) setSessionCookies(w http.ResponseWriter, session string) {
+	a.cookie(w, "session", session, int(sessionLifetime.Seconds()))
+	a.cookie(w, "csrf", sessionCSRFToken(session), 86400)
 }
 
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
